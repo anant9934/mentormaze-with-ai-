@@ -71,3 +71,4 @@ Before flipping any draft statement to `Approved & Verified`:
    Obtain documented affirmative consent (email reply, signed media release, or in-app verification).
 4. **Production Promotion:**  
    Only after written sign-off is logged in this registry should the status be updated to `Approved & Verified`.
+

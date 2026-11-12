@@ -342,63 +342,9 @@ export default function HomePage() {
             <RealImpactCarousel />
           </div>
         </section>
-
-        {/* ======================================================== */}
-        {/* 4. "START YOUR JOURNEY." CTA BANNER                      */}
-        {/* ======================================================== */}
-        <section className="py-6 sm:py-12">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="rounded-[28px] sm:rounded-[36px] overflow-hidden bg-[#0A3023] shadow-md grid grid-cols-1 md:grid-cols-12 min-h-[220px] sm:min-h-[260px]">
-              {/* Left Half: Green Wavy Banner + Heading + Button */}
-              <div className="md:col-span-6 p-8 sm:p-12 flex flex-col justify-center relative bg-gradient-to-r from-[#07241A] via-[#0A3023] to-[#0D382B]">
-                {/* Background topographic contour curves */}
-                <div className="absolute inset-0 opacity-15 pointer-events-none">
-                  <svg width="100%" height="100%" viewBox="0 0 500 250" fill="none">
-                    <path
-                      d="M-50 180C100 120 250 220 400 150C500 100 600 160 700 120"
-                      stroke="#6EE7B7"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M-50 220C120 160 270 260 420 190C520 140 620 200 720 160"
-                      stroke="#6EE7B7"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                </div>
-
-                <div className="relative z-10 space-y-6">
-                  <h3 className="font-serif italic text-3xl sm:text-4xl lg:text-[2.75rem] text-white font-normal leading-tight">
-                    Start Your Journey.
-                  </h3>
-
-                  <div>
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white hover:bg-gray-100 text-[#0A3023] text-sm font-semibold transition-all shadow-sm group"
-                    >
-                      <span>Get Started</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Half: Hiker sitting on mountain peak watching golden sunrise */}
-              <div className="md:col-span-6 relative min-h-[220px] md:min-h-full overflow-hidden">
-                <Image
-                  src="https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=1200&q=80"
-                  alt="Hiker watching sunrise on mountain"
-                  fill
-                  className="object-cover object-center"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
-      {/* Bottom Organic Wave Footer */}
+      {/* Bottom Overlapping Cream CTA & Forest-Green Footer */}
       <Footer />
     </div>
   );
