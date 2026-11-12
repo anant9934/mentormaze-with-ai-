@@ -117,3 +117,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/login?error=${encodeURIComponent(err.message || "OAuth processing failed")}`);
   }
 }
+

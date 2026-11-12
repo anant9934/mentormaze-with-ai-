@@ -67,6 +67,20 @@ export default function PrivacyPolicyPage() {
               Live mentorship and mock interview video sessions operate over encrypted WebRTC media channels powered by LiveKit. Media streams are private between verified session participants and are not recorded or monitored without prior mutual written consent.
             </p>
           </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-[#111827] mb-3">6. Contact & Data Rights</h2>
+            <p>
+              For data access, rectification, or account deletion requests under applicable privacy frameworks, contact the Data Protection Officer at{" "}
+              <a href="mailto:hellomentormaze@gmail.com" className="text-[#0D382B] font-semibold underline">
+                hellomentormaze@gmail.com
+              </a>{" "}
+              or visit our official website at{" "}
+              <a href="https://mentormaze.aitathastu.com" className="text-[#0D382B] font-semibold underline">
+                https://mentormaze.aitathastu.com
+              </a>.
+            </p>
+          </section>
         </div>
       </main>
 

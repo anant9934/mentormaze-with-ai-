@@ -89,7 +89,7 @@ export async function seedDatabase() {
   await db.execute(sql`
     INSERT INTO platform_settings (key, value, description)
     VALUES
-      ('general', '{"platformName": "MentorMaze", "supportEmail": "support@mentormaze.com", "defaultSessionMinutes": 30}', 'Core platform configuration'),
+      ('general', '{"platformName": "MentorMaze", "supportEmail": "hellomentormaze@gmail.com", "defaultSessionMinutes": 30}', 'Core platform configuration'),
       ('payments', '{"commissionPercent": 15.0, "environment": "TEST", "currency": "INR"}', 'Marketplace economics and Cashfree settings'),
       ('matching_weights', '{"careerGoalAlignment": 0.30, "skillGapAlignment": 0.25, "domainExpertise": 0.20, "academicRelevance": 0.10, "availability": 0.10, "studentPreference": 0.05}', 'Explainable mentor recommendation weights')
     ON CONFLICT (key) DO NOTHING;

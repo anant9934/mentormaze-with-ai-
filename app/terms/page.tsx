@@ -74,6 +74,20 @@ export default function TermsOfServicePage() {
               MentorMaze provides career mentorship, portfolio critiques, and mock interview practice. MentorMaze and its mentors do not guarantee employment, internship offers, academic grades, or recruitment outcomes.
             </p>
           </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-[#111827] mb-3">6. Governing Contact</h2>
+            <p>
+              For legal inquiries regarding these terms, contact{" "}
+              <a href="mailto:hellomentormaze@gmail.com" className="text-[#0D382B] font-semibold underline">
+                hellomentormaze@gmail.com
+              </a>{" "}
+              or visit{" "}
+              <a href="https://mentormaze.aitathastu.com" className="text-[#0D382B] font-semibold underline">
+                https://mentormaze.aitathastu.com
+              </a>.
+            </p>
+          </section>
         </div>
       </main>
 

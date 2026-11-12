@@ -17,8 +17,14 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({ success: true, message: "Logged out successfully" });
     
-    // Clear cookie
-    response.cookies.delete("mm_session_token");
+    // Clear session cookie
+    response.cookies.set("mm_session_token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      expires: new Date(0),
+      path: "/",
+    });
     return response;
   } catch (err: any) {
     console.error("Logout route error:", err);

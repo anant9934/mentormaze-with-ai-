@@ -36,17 +36,18 @@ export default function SessionConfirmationPage() {
 
   // ICS File Generator
   const downloadIcs = () => {
+    const appBaseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://mentormaze.aitathastu.com");
     const icsData = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//MentorMaze//Mentorship Session//EN",
       "BEGIN:VEVENT",
-      `UID:mm-${booking.id}@mentormaze.com`,
+      `UID:mm-${booking.id}@mentormaze.aitathastu.com`,
       `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
       `DTSTART:${new Date(booking.startTimeUtc).toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
       `DTEND:${new Date(booking.endTimeUtc).toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
       `SUMMARY:MentorMaze: 1-on-1 Mentorship with ${mentor.headline}`,
-      `DESCRIPTION:Join your live mentorship room at http://localhost:3000/sessions/${booking.id}/live`,
+      `DESCRIPTION:Join your live mentorship room at ${appBaseUrl}/sessions/${booking.id}/live`,
       "STATUS:CONFIRMED",
       "END:VEVENT",
       "END:VCALENDAR",
@@ -64,11 +65,12 @@ export default function SessionConfirmationPage() {
   };
 
   const openGoogleCalendar = () => {
+    const appBaseUrl = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://mentormaze.aitathastu.com");
     const startIso = new Date(booking.startTimeUtc).toISOString().replace(/-|:|\.\d\d\d/g, "");
     const endIso = new Date(booking.endTimeUtc).toISOString().replace(/-|:|\.\d\d\d/g, "");
     const title = encodeURIComponent(`MentorMaze: 1:1 Mentorship with ${mentor.headline}`);
     const details = encodeURIComponent(
-      `Join LiveKit session: http://localhost:3000/sessions/${booking.id}/live\nAgenda: ${booking.studentDiscussionPoints || "Mentorship discussion"}`
+      `Join LiveKit session: ${appBaseUrl}/sessions/${booking.id}/live\nAgenda: ${booking.studentDiscussionPoints || "Mentorship discussion"}`
     );
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&details=${details}&location=Online`;
     window.open(url, "_blank");

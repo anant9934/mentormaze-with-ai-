@@ -79,8 +79,8 @@ export class CashfreePaymentAdapter implements IPaymentGateway {
               customer_name: params.customerName,
             },
             order_meta: {
-              return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/sessions/${params.bookingId}/confirmation?order_id={order_id}`,
-              notify_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/payments/webhook`,
+              return_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://mentormaze.aitathastu.com"}/sessions/${params.bookingId}/confirmation?order_id={order_id}`,
+              notify_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://mentormaze.aitathastu.com"}/api/payments/webhook`,
             },
           }),
         });
