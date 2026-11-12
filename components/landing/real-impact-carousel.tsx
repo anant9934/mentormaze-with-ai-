@@ -8,10 +8,10 @@ export interface ImpactCardData {
   id: string;
   name: string;
   role: string;
-  category: "Student" | "Alumni" | "Industry Mentor" | "Career Coach" | "Mock Interview Expert" | "Faculty Mentor";
+  category: "Student" | "Mentor";
   image: string;
   quote: string;
-  rating: number;
+  rating?: number; // Optional: only shown when verified rating exists
   heightClass: string; // Alternating capsule heights
   defaultBg: string; // Background color class for default state
   defaultTextColor: string;
@@ -19,114 +19,157 @@ export interface ImpactCardData {
 }
 
 const IMPACT_CARDS: ImpactCardData[] = [
+  // --- STUDENTS (8) ---
   {
     id: "impact-1",
-    name: "Aditi Sharma",
-    role: "Student",
+    name: "Mandeep Kumar",
+    role: "AI/ML Student",
     category: "Student",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-    quote: "The mock interviews gave me the exact technical confidence I needed to clear my dream SDE internship.",
-    rating: 5,
-    heightClass: "h-[330px] sm:h-[350px]",
+    image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80",
+    quote: "Having the right guidance makes a big difference when you're learning AI and machine learning. I believe mentorship can help students understand what skills to focus on, explore career opportunities and build a clearer direction for their future.",
+    heightClass: "h-[340px] sm:h-[365px]",
     defaultBg: "bg-[#F7EBE1]", // Warm cream/peach
     defaultTextColor: "text-[#111827]",
     defaultRoleColor: "text-gray-600",
   },
   {
     id: "impact-2",
-    name: "Rohan Verma",
-    role: "Alumni",
-    category: "Alumni",
-    image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80",
-    quote: "Mentoring junior students helped me give back to the university community in the most impactful way.",
-    rating: 5,
-    heightClass: "h-[295px] sm:h-[315px]",
+    name: "Dama Sri Ram",
+    role: "LPU Student · Hackathon Winner",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
+    quote: "Practical experience is one of the most important parts of a student's journey. Learning from people who have industry experience and understanding how to approach real-world challenges can make a huge difference.",
+    heightClass: "h-[305px] sm:h-[325px]",
     defaultBg: "bg-[#DFE9E0]", // Soft sage green
     defaultTextColor: "text-[#111827]",
     defaultRoleColor: "text-gray-600",
   },
   {
     id: "impact-3",
-    name: "Priya Mehta",
-    role: "Industry Mentor",
-    category: "Industry Mentor",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
-    quote: "Great, curious learners and a very structured mentorship experience.",
-    rating: 5,
-    heightClass: "h-[380px] sm:h-[410px]", // Tallest, primary highlighted card
-    defaultBg: "bg-[#0D382B]", // Dark forest green default to match reference showcase
-    defaultTextColor: "text-white",
-    defaultRoleColor: "text-emerald-300",
+    name: "Abhay Pratap Singh",
+    role: "B.Tech CSE (AI & ML)",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+    quote: "A strong learning journey is not just about completing courses. It's about developing practical skills, understanding your strengths and continuously improving. Having access to the right mentors can make that journey more structured.",
+    heightClass: "h-[370px] sm:h-[395px]",
+    defaultBg: "bg-[#F7EBE1]", // Warm cream/peach
+    defaultTextColor: "text-[#111827]",
+    defaultRoleColor: "text-gray-600",
   },
   {
     id: "impact-4",
-    name: "Arjun Sinha",
-    role: "Career Coach",
-    category: "Career Coach",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-    quote: "Actionable career milestones and honest resume feedback transform student readiness.",
-    rating: 5,
-    heightClass: "h-[310px] sm:h-[330px]",
-    defaultBg: "bg-[#F7EBE1]", // Warm cream/peach
+    name: "Rudra Ojha",
+    role: "LPU Student · BBA",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+    quote: "Exploring different career opportunities can sometimes be confusing. Guidance from experienced people can help students understand their options, identify their interests and make more informed decisions.",
+    heightClass: "h-[315px] sm:h-[335px]",
+    defaultBg: "bg-[#DFE9E0]", // Soft sage green
     defaultTextColor: "text-[#111827]",
     defaultRoleColor: "text-gray-600",
   },
   {
     id: "impact-5",
-    name: "Neha Kapoor",
-    role: "Mock Interview Expert",
-    category: "Mock Interview Expert",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=600&q=80",
-    quote: "The structured rubrics make identifying and fixing problem-solving gaps seamless.",
-    rating: 5,
-    heightClass: "h-[365px] sm:h-[390px]",
-    defaultBg: "bg-[#DBE7DC]", // Soft sage green
-    defaultTextColor: "text-[#111827]",
-    defaultRoleColor: "text-gray-600",
-  },
-  {
-    id: "impact-6",
-    name: "Prof. A. Iyer",
-    role: "Faculty Mentor",
-    category: "Faculty Mentor",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=600&q=80",
-    quote: "Connecting academia with industry expectations bridges the crucial gap for students.",
-    rating: 5,
-    heightClass: "h-[310px] sm:h-[330px]",
+    name: "Tejas Singh",
+    role: "AI/ML Student",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80",
+    quote: "Technology keeps evolving, and students need to keep learning beyond their classroom syllabus. Connecting with experienced professionals can provide a better understanding of practical skills and industry expectations.",
+    heightClass: "h-[355px] sm:h-[380px]",
     defaultBg: "bg-[#F7EBE1]", // Warm cream/peach
     defaultTextColor: "text-[#111827]",
     defaultRoleColor: "text-gray-600",
   },
   {
+    id: "impact-6",
+    name: "Souyma Singh",
+    role: "Newton School of Technology",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+    quote: "The transition from academic learning to professional growth requires more than technical knowledge. Mentorship can help students develop confidence, explore opportunities and understand what they should work towards.",
+    heightClass: "h-[320px] sm:h-[340px]",
+    defaultBg: "bg-[#DFE9E0]", // Soft sage green
+    defaultTextColor: "text-[#111827]",
+    defaultRoleColor: "text-gray-600",
+  },
+  {
     id: "impact-7",
-    name: "Kavya Nair",
+    name: "Prakrati Singh",
     role: "Student",
     category: "Student",
     image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
-    quote: "My mentor helped me transition from raw coding to high-level distributed systems design.",
-    rating: 5,
-    heightClass: "h-[370px] sm:h-[395px]",
-    defaultBg: "bg-[#0D382B]", // Dark forest green
+    quote: "Structured learning, consistent guidance and the right direction can help students stay focused on their academic and professional goals. Having someone to guide your progress can make the learning journey more meaningful.",
+    heightClass: "h-[365px] sm:h-[390px]",
+    defaultBg: "bg-[#0D382B]", // Dark forest green default
     defaultTextColor: "text-white",
     defaultRoleColor: "text-emerald-300",
   },
   {
     id: "impact-8",
-    name: "Rahul Desai",
-    role: "Industry Mentor",
-    category: "Industry Mentor",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-    quote: "Honest feedback and motivated mentees make every session productive and energizing.",
-    rating: 5,
-    heightClass: "h-[320px] sm:h-[340px]",
+    name: "Shyna Thakur",
+    role: "Student",
+    category: "Student",
+    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80",
+    quote: "Career development is a continuous process. Having access to people who can share their experiences, provide useful perspectives and help you think about your next steps can be extremely valuable.",
+    heightClass: "h-[310px] sm:h-[330px]",
     defaultBg: "bg-[#F7EBE1]", // Warm peach
+    defaultTextColor: "text-[#111827]",
+    defaultRoleColor: "text-gray-600",
+  },
+
+  // --- MENTORS (4) ---
+  {
+    id: "impact-9",
+    name: "Dr. Mohit Arora",
+    role: "HOD, Machine Learning, LPU",
+    category: "Mentor",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=600&q=80",
+    quote: "Mentorship plays an important role in connecting academic learning with practical understanding. Students benefit when they receive guidance that encourages critical thinking, continuous learning and the application of knowledge to real-world challenges.",
+    heightClass: "h-[385px] sm:h-[415px]", // Primary featured card
+    defaultBg: "bg-[#0D382B]", // Dark forest green
+    defaultTextColor: "text-white",
+    defaultRoleColor: "text-emerald-300",
+  },
+  {
+    id: "impact-10",
+    name: "Dr. Neeta Rana",
+    role: "Academic Professional",
+    category: "Mentor",
+    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+    quote: "Every student has different strengths, interests and aspirations. Effective mentorship is about understanding those individual needs and helping students develop the confidence and clarity to move forward.",
+    heightClass: "h-[350px] sm:h-[375px]",
+    defaultBg: "bg-[#DBE7DC]", // Soft sage green
+    defaultTextColor: "text-[#111827]",
+    defaultRoleColor: "text-gray-600",
+  },
+  {
+    id: "impact-11",
+    name: "Akansha Pandey",
+    role: "Cybersecurity Expert",
+    category: "Mentor",
+    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=600&q=80",
+    quote: "In a rapidly changing technology landscape, students need to understand more than theoretical concepts. Exposure to practical perspectives, industry expectations and continuous learning is essential for building a strong foundation in cybersecurity.",
+    heightClass: "h-[370px] sm:h-[395px]",
+    defaultBg: "bg-[#F7EBE1]", // Warm cream/peach
+    defaultTextColor: "text-[#111827]",
+    defaultRoleColor: "text-gray-600",
+  },
+  {
+    id: "impact-12",
+    name: "Komal Gupta",
+    role: "Mentor",
+    category: "Mentor",
+    image: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=600&q=80",
+    quote: "Mentorship is a two-way learning experience. It gives mentors an opportunity to share their knowledge, understand students' challenges and contribute to someone else's growth through meaningful guidance.",
+    heightClass: "h-[325px] sm:h-[345px]",
+    defaultBg: "bg-[#DFE9E0]", // Soft sage green
     defaultTextColor: "text-[#111827]",
     defaultRoleColor: "text-gray-600",
   },
 ];
 
 export function RealImpactCarousel() {
-  const [activeCardId, setActiveCardId] = useState<string | null>("impact-3"); // Priya Mehta active by default as shown in mockup
+  const [activeCardId, setActiveCardId] = useState<string | null>("impact-9"); // Dr. Mohit Arora active initially to demonstrate the hover experience
   const [isHovered, setIsHovered] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -145,7 +188,7 @@ export function RealImpactCarousel() {
   // Smooth scroll handler for chevrons
   const scroll = useCallback((direction: "left" | "right") => {
     if (!scrollContainerRef.current) return;
-    const scrollAmount = 260;
+    const scrollAmount = 280;
     scrollContainerRef.current.scrollBy({
       left: direction === "left" ? -scrollAmount : scrollAmount,
       behavior: reducedMotion ? "auto" : "smooth",
@@ -226,8 +269,8 @@ export function RealImpactCarousel() {
         {/* Scrollable Row of Vertical Capsule Cards */}
         <div
           ref={scrollContainerRef}
-          className="w-full flex items-end justify-start lg:justify-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth px-8 sm:px-12 py-8"
-          style={{ minHeight: "440px" }}
+          className="w-full flex items-end justify-start gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth px-8 sm:px-12 py-8"
+          style={{ minHeight: "450px" }}
           tabIndex={0}
           aria-label="Real Impact Testimonials Carousel"
         >
@@ -252,7 +295,7 @@ export function RealImpactCarousel() {
                   }
                 }}
                 className={`
-                  relative flex-shrink-0 w-[140px] sm:w-[155px] md:w-[168px]
+                  relative flex-shrink-0 w-[145px] sm:w-[160px] md:w-[172px]
                   ${card.heightClass}
                   rounded-[100px] overflow-hidden
                   cursor-pointer select-none
@@ -279,7 +322,7 @@ export function RealImpactCarousel() {
                       {card.name}
                     </h4>
                     <p
-                      className={`text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 transition-colors duration-300 ${
+                      className={`text-[10px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 transition-colors duration-300 line-clamp-1 ${
                         isCardActive ? "text-emerald-300" : card.defaultRoleColor
                       }`}
                     >
@@ -308,20 +351,22 @@ export function RealImpactCarousel() {
                     </span>
 
                     {/* Testimonial Text */}
-                    <p className="text-[11px] sm:text-xs italic leading-snug text-white/95 line-clamp-4 font-normal">
+                    <p className="text-[11px] sm:text-[11.5px] italic leading-snug text-white/95 line-clamp-5 font-normal">
                       &ldquo;{card.quote}&rdquo;
                     </p>
 
-                    {/* Verified 5-Star Rating */}
-                    <div className="mt-2 flex items-center gap-0.5" aria-label={`${card.rating} stars rating`}>
-                      {[...Array(card.rating)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-[#FBBF24] text-[#FBBF24]"
-                          aria-hidden="true"
-                        />
-                      ))}
-                    </div>
+                    {/* Optional Verified Rating: only rendered if actual rating was submitted */}
+                    {card.rating ? (
+                      <div className="mt-2 flex items-center gap-0.5" aria-label={`${card.rating} stars rating`}>
+                        {[...Array(card.rating)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-[#FBBF24] text-[#FBBF24]"
+                            aria-hidden="true"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Bottom: Portrait Image (Circular/clipped inside bottom capsule curve) */}
