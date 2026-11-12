@@ -25,3 +25,4 @@
 - [x] **Short TTL Room Tokens:** LiveKit participant tokens expire in 1 hour.
 - [x] **Booking Ownership Verification:** Tokens are minted only for participants belonging to the specific booking ID.
 - [x] **No Recording by Default:** Privacy policy compliant — recording is disabled in Phase 1.
+

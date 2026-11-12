@@ -614,3 +614,4 @@ export const INITIAL_NOTIFICATIONS: NotificationRecord[] = [
     createdAt: "2026-11-12T12:30:00Z",
   },
 ];
+

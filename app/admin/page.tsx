@@ -42,6 +42,12 @@ export default function AdminPortalPage() {
             <p className="text-xs text-ink-700 mt-1">
               Welcome back! Here&apos;s the live platform health, mentor verification queue, and matching operations.
             </p>
+            {analytics.isDemonstrationData && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>Demonstration Mode Active — Seeded Database Records</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -194,3 +200,4 @@ export default function AdminPortalPage() {
     </div>
   );
 }
+

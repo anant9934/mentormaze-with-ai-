@@ -33,3 +33,4 @@ export function checkRole(user: SessionUser | null, allowedRoles: ("student" | "
   if (!user) return false;
   return allowedRoles.includes(user.role);
 }
+

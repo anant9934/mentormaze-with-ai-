@@ -43,3 +43,4 @@
 ### E. Durable Messaging & RBAC
 - `persists 1:1 chat message in durable store`: Verified message persistence, sender association, and retrieval.
 - `validates role permissions accurately`: Verified role boundary guards across Student, Mentor, and Admin users.
+

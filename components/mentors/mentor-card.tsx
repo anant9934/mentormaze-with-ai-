@@ -85,9 +85,16 @@ export function MentorCard({
 
         {/* Name & Headline */}
         <div className="mb-3">
-          <div className="flex items-center gap-1.5 font-serif text-xl font-bold text-ink-950">
-            <span>{mentor.userId === "user-mentor-priya" ? "Priya Sharma" : mentor.userId === "user-mentor-rohan" ? "Rohan Mehta" : "Aditya Singh"}</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <div className="flex items-center justify-between gap-1.5 font-serif text-xl font-bold text-ink-950">
+            <div className="flex items-center gap-1.5">
+              <span>{mentor.userId === "user-mentor-priya" ? "Priya Sharma" : mentor.userId === "user-mentor-rohan" ? "Rohan Mehta" : "Aditya Singh"}</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            </div>
+            {mentor.userId.startsWith("user-mentor-") && (
+              <span className="text-[9px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                Demo Profile
+              </span>
+            )}
           </div>
           <p className="text-xs text-ink-700 font-medium mt-0.5">{mentor.headline}</p>
         </div>
@@ -157,3 +164,4 @@ export function MentorCard({
     </div>
   );
 }
+

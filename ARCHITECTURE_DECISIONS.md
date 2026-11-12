@@ -47,3 +47,4 @@
 ## ADR 008: Editorial & Trustworthy UI/UX System
 - **Decision:** Adhere strictly to the MentorMaze design system: Forest Green (`#123B2E`), Soft Sage (`#EDF1E8`), Warm Cream (`#FBF8F1`), Charcoal Ink (`#17211E`), and dual typography (Editorial Serif headings + Inter sans body).
 - **Context:** The product must convey warmth, human credibility, and seriousness, avoiding generic AI neon gradients or bloated decorative animations.
+

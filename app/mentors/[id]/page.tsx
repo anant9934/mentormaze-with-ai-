@@ -101,11 +101,16 @@ export default function MentorProfileDetailPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h1 className="font-serif text-3xl font-bold text-ink-950">
                   {mentor.userId === "user-mentor-priya" ? "Priya Sharma" : mentor.userId === "user-mentor-rohan" ? "Rohan Mehta" : "Aditya Singh"}
                 </h1>
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                {mentor.userId.startsWith("user-mentor-") && (
+                  <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                    Demonstration Profile
+                  </span>
+                )}
               </div>
 
               <p className="text-sm font-medium text-ink-700 mb-4">{mentor.headline}</p>
@@ -325,3 +330,4 @@ export default function MentorProfileDetailPage() {
     </div>
   );
 }
+

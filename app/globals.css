@@ -69,3 +69,4 @@ h1, h2, h3, .font-serif {
 .badge-match {
   @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#EAF5EF] text-[#21634A] border border-[#C2E3D2];
 }
+

@@ -311,6 +311,27 @@ export const ledgerTransactions = pgTable("ledger_transactions", {
 // 9. ECOSYSTEM INTEGRATION, CONSENT & AUDIT
 // ==========================================
 
+export const userSessions = pgTable("user_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  token: varchar("token", { length: 255 }).unique().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  userAgent: text("user_agent"),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const outboxEvents = pgTable("outbox_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventType: varchar("event_type", { length: 120 }).notNull(), // booking.created, session.reminder, mentor.application_updated
+  payload: jsonb("payload").notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, processed, failed
+  retryCount: integer("retry_count").default(0).notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+});
+
 export const consentGrants = pgTable("consent_grants", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
@@ -390,3 +411,4 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
     references: [mockInterviews.bookingId],
   }),
 }));
+

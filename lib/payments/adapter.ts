@@ -78,3 +78,4 @@ export class CashfreePaymentAdapter implements IPaymentGateway {
 }
 
 export const paymentGateway = new CashfreePaymentAdapter();
+

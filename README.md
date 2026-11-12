@@ -94,3 +94,4 @@ MentorMaze includes an interactive top bar to test all user journeys instantly:
 - [SECURITY_CHECKLIST.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/SECURITY_CHECKLIST.md) — Audit of security & authorization controls
 - [TESTING_REPORT.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/TESTING_REPORT.md) — Automated test suite execution results
 - [KNOWN_LIMITATIONS.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/KNOWN_LIMITATIONS.md) — Phase 1 boundaries & Phase 2 roadmap
+

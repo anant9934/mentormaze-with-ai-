@@ -639,14 +639,28 @@ class MentorMazeDataStore {
   }
 
   getAnalytics() {
+    const verifiedMentors = Array.from(this.mentors.values()).filter((m) => m.verificationStatus === "approved");
+    const avgRating = verifiedMentors.length > 0
+      ? Number((verifiedMentors.reduce((sum, m) => sum + m.rating, 0) / verifiedMentors.length).toFixed(1))
+      : 5.0;
+
+    const completedBookings = Array.from(this.bookings.values()).filter(
+      (b) => b.status === "completed" || b.status === "confirmed"
+    ).length;
+    const completionRate = this.bookings.size > 0
+      ? Math.round((completedBookings / this.bookings.size) * 100)
+      : 100;
+
     return {
-      totalUsers: this.users.size + 24886, // Realistic platform scale metric
-      totalMentors: this.mentors.size + 638,
-      totalSessions: this.bookings.size + 1366,
-      averageRating: 4.8,
-      sessionCompletionRate: 96,
-      activeMentees: 24250,
-      monthlyGrowthRatePercent: 24,
+      totalUsers: this.users.size,
+      totalMentors: this.mentors.size,
+      approvedMentors: verifiedMentors.length,
+      totalSessions: this.bookings.size,
+      averageRating: avgRating,
+      sessionCompletionRate: completionRate,
+      activeMentees: Array.from(this.users.values()).filter((u) => u.role === "student").length,
+      pendingApplications: Array.from(this.applications.values()).filter((a) => a.status === "submitted").length,
+      isDemonstrationData: process.env.NODE_ENV !== "production",
     };
   }
 

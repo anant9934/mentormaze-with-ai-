@@ -27,3 +27,4 @@
 - AI resume analysis and automated JD matching
 - Real-time AI code evaluator during mock interviews
 - Voice synthesis for automated behavioral practice
+

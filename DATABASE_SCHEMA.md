@@ -147,3 +147,4 @@ Double-entry marketplace accounting table.
    Every state change in mentor applications and bookings emits a corresponding audit log or booking event.
 3. **Privacy Boundary:**  
    `mentor_private_notes` is strictly segregated from student-visible endpoints.
+

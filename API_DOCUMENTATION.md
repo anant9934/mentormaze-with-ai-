@@ -76,3 +76,4 @@ All core business domains are accessible through typed service methods:
 - `store.sendMessage(conversationId, senderId, content)`
 - `store.updateSettings(newSettings)`
 - `store.getAnalytics()`
+
