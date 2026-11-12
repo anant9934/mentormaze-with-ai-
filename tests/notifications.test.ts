@@ -180,4 +180,68 @@ describe("MentorMaze Real-Time Notifications & Email Anti-Spam Deliverability", 
     expect(announcement.title).toBe("Scheduled Maintenance Window");
     expect(announcement.audience).toBe("all");
   });
+
+  // ========================================================
+  // 9. Idempotency & Duplicate Event Prevention
+  // ========================================================
+  it("strictly prevents duplicate notifications when idempotencyKey is reused", async () => {
+    const testKey = `test-idemp-${Date.now()}`;
+
+    // First dispatch
+    const res1 = await service.dispatch({
+      userId: testUserId,
+      title: "Payment Invoice #1042",
+      message: "Payment receipt for mock interview.",
+      category: "payments",
+      idempotencyKey: testKey,
+    });
+
+    expect(res1.success).toBe(true);
+    expect(res1.duplicate).toBeUndefined();
+
+    // Second dispatch with same idempotencyKey
+    const res2 = await service.dispatch({
+      userId: testUserId,
+      title: "Payment Invoice #1042",
+      message: "Payment receipt for mock interview.",
+      category: "payments",
+      idempotencyKey: testKey,
+    });
+
+    expect(res2.success).toBe(true);
+    expect(res2.duplicate).toBe(true);
+    expect(res2.notification.id).toBe(res1.notification.id);
+  });
+
+  // ========================================================
+  // 10. Multi-User Isolation & Security Perimeter
+  // ========================================================
+  it("enforces strict user isolation: User B cannot access or modify User A's notifications", async () => {
+    const userA = testUserId;
+    const userB = "660e8400-e29b-41d4-a716-446655440001";
+
+    // Create notification for User A
+    const resA = await service.dispatch({
+      userId: userA,
+      title: "Confidential Feedback for User A",
+      message: "Private interview performance report.",
+      category: "mentorship",
+    });
+
+    // User B fetches their notifications -> MUST NOT see User A's notification
+    const listB = await service.getNotifications(userB);
+    const leak = listB.notifications.find((n) => n.id === resA.notification.id);
+    expect(leak).toBeUndefined();
+
+    // User B attempts to mark User A's notification as read -> MUST FAIL / return undefined
+    const unauthorizedMark = await service.markAsRead(resA.notification.id, userB);
+    expect(unauthorizedMark).toBeUndefined();
+
+    // User B attempts to delete User A's notification -> User A's notification MUST remain intact
+    await service.deleteNotification(resA.notification.id, userB);
+    const listA = await service.getNotifications(userA);
+    const stillExists = listA.notifications.some((n) => n.id === resA.notification.id);
+    expect(stillExists).toBe(true);
+  });
 });
+

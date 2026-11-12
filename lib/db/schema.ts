@@ -284,6 +284,7 @@ export const notifications = pgTable("notifications", {
   linkUrl: text("link_url"),
   actionUrl: text("action_url"),
   actionLabel: varchar("action_label", { length: 120 }),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }),
   isRead: boolean("is_read").default(false).notNull(),
   readAt: timestamp("read_at", { withTimezone: true }),
   metadata: jsonb("metadata"),

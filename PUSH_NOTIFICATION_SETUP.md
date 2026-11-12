@@ -64,3 +64,4 @@ VAPID_SUBJECT="mailto:hellomentormaze@gmail.com"
 4. Click the **"Test Push"** button.
 5. A live system notification will pop up on your desktop/device with the title:  
    `"MentorMaze Push Test 🚀: Browser push notifications are active and properly configured for your device."`
+

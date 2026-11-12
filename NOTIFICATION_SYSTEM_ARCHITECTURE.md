@@ -82,3 +82,4 @@ Stores admin broadcast notices with audience targeting (`all`, `students`, `ment
 
 ### `scheduled_notifications` Table
 Stores future reminders (24h, 1h, 15m) tied to confirmed bookings. Automatically invalidated if a booking is rescheduled or cancelled.
+

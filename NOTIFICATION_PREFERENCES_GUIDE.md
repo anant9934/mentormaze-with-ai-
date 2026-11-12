@@ -45,3 +45,4 @@ Users can toggle notifications for specific activity categories:
 
 > **Policy Guarantee:**
 > Critical security alerts—such as single-use password resets, email verification requests, new logins from unrecognized devices, or session cancellations—**strictly bypass** quiet hours and category suppressions to guarantee account integrity and safety.
+

@@ -85,3 +85,4 @@ This catalog enumerates all notification events across MentorMaze, detailing def
 | Event Name | Trigger Condition | Default Channels | Priority | Action URL |
 |---|---|---|---|---|
 | `announcement.published` | Admin publishes announcement | In-App, Push, Email (Optional) | `normal`/`high` | Target Action URL |
+

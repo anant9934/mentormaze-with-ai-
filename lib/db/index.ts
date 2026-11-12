@@ -364,6 +364,7 @@ export async function initializeDatabaseSchema() {
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(32) DEFAULT 'normal';
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url TEXT;
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_label VARCHAR(120);
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
 

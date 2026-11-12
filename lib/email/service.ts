@@ -456,17 +456,46 @@ class EmailManagementService {
   }
 
   public async unsubscribeByToken(token: string): Promise<boolean> {
+    if (!token || typeof token !== "string" || token.trim().length === 0) {
+      return false;
+    }
+
+    const cleanToken = token.trim();
+    let found = false;
+
+    // 1. Update in-memory cache
     for (const [email, pref] of this.preferences.entries()) {
-      if (pref.unsubscribeToken === token) {
+      if (pref.unsubscribeToken === cleanToken) {
         pref.marketingConsent = false;
         pref.newsletterConsent = false;
         pref.recommendationsConsent = false;
         pref.updatedAt = new Date().toISOString();
         this.preferences.set(email, pref);
-        return true;
+        found = true;
       }
     }
-    return false;
+
+    // 2. Update persistent database
+    try {
+      const db = getDb();
+      const result: any = await db.execute(sql`
+        UPDATE email_preferences
+        SET marketing_consent = false,
+            newsletter_consent = false,
+            recommendations_consent = false,
+            updated_at = now()
+        WHERE unsubscribe_token = ${cleanToken}
+        RETURNING email;
+      `);
+      const rows = result.rows || result;
+      if (rows && rows.length > 0) {
+        found = true;
+      }
+    } catch (err) {
+      // Database update fallback
+    }
+
+    return found;
   }
 
   public isSuppressed(email: string): boolean {

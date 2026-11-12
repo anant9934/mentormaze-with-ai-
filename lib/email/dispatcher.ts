@@ -175,6 +175,8 @@ export async function dispatchEmailEvent(options: DispatchEmailEventOptions): Pr
     category: templateDef.category,
     templateId,
     unsubscribeToken: userPrefs.unsubscribeToken,
+    isSystemCritical: templateDef.isSystemCritical,
+    isMailingList: templateDef.category === "system" && !templateDef.isSystemCritical,
   });
 
   // 7. RECORD FINAL DELIVERY STATUS

@@ -169,6 +169,9 @@ export interface SendMailOptions {
   category?: string;
   templateId?: string;
   unsubscribeToken?: string;
+  isMailingList?: boolean;
+  isSystemCritical?: boolean;
+  isMarketing?: boolean;
   headers?: Record<string, string>;
 }
 
@@ -196,9 +199,19 @@ export async function sendEmailDirect(options: SendMailOptions): Promise<SendMai
   const customMessageId = `<${Date.now()}.${crypto.randomBytes(8).toString("hex")}@${domain}>`;
 
   // RFC 8058 & RFC 2369 compliant 1-click unsubscribe links
-  const unsubscribeUrl = `https://mentormaze.aitathastu.com/unsubscribe?email=${encodeURIComponent(
-    options.to
-  )}${options.unsubscribeToken ? `&token=${options.unsubscribeToken}` : ""}`;
+  // Applied STRICTLY to marketing, newsletters, announcements, and mailing list messages.
+  // Transactional and security-critical emails (passwords, invoices, 2FA) are explicitly excluded.
+  const isMarketingOrMailingList = Boolean(
+    options.isMailingList ||
+    options.isMarketing ||
+    (!options.isSystemCritical &&
+      options.category !== "auth" &&
+      options.category !== "payment" &&
+      (options.category === "system" ||
+        options.templateId?.includes("announcement") ||
+        options.templateId?.includes("newsletter") ||
+        options.templateId?.includes("reminder")))
+  );
 
   // Anti-spam deliverability headers for Google, Yahoo & Outlook 2024+ sender compliance
   const headers: Record<string, string> = {
@@ -206,11 +219,18 @@ export async function sendEmailDirect(options: SendMailOptions): Promise<SendMai
     "X-Entity-Ref-ID": crypto.randomUUID(),
     "Auto-Submitted": "auto-generated",
     "X-Auto-Response-Suppress": "OOF, AutoReply",
-    "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${config.fromEmail}?subject=unsubscribe>`,
-    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     "Feedback-ID": `${options.templateId || "general"}:${options.category || "system"}:mentormaze:production`,
     ...(options.headers || {}),
   };
+
+  // Only attach List-Unsubscribe when an unsubscribe token is present and email is marketing/list
+  if (isMarketingOrMailingList && options.unsubscribeToken) {
+    const rfc8058Endpoint = `https://mentormaze.aitathastu.com/api/email/unsubscribe?token=${encodeURIComponent(
+      options.unsubscribeToken
+    )}`;
+    headers["List-Unsubscribe"] = `<${rfc8058Endpoint}>, <mailto:${config.fromEmail}?subject=unsubscribe>`;
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
 
   // Clean subject line to prevent CRLF injection and SpamAssassin scoring
   const cleanedSubject = options.subject.replace(/[\r\n]+/g, " ").trim();

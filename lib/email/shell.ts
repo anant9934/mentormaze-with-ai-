@@ -222,7 +222,7 @@ export function renderEmailShell(options: EmailShellOptions): string {
               </table>
 
               <p style="margin:0 0 12px 0;font-size:11px;line-height:16px;color:#8F9A95;">
-                AI Tathastu &bull; MentorMaze Division &bull; Bengaluru, Karnataka, India &bull; PIN 560001<br />
+                ${process.env.BUSINESS_MAILING_ADDRESS || "MentorMaze by AI Tathastu &bull; Bengaluru, Karnataka, India"}<br />
                 Official Communications &amp; Support: <a href="mailto:${EMAIL_TOKENS.brand.supportEmail}" style="color:${EMAIL_TOKENS.colors.forest800};text-decoration:none;">${EMAIL_TOKENS.brand.supportEmail}</a>
               </p>
 

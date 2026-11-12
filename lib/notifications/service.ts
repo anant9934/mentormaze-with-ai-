@@ -140,6 +140,29 @@ export class NotificationService {
     const priority = input.priority || "normal";
     const channels = input.channels || ["in_app", "sse", "push"];
 
+    // 0. Idempotency Deduplication (prevent duplicate event processing)
+    if (input.idempotencyKey) {
+      const existing = await db
+        .select()
+        .from(schema.notifications)
+        .where(eq(schema.notifications.idempotencyKey, input.idempotencyKey))
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        return {
+          success: true,
+          notification: existing[0],
+          duplicate: true,
+          delivery: {
+            inApp: true,
+            sse: false,
+            pushCount: 0,
+            quietHoursApplied: false,
+          },
+        };
+      }
+    }
+
     // 1. Fetch user preferences
     const preferences = await this.getPreferences(input.userId);
 
@@ -189,6 +212,7 @@ export class NotificationService {
         linkUrl: input.linkUrl || input.actionUrl,
         actionUrl: input.actionUrl || input.linkUrl,
         actionLabel: input.actionLabel,
+        idempotencyKey: input.idempotencyKey || null,
         isRead: false,
         metadata: input.metadata || {},
       })

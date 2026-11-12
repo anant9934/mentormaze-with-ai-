@@ -51,6 +51,7 @@ export interface NotificationDispatchInput {
   actionLabel?: string;
   channels?: NotificationChannel[];
   metadata?: Record<string, any>;
+  idempotencyKey?: string;
   skipPreferencesCheck?: boolean; // For mandatory account security alerts
 }
 

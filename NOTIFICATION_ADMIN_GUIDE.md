@@ -62,3 +62,4 @@ The audit log table tracks every individual delivery attempt across all dispatch
 * **Details:** Verbose error or diagnostic response.
 
 Administrators can filter logs by channel (`All`, `In-App`, `SSE`, `Push`, `Email`) and search by title, user ID, or status.
+
