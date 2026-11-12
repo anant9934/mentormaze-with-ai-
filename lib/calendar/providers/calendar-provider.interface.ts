@@ -41,3 +41,4 @@ export interface ICalendarProvider {
 
   deleteEvent(externalEventId: string): Promise<boolean>;
 }
+

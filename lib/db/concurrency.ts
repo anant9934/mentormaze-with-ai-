@@ -16,8 +16,8 @@ export class MentorLockManager {
       releaseLock = resolve;
     });
 
-    // Chain this task onto the mentor's queue
-    const queuedTask = currentQueue.then(async () => {
+    // Chain this task onto the mentor's queue (safely catching any prior failure)
+    const queuedTask = currentQueue.catch(() => {}).then(async () => {
       try {
         return await task();
       } finally {
@@ -36,3 +36,4 @@ export class MentorLockManager {
     }
   }
 }
+

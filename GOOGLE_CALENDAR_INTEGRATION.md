@@ -174,3 +174,4 @@ private async getValidAccessToken(): Promise<string | null> {
 | **Revoked Google Permissions (401/403)** | Marks connection status as `'revoked'` or `'error'` in `calendar_connections`. | Mentor sees "Reconnection Required" pill in dashboard; student bookings proceed unimpeded. |
 | **Network Timeout (>5s)** | AbortController terminates HTTP request after 5s timeout. | Checkout and booking proceed without waiting for Google. |
 | **Missing Google Credentials** | Feature disabled gracefully; Google Calendar card displays "Configure Credentials in Settings". | All core platform scheduling operates at 100% functionality. |
+

@@ -153,33 +153,39 @@ export async function createBookingInDb(input: CreateBookingInput) {
         );
       `);
 
-      // 6. Real-time Multi-channel Notifications
+      return { success: true, booking, mentorUserId: mentor.user_id };
+    });
+
+    if (txResult.success && txResult.booking) {
+      // 6. Real-time Multi-channel Notifications (Executed safely AFTER database transaction commits)
       try {
         await notificationService.dispatch({
           userId: input.studentUserId,
           title: "Session Confirmed! 📅",
-          message: `Your mentorship session has been scheduled successfully. Meeting room ID: ${roomId}.`,
+          message: `Your mentorship session has been scheduled successfully. Meeting room ID: ${txResult.booking.meeting_room_id}.`,
           category: "bookings",
           priority: "high",
           actionUrl: "/dashboard/sessions",
           actionLabel: "View Session",
+          channels: ["in_app", "sse"],
         });
 
-        if (mentor.user_id) {
+        if (txResult.mentorUserId) {
           await notificationService.dispatch({
-            userId: mentor.user_id,
+            userId: txResult.mentorUserId,
             title: "New Mentorship Booking 🚀",
             message: `A student has booked a ${input.serviceType.replace(/_/g, " ")} session with you.`,
             category: "bookings",
             priority: "high",
             actionUrl: "/mentor/dashboard",
             actionLabel: "Open Dashboard",
+            channels: ["in_app", "sse"],
           });
 
           await notificationService.scheduleBookingReminders({
-            id: booking.id,
+            id: txResult.booking.id,
             studentUserId: input.studentUserId,
-            mentorUserId: mentor.user_id,
+            mentorUserId: txResult.mentorUserId,
             startTime: new Date(input.startTimeUtc),
             title: input.serviceType,
           });
@@ -187,9 +193,9 @@ export async function createBookingInDb(input: CreateBookingInput) {
       } catch (notifErr) {
         console.error("Non-blocking notification dispatch error:", notifErr);
       }
+    }
 
-      return { success: true, booking };
-    });
+    return txResult;
   });
 }
 
@@ -198,7 +204,7 @@ export async function createBookingInDb(input: CreateBookingInput) {
  */
 export async function cancelBookingInDb(bookingId: string, reason: string) {
   const db = getDb();
-  return await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: any) => {
     await tx.execute(sql`
       UPDATE bookings
       SET status = 'cancelled', cancellation_reason = ${reason}, updated_at = now()
@@ -215,15 +221,15 @@ export async function cancelBookingInDb(bookingId: string, reason: string) {
       INSERT INTO outbox_events (event_type, payload, status)
       VALUES ('booking.cancelled', ${JSON.stringify({ bookingId, reason })}, 'pending');
     `);
-
-    try {
-      await notificationService.cancelBookingReminders(bookingId);
-    } catch (err) {
-      console.error("Error cancelling booking reminders:", err);
-    }
-
-    return { success: true };
   });
+
+  try {
+    await notificationService.cancelBookingReminders(bookingId);
+  } catch (err) {
+    console.error("Error cancelling booking reminders:", err);
+  }
+
+  return { success: true };
 }
 
 /**
@@ -235,7 +241,9 @@ export async function rescheduleBookingInDb(
   newEndTimeUtc: string
 ) {
   const db = getDb();
-  return await db.transaction(async (tx: any) => {
+  let booking: any = null;
+
+  await db.transaction(async (tx: any) => {
     // 1. Fetch existing booking
     const bookingQuery: any = await tx.execute(sql`
       SELECT b.id, b.student_user_id, b.mentor_profile_id, b.service_type, m.user_id as mentor_user_id
@@ -245,9 +253,9 @@ export async function rescheduleBookingInDb(
       FOR UPDATE;
     `);
 
-    const booking = bookingQuery.rows?.[0] || bookingQuery?.[0];
+    booking = bookingQuery.rows?.[0] || bookingQuery?.[0];
     if (!booking) {
-      return { success: false, error: "Booking not found" };
+      return;
     }
 
     // 2. Update booking record
@@ -269,47 +277,53 @@ export async function rescheduleBookingInDb(
         'pending'
       );
     `);
+  });
 
-    // 4. Cancel obsolete pending reminders and schedule new reminders
-    try {
-      await notificationService.cancelBookingReminders(bookingId);
+  if (!booking) {
+    return { success: false, error: "Booking not found" };
+  }
 
-      await notificationService.scheduleBookingReminders({
-        id: bookingId,
-        studentUserId: booking.student_user_id,
-        mentorUserId: booking.mentor_user_id,
-        startTime: new Date(newStartTimeUtc),
-        title: booking.service_type || "Mentorship Session",
-      });
+  // 4. Cancel obsolete pending reminders and schedule new reminders (safely outside transaction)
+  try {
+    await notificationService.cancelBookingReminders(bookingId);
 
-      // 5. Notify both parties
+    await notificationService.scheduleBookingReminders({
+      id: bookingId,
+      studentUserId: booking.student_user_id,
+      mentorUserId: booking.mentor_user_id,
+      startTime: new Date(newStartTimeUtc),
+      title: booking.service_type || "Mentorship Session",
+    });
+
+    // 5. Notify both parties
+    await notificationService.dispatch({
+      userId: booking.student_user_id,
+      title: "Session Rescheduled 🔄",
+      message: `Your session has been moved to ${new Date(newStartTimeUtc).toLocaleString("en-IN")}.`,
+      category: "bookings",
+      priority: "high",
+      actionUrl: "/dashboard/sessions",
+      actionLabel: "View New Time",
+      idempotencyKey: `reschedule-${bookingId}-${newStartTimeUtc}-student`,
+      channels: ["in_app", "sse"],
+    });
+
+    if (booking.mentor_user_id) {
       await notificationService.dispatch({
-        userId: booking.student_user_id,
+        userId: booking.mentor_user_id,
         title: "Session Rescheduled 🔄",
-        message: `Your session has been moved to ${new Date(newStartTimeUtc).toLocaleString("en-IN")}.`,
+        message: `The session with your student was rescheduled to ${new Date(newStartTimeUtc).toLocaleString("en-IN")}.`,
         category: "bookings",
         priority: "high",
-        actionUrl: "/dashboard/sessions",
-        actionLabel: "View New Time",
-        idempotencyKey: `reschedule-${bookingId}-${newStartTimeUtc}-student`,
+        actionUrl: "/mentor/dashboard",
+        actionLabel: "View Schedule",
+        idempotencyKey: `reschedule-${bookingId}-${newStartTimeUtc}-mentor`,
+        channels: ["in_app", "sse"],
       });
-
-      if (booking.mentor_user_id) {
-        await notificationService.dispatch({
-          userId: booking.mentor_user_id,
-          title: "Session Rescheduled 🔄",
-          message: `The session with your student was rescheduled to ${new Date(newStartTimeUtc).toLocaleString("en-IN")}.`,
-          category: "bookings",
-          priority: "high",
-          actionUrl: "/mentor/dashboard",
-          actionLabel: "View Schedule",
-          idempotencyKey: `reschedule-${bookingId}-${newStartTimeUtc}-mentor`,
-        });
-      }
-    } catch (notifErr) {
-      console.error("Non-blocking notification error on reschedule:", notifErr);
     }
+  } catch (notifErr) {
+    console.error("Non-blocking notification error on reschedule:", notifErr);
+  }
 
-    return { success: true };
-  });
+  return { success: true };
 }

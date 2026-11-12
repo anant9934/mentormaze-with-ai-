@@ -153,3 +153,4 @@ VALUES
   ('<mentor_uuid>', 5, '10:00', '13:00', true),
   ('<mentor_uuid>', 5, '14:00', '18:00', true);
 ```
+

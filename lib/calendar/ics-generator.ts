@@ -86,3 +86,4 @@ export function generateIcsCalendar(options: IcsCalendarOptions): string {
   // RFC 5545 specifies lines terminated by CRLF (\r\n)
   return lines.join("\r\n") + "\r\n";
 }
+

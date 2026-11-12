@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { getDb, initializeDatabaseSchema } from "@/lib/db/index";
+import { sql } from "drizzle-orm";
 import {
   NotificationService,
   isWithinQuietHours,
@@ -10,6 +12,18 @@ import { sendEmailDirect } from "@/lib/email/transport";
 describe("MentorMaze Real-Time Notifications & Email Anti-Spam Deliverability", () => {
   const service = new NotificationService();
   const testUserId = "550e8400-e29b-41d4-a716-446655440000";
+
+  beforeAll(async () => {
+    await initializeDatabaseSchema();
+    const db = getDb();
+    await db.execute(sql`
+      INSERT INTO users (id, email, password_hash, display_name, role)
+      VALUES
+        ('550e8400-e29b-41d4-a716-446655440000', 'notif-user-a@example.com', 'hash', 'Notif User A', 'student'),
+        ('660e8400-e29b-41d4-a716-446655440001', 'notif-user-b@example.com', 'hash', 'Notif User B', 'student')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+  });
 
   // ========================================================
   // 1. Quiet Hours & Scheduling Logic

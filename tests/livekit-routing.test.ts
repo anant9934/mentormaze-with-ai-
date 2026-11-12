@@ -118,6 +118,9 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
   // 6. Existing Session Provider Pinning
   it("strictly pins both student and mentor to the identical provider and room name for a booking", async () => {
     const booking = store.getBookingById("booking-1")!;
+    // Set booking within join window for test execution
+    booking.startTimeUtc = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    booking.endTimeUtc = new Date(Date.now() + 55 * 60 * 1000).toISOString();
     const studentUserId = booking.studentUserId; // "user-student-1"
     const mentor = store.getMentorById(booking.mentorProfileId)!;
     const mentorUserId = mentor.userId; // "user-mentor-priya"

@@ -44,6 +44,18 @@ describe("MentorMaze Calendar & Scheduling Engine Test Suite", () => {
       ) ON CONFLICT (mentor_profile_id) DO UPDATE SET
         buffer_time_minutes = 15, min_notice_hours = 2, max_advance_days = 30, daily_session_limit = 4, timezone = 'Asia/Kolkata';
     `);
+
+    // Ensure Christmas confirmed booking exists for conflict detection test
+    await db.execute(sql`
+      INSERT INTO bookings (
+        student_user_id, mentor_profile_id, service_type, session_duration_minutes,
+        start_time_utc, end_time_utc, status, price_inr, amount_paise, payment_status
+      ) VALUES (
+        ${STUDENT_ID}, ${MENTOR_ID}, '1on1_mentorship', 30,
+        '2026-12-25T10:00:00.000Z', '2026-12-25T10:30:00.000Z',
+        'confirmed', 1500, 150000, 'paid'
+      );
+    `);
   });
 
   describe("1. Cryptographic Token Protection (AES-256-GCM)", () => {

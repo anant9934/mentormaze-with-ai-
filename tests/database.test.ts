@@ -86,6 +86,9 @@ describe("PostgreSQL Database Integration & Schema Verification", () => {
     const startTimeUtc = "2026-12-10T10:00:00.000Z";
     const endTimeUtc = "2026-12-10T10:30:00.000Z";
 
+    const db = getDb();
+    await db.execute(sql`DELETE FROM bookings WHERE mentor_profile_id = ${mentorId} AND start_time_utc = ${startTimeUtc};`);
+
     // First booking attempt -> should succeed
     const firstResult = await createBookingInDb({
       studentUserId: studentId,

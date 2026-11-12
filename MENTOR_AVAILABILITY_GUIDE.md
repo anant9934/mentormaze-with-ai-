@@ -112,3 +112,4 @@ MentorMaze queries only Google's `freeBusy` API. Your meeting titles, descriptio
 3. Log in with your Google account and grant calendar read access.
 4. You will be redirected back with a green **Connected** badge displaying your email.
 5. Tap **Sync Now** anytime to immediately refresh your external busy periods.
+

@@ -82,3 +82,4 @@
 | **Tampered Auth Tag** | Random base64 in auth tag parameter | Decryption rejected | **PASS** |
 | **Simultaneous Holds** | 2 concurrent requests for identical slot | Exactly 1 succeeds, 1 rejected | **PASS** |
 | **Confirmed Session Conflict** | Blocking date with active booking | Intercepted with conflict alert | **PASS** |
+

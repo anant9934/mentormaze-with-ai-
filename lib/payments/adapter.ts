@@ -142,6 +142,20 @@ export class CashfreePaymentAdapter implements IPaymentGateway {
   }
 
   /**
+   * Computes marketplace revenue split in integer paise and verifies double-entry balance.
+   */
+  calculateSplitPaise(grossAmountPaise: number, commissionPercent: number = 15.0) {
+    const platformFeePaise = Math.round((grossAmountPaise * commissionPercent) / 100);
+    const mentorPayablePaise = grossAmountPaise - platformFeePaise;
+    return {
+      grossAmountPaise,
+      platformFeePaise,
+      mentorPayablePaise,
+      balanced: platformFeePaise + mentorPayablePaise === grossAmountPaise,
+    };
+  }
+
+  /**
    * Computes marketplace revenue split and verifies double-entry balance.
    */
   calculateSplit(grossAmount: number, commissionPercent: number = 15.0) {

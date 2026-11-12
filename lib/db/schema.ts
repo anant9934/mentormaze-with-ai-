@@ -249,14 +249,21 @@ export const bookings = pgTable("bookings", {
   startTimeUtc: timestamp("start_time_utc", { withTimezone: true }).notNull(),
   endTimeUtc: timestamp("end_time_utc", { withTimezone: true }).notNull(),
   userTimezone: varchar("user_timezone", { length: 64 }).default("Asia/Kolkata").notNull(),
-  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, confirmed, completed, cancelled, rescheduled
+  status: varchar("status", { length: 32 }).default("pending").notNull(), // draft, held, pending_payment, confirmed, in_progress, completed, cancelled, expired, no_show, disputed
   priceInr: integer("price_inr").notNull(),
-  paymentStatus: varchar("payment_status", { length: 32 }).default("pending").notNull(), // pending, paid, refunded, failed
+  amountPaise: integer("amount_paise").default(0).notNull(),
+  currency: varchar("currency", { length: 8 }).default("INR").notNull(),
+  isFreeSession: boolean("is_free_session").default(false).notNull(),
+  paymentStatus: varchar("payment_status", { length: 32 }).default("pending").notNull(), // unpaid, pending, paid, refunded, partially_refunded, failed
   studentDiscussionPoints: text("student_discussion_points"),
   resumeAttachmentUrl: text("resume_attachment_url"),
   projectLinks: text("project_links"),
   meetingRoomId: varchar("meeting_room_id", { length: 120 }),
   cancellationReason: text("cancellation_reason"),
+  policyVersionId: varchar("policy_version_id", { length: 64 }).default("v1"),
+  rescheduleCount: integer("reschedule_count").default(0).notNull(),
+  actualStartTimeUtc: timestamp("actual_start_time_utc", { withTimezone: true }),
+  actualEndTimeUtc: timestamp("actual_end_time_utc", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -264,10 +271,106 @@ export const bookings = pgTable("bookings", {
 export const bookingEvents = pgTable("booking_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
-  eventType: varchar("event_type", { length: 64 }).notNull(), // created, confirmed, payment_succeeded, rescheduled, cancelled, joined, completed
+  eventType: varchar("event_type", { length: 64 }).notNull(), // created, held, payment_initiated, payment_succeeded, payment_failed, confirmed, session_started, session_ended, rescheduled, cancelled, no_show, dispute_opened, dispute_resolved
+  fromStatus: varchar("from_status", { length: 32 }),
+  toStatus: varchar("to_status", { length: 32 }).notNull(),
   actorId: uuid("actor_id"),
-  details: jsonb("details"),
+  actorRole: varchar("actor_role", { length: 32 }).default("system"), // student, mentor, admin, system
+  metadata: jsonb("metadata").default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const bookingPolicies = pgTable("booking_policies", {
+  id: varchar("id", { length: 64 }).primaryKey(), // e.g. "policy-v1"
+  version: varchar("version", { length: 32 }).notNull(), // "1.0"
+  name: varchar("name", { length: 160 }).notNull(),
+  cancellationCutoffHours: integer("cancellation_cutoff_hours").default(24).notNull(),
+  reschedulingCutoffHours: integer("rescheduling_cutoff_hours").default(12).notNull(),
+  maxReschedules: integer("max_reschedules").default(2).notNull(),
+  refundEligibilityPercent: integer("refund_eligibility_percent").default(100).notNull(),
+  noShowRefundPercent: integer("no_show_refund_percent").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const sessionAttendanceEvents = pgTable("session_attendance_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  role: varchar("role", { length: 32 }).notNull(), // student, mentor, admin
+  eventType: varchar("event_type", { length: 32 }).notNull(), // joined, left, ping
+  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+});
+
+export const interviewEvaluations = pgTable("interview_evaluations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).unique().notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  category: varchar("category", { length: 64 }).notNull(), // sde_frontend, sde_backend, system_design, behavioral, data_science, product_management
+  targetRole: varchar("target_role", { length: 160 }).notNull(),
+  difficulty: varchar("difficulty", { length: 32 }).default("Medium").notNull(),
+  overallScore: numeric("overall_score", { precision: 4, scale: 2 }).notNull(), // 0.00 - 10.00
+  dimensionScores: jsonb("dimension_scores").notNull(), // { technical: 8.5, problem_solving: 8.0, communication: 7.5, role_competency: 8.0, time_management: 7.0, readiness: 8.0 }
+  strengths: jsonb("strengths").$type<string[]>().default([]).notNull(),
+  growthAreas: jsonb("growth_areas").$type<string[]>().default([]).notNull(),
+  detailedFeedback: text("detailed_feedback").notNull(),
+  actionableRecommendations: text("actionable_recommendations").notNull(),
+  isDraft: boolean("is_draft").default(true).notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const sessionNotes = pgTable("session_notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).unique().notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  sessionAgenda: text("session_agenda"),
+  sharedActionItems: jsonb("shared_action_items").$type<{ item: string; completed: boolean }[]>().default([]),
+  studentVisibleSummary: text("student_visible_summary"),
+  mentorPrivateNotes: text("mentor_private_notes"), // STRICTLY CONFIDENTIAL TO MENTOR & ADMIN
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const mentorSettlements = pgTable("mentor_settlements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+  sessionCount: integer("session_count").default(0).notNull(),
+  grossAmountPaise: integer("gross_amount_paise").notNull(),
+  platformFeePaise: integer("platform_fee_paise").notNull(),
+  netPayablePaise: integer("net_payable_paise").notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, approved, processing, settled, failed
+  payoutMethod: varchar("payout_method", { length: 64 }).default("manual_bank_transfer").notNull(),
+  payoutReference: varchar("payout_reference", { length: 160 }),
+  approvedByUserId: uuid("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  settledAt: timestamp("settled_at", { withTimezone: true }),
+  failureReason: text("failure_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const disputes = pgTable("disputes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
+  studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  reason: varchar("reason", { length: 120 }).notNull(), // mentor_no_show, technical_issues, unsatisfactory_content, other
+  studentExplanation: text("student_explanation").notNull(),
+  mentorResponse: text("mentor_response"),
+  evidenceUrls: jsonb("evidence_urls").default([]),
+  status: varchar("status", { length: 32 }).default("opened").notNull(), // opened, under_review, resolved_refund, resolved_rejected, closed
+  resolutionNotes: text("resolution_notes"),
+  refundAmountPaise: integer("refund_amount_paise").default(0),
+  resolvedByUserId: uuid("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const mentorshipSessions = pgTable("mentorship_sessions", {

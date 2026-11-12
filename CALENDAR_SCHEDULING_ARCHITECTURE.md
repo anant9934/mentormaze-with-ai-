@@ -281,3 +281,4 @@ The `.ics` generator (`lib/calendar/ics-generator.ts`) implements RFC 5545 stand
 - **Required Fields:** `BEGIN:VCALENDAR`, `VERSION:2.0`, `PRODID`, `METHOD:REQUEST`, `BEGIN:VEVENT`, `UID`, `STATUS`, `DTSTART`, `DTEND`, `SUMMARY`, `DESCRIPTION`, `LOCATION`, `URL`, `ORGANIZER`, `ATTENDEE`.
 - **Integrated Reminder Alarm:** Includes a `BEGIN:VALARM` component with `TRIGGER:-PT15M` alerting the student and mentor 15 minutes prior to the live video session.
 - **Line Endings:** RFC 5545 requires CRLF (`\r\n`) line terminations.
+

@@ -13,15 +13,15 @@ import {
   VideoOff,
   Monitor,
   PhoneOff,
-  MessageSquare,
   CheckCircle2,
   Download,
   FileText,
   Clock,
-  Sparkles,
   ArrowLeft,
   Settings,
-  MoreVertical,
+  Shield,
+  Lock,
+  Save,
 } from "lucide-react";
 
 export default function LiveSessionRoomPage() {
@@ -30,24 +30,72 @@ export default function LiveSessionRoomPage() {
   const { user } = useAuth();
   const bookingId = params.id as string;
   const booking = store.getBookingById(bookingId) || store.getBookingsForUser("user-student-1")[0];
-  const session = store.getSessionByBookingId(booking?.id || "booking-1");
   const mentor = store.getMentorById(booking?.mentorProfileId || "mentor-priya") || store.getMentors(true)[0];
+
+  const isMentor = user?.role === "mentor" || user?.id === mentor?.userId;
 
   // RTC Media Controls State
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"plan" | "notes">("plan");
+  const [activeTab, setActiveTab] = useState<"plan" | "notes" | "private">("plan");
   const [sessionNotes, setSessionNotes] = useState(
     "Discussed distributed cache invalidation strategies and time complexity optimizations."
   );
+  const [privateNotes, setPrivateNotes] = useState(
+    "Candidate showed strong fundamentals in system design; recommended working on edge case handling."
+  );
+  const [savingNotes, setSavingNotes] = useState(false);
 
-  // Live Timer Simulation
+  // Live Timer
   const [secondsElapsed, setSecondsElapsed] = useState(1928); // 32:08
   useEffect(() => {
     const timer = setInterval(() => setSecondsElapsed((prev) => prev + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Attendance Logging & Notes Sync
+  useEffect(() => {
+    // 1. Log attendance join event
+    const recordAttendance = async () => {
+      try {
+        await fetch(`/api/sessions/${bookingId}/attendance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user?.id || "user-student-1",
+            role: user?.role || "student",
+            eventType: "joined",
+          }),
+        });
+      } catch (e) {
+        console.warn("Attendance log non-fatal error:", e);
+      }
+    };
+    recordAttendance();
+
+    // 2. Fetch existing session notes
+    const fetchNotes = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${bookingId}/notes?userId=${user?.id || ""}&role=${user?.role || "student"}`);
+        const data = await res.json();
+        if (data.success && data.notes) {
+          if (data.notes.studentVisibleSummary) {
+            setSessionNotes(data.notes.studentVisibleSummary);
+          }
+          if (data.notes.mentorPrivateNotes) {
+            setPrivateNotes(data.notes.mentorPrivateNotes);
+          }
+          if (data.notes.sharedActionItems && data.notes.sharedActionItems.length > 0) {
+            setChecklist(data.notes.sharedActionItems);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load session notes:", e);
+      }
+    };
+    fetchNotes();
+  }, [bookingId, user]);
 
   const formatTimer = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60);
@@ -62,53 +110,97 @@ export default function LiveSessionRoomPage() {
     { item: "Next steps & weekly action items", completed: false },
   ]);
 
-  const toggleChecklistItem = (index: number) => {
+  const toggleChecklistItem = async (index: number) => {
     const updated = [...checklist];
     updated[index].completed = !updated[index].completed;
     setChecklist(updated);
+
+    try {
+      await fetch(`/api/sessions/${bookingId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+          userRole: user?.role || "student",
+          sharedActionItems: updated,
+        }),
+      });
+    } catch (e) {
+      console.warn("Error auto-saving checklist:", e);
+    }
   };
 
-  const handleEndCall = () => {
-    if (confirm("Are you sure you want to end this mentorship session?")) {
-      store.updateSessionNotes(booking.id, {
-        sharedSummary: sessionNotes,
-        checklist,
+  const saveNotesToServer = async () => {
+    setSavingNotes(true);
+    try {
+      await fetch(`/api/sessions/${bookingId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user?.id,
+          userRole: isMentor ? "mentor" : "student",
+          studentVisibleSummary: sessionNotes,
+          mentorPrivateNotes: isMentor ? privateNotes : undefined,
+          sharedActionItems: checklist,
+        }),
       });
-      router.push(`/sessions/${booking.id}/summary`);
+    } catch (e) {
+      console.warn("Error saving notes:", e);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (confirm("Are you sure you want to conclude this session?")) {
+      await saveNotesToServer();
+      try {
+        await fetch(`/api/sessions/${bookingId}/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            actorId: user?.id,
+            actorRole: user?.role || "mentor",
+          }),
+        });
+      } catch (e) {
+        console.warn("Error concluding session:", e);
+      }
+      router.push(`/sessions/${bookingId}/summary`);
     }
   };
 
   return (
-    <div className="h-screen w-screen bg-forest-950 text-white flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-[#123B2E]/95 text-white flex flex-col overflow-hidden">
       {/* Top Header Bar */}
-      <header className="h-16 bg-forest-900 border-b border-forest-800 px-6 flex items-center justify-between z-20">
+      <header className="h-16 bg-[#123B2E] border-b border-[#174B39] px-6 flex items-center justify-between z-20">
         <div className="flex items-center gap-4">
           <Link
-            href={`/sessions/${booking.id}/confirmation`}
-            className="text-xs text-forest-300 hover:text-white flex items-center gap-1.5 transition-colors"
+            href={`/dashboard/sessions`}
+            className="text-xs text-[#DDE6D7] hover:text-white flex items-center gap-1.5 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Leave Room</span>
+            <span>Exit Room</span>
           </Link>
-          <div className="h-4 w-[1px] bg-forest-700"></div>
+          <div className="h-4 w-[1px] bg-[#174B39]"></div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-bold text-sm text-white">
-              Mentorship with {mentor.userId === "user-mentor-priya" ? "Priya Sharma" : "Rohan Mehta"}
+              Mentorship with {mentor?.userId === "user-mentor-priya" ? "Priya Sharma" : "Rohan Mehta"}
             </span>
-            <span className="text-xs px-2 py-0.5 rounded bg-forest-800 text-forest-200 font-mono">
+            <span className="text-xs px-2 py-0.5 rounded bg-[#174B39] text-[#EDF1E8] font-mono">
               {formatTimer(secondsElapsed)}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="badge-match text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800">
+          <span className="text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-2.5 py-1 rounded-full font-medium">
             LiveKit WebRTC · Encrypted
           </span>
           <button
             onClick={() => alert("Device settings: Default Microphone, FaceTime HD Camera")}
-            className="p-2 rounded-full hover:bg-forest-800 text-forest-300 hover:text-white"
+            className="p-2 rounded-full hover:bg-[#174B39] text-[#DDE6D7] hover:text-white"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -120,10 +212,10 @@ export default function LiveSessionRoomPage() {
         {/* VIDEO STAGE (8 COLS) */}
         <div className="lg:col-span-8 p-4 flex flex-col justify-between relative bg-black/40">
           {/* Main Mentor Feed */}
-          <div className="relative w-full h-full rounded-2xl overflow-hidden bg-forest-900/60 border border-forest-800 flex items-center justify-center">
+          <div className="relative w-full h-full rounded-2xl overflow-hidden bg-[#123B2E]/60 border border-[#174B39] flex items-center justify-center">
             <Image
               src={
-                mentor.userId === "user-mentor-priya"
+                mentor?.userId === "user-mentor-priya"
                   ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80"
                   : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1200&q=80"
               }
@@ -133,13 +225,13 @@ export default function LiveSessionRoomPage() {
             />
 
             {/* Mentor Label */}
-            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-forest-950/80 backdrop-blur-md border border-forest-800 text-xs font-semibold text-white flex items-center gap-2">
+            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-[#123B2E]/90 backdrop-blur-md border border-[#174B39] text-xs font-semibold text-white flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>{mentor.userId === "user-mentor-priya" ? "Priya Sharma (Microsoft)" : "Rohan Mehta (Google)"}</span>
+              <span>{mentor?.userId === "user-mentor-priya" ? "Priya Sharma (Microsoft)" : "Rohan Mehta (Google)"}</span>
             </div>
 
             {/* Picture-in-Picture Student Camera */}
-            <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-52 sm:h-36 rounded-xl overflow-hidden border-2 border-forest-700 bg-forest-900 shadow-elevated">
+            <div className="absolute bottom-4 right-4 w-40 h-28 sm:w-52 sm:h-36 rounded-xl overflow-hidden border-2 border-[#21634A] bg-[#123B2E] shadow-xl">
               {isVideoOn ? (
                 <Image
                   src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80"
@@ -148,13 +240,13 @@ export default function LiveSessionRoomPage() {
                   className="object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-forest-950 text-forest-400 text-xs">
-                  <VideoOff className="w-6 h-6 mb-1 text-forest-500" />
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#123B2E] text-[#DDE6D7] text-xs">
+                  <VideoOff className="w-6 h-6 mb-1 text-gray-400" />
                   <span>Camera Off</span>
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 bg-forest-950/80 px-2 py-0.5 rounded text-[10px] text-white">
-                You (Anant Kumar)
+              <div className="absolute bottom-2 left-2 bg-black/80 px-2 py-0.5 rounded text-[10px] text-white">
+                You ({user?.displayName || "Participant"})
               </div>
             </div>
           </div>
@@ -164,7 +256,7 @@ export default function LiveSessionRoomPage() {
             <button
               onClick={() => setIsMicOn(!isMicOn)}
               className={`p-3.5 rounded-full shadow-md transition-all ${
-                isMicOn ? "bg-forest-800 text-white hover:bg-forest-700" : "bg-red-600 text-white hover:bg-red-700"
+                isMicOn ? "bg-[#174B39] text-white hover:bg-[#21634A]" : "bg-red-600 text-white hover:bg-red-700"
               }`}
               title={isMicOn ? "Mute Microphone" : "Unmute Microphone"}
             >
@@ -174,7 +266,7 @@ export default function LiveSessionRoomPage() {
             <button
               onClick={() => setIsVideoOn(!isVideoOn)}
               className={`p-3.5 rounded-full shadow-md transition-all ${
-                isVideoOn ? "bg-forest-800 text-white hover:bg-forest-700" : "bg-red-600 text-white hover:bg-red-700"
+                isVideoOn ? "bg-[#174B39] text-white hover:bg-[#21634A]" : "bg-red-600 text-white hover:bg-red-700"
               }`}
               title={isVideoOn ? "Turn Camera Off" : "Turn Camera On"}
             >
@@ -184,10 +276,10 @@ export default function LiveSessionRoomPage() {
             <button
               onClick={() => {
                 setIsScreenSharing(!isScreenSharing);
-                alert(isScreenSharing ? "Screen sharing stopped." : "Screen share active: Displaying your window to mentor.");
+                alert(isScreenSharing ? "Screen sharing stopped." : "Screen share active: Displaying window.");
               }}
               className={`p-3.5 rounded-full shadow-md transition-all ${
-                isScreenSharing ? "bg-emerald-600 text-white" : "bg-forest-800 text-white hover:bg-forest-700"
+                isScreenSharing ? "bg-emerald-600 text-white" : "bg-[#174B39] text-white hover:bg-[#21634A]"
               }`}
               title="Share Screen"
             >
@@ -199,39 +291,50 @@ export default function LiveSessionRoomPage() {
               className="p-3.5 px-6 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all"
             >
               <PhoneOff className="w-5 h-5" />
-              <span>Leave Session</span>
+              <span>Conclude Session</span>
             </button>
           </div>
         </div>
 
         {/* COLLABORATIVE SIDEBAR (4 COLS) */}
-        <div className="lg:col-span-4 bg-forest-900 border-l border-forest-800 p-6 flex flex-col justify-between overflow-y-auto">
+        <div className="lg:col-span-4 bg-[#123B2E] border-l border-[#174B39] p-6 flex flex-col justify-between overflow-y-auto">
           <div>
             {/* Tabs Header */}
-            <div className="flex border-b border-forest-800 pb-3 mb-6 gap-6 text-xs font-bold">
+            <div className="flex border-b border-[#174B39] pb-3 mb-6 gap-6 text-xs font-bold">
               <button
                 onClick={() => setActiveTab("plan")}
                 className={`transition-colors ${
-                  activeTab === "plan" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1" : "text-forest-400"
+                  activeTab === "plan" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1" : "text-[#DDE6D7]"
                 }`}
               >
-                Session Plan
+                Agenda Checklist
               </button>
               <button
                 onClick={() => setActiveTab("notes")}
                 className={`transition-colors ${
-                  activeTab === "notes" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1" : "text-forest-400"
+                  activeTab === "notes" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1" : "text-[#DDE6D7]"
                 }`}
               >
-                Collaborative Notes
+                Shared Notes
               </button>
+              {isMentor && (
+                <button
+                  onClick={() => setActiveTab("private")}
+                  className={`flex items-center gap-1 transition-colors ${
+                    activeTab === "private" ? "text-amber-400 border-b-2 border-amber-400 pb-1" : "text-[#DDE6D7]"
+                  }`}
+                >
+                  <Lock className="w-3 h-3 text-amber-400" />
+                  <span>Private Notes</span>
+                </button>
+              )}
             </div>
 
-            {/* TAB 1: SESSION PLAN CHECKLIST */}
-            {activeTab === "plan" ? (
+            {/* TAB 1: AGENDA CHECKLIST */}
+            {activeTab === "plan" && (
               <div className="space-y-4">
-                <span className="text-[10px] font-bold text-forest-400 uppercase tracking-wider block">
-                  Agenda Checklist (Click to Toggle)
+                <span className="text-[10px] font-bold text-[#DDE6D7] uppercase tracking-wider block">
+                  Actionable Checklist (Click to Toggle)
                 </span>
                 <div className="space-y-2.5">
                   {checklist.map((item, idx) => (
@@ -240,13 +343,13 @@ export default function LiveSessionRoomPage() {
                       onClick={() => toggleChecklistItem(idx)}
                       className={`w-full p-3 rounded-xl border text-left text-xs flex items-center gap-3 transition-colors ${
                         item.completed
-                          ? "bg-forest-950/80 border-emerald-800/60 text-emerald-300"
-                          : "bg-forest-800/40 border-forest-700 text-forest-200 hover:bg-forest-800"
+                          ? "bg-[#174B39]/60 border-emerald-800 text-emerald-300"
+                          : "bg-[#174B39]/30 border-[#21634A]/50 text-white hover:bg-[#174B39]"
                       }`}
                     >
                       <CheckCircle2
                         className={`w-4 h-4 flex-shrink-0 ${
-                          item.completed ? "text-emerald-400" : "text-forest-600"
+                          item.completed ? "text-emerald-400" : "text-gray-500"
                         }`}
                       />
                       <span className={item.completed ? "line-through opacity-80" : ""}>
@@ -256,54 +359,81 @@ export default function LiveSessionRoomPage() {
                   ))}
                 </div>
               </div>
-            ) : (
-              /* TAB 2: LIVE NOTES */
+            )}
+
+            {/* TAB 2: SHARED NOTES */}
+            {activeTab === "notes" && (
               <div className="space-y-3">
-                <span className="text-[10px] font-bold text-forest-400 uppercase tracking-wider block">
-                  Shared Live Notes & Takeaways
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#DDE6D7] uppercase tracking-wider block">
+                    Student-Visible Notes & Takeaways
+                  </span>
+                  <button
+                    onClick={saveNotesToServer}
+                    disabled={savingNotes}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                  >
+                    <Save className="w-3 h-3" />
+                    <span>{savingNotes ? "Saving..." : "Save"}</span>
+                  </button>
+                </div>
                 <textarea
                   rows={8}
                   value={sessionNotes}
                   onChange={(e) => setSessionNotes(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-forest-950 border border-forest-800 text-xs text-forest-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  onBlur={saveNotesToServer}
+                  className="w-full p-3 rounded-xl bg-black/40 border border-[#174B39] text-xs text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            )}
+
+            {/* TAB 3: PRIVATE MENTOR NOTES */}
+            {activeTab === "private" && isMentor && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    <span>Confidential Mentor Scratchpad</span>
+                  </span>
+                  <button
+                    onClick={saveNotesToServer}
+                    disabled={savingNotes}
+                    className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                  >
+                    <Save className="w-3 h-3" />
+                    <span>{savingNotes ? "Saving..." : "Save"}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-amber-200/80">
+                  Strictly private. This content is never accessible to the student via any API or dashboard view.
+                </p>
+                <textarea
+                  rows={8}
+                  value={privateNotes}
+                  onChange={(e) => setPrivateNotes(e.target.value)}
+                  onBlur={saveNotesToServer}
+                  className="w-full p-3 rounded-xl bg-black/40 border border-amber-800/60 text-xs text-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
             )}
 
             {/* RESOURCES SHARED SECTION */}
-            <div className="mt-8 pt-6 border-t border-forest-800">
-              <span className="text-[10px] font-bold text-forest-400 uppercase tracking-wider block mb-3">
-                Resources Shared by Mentor
+            <div className="mt-8 pt-6 border-t border-[#174B39]">
+              <span className="text-[10px] font-bold text-[#DDE6D7] uppercase tracking-wider block mb-3">
+                Resources Shared
               </span>
               <div className="space-y-2">
-                <div className="p-3 rounded-xl bg-forest-950 border border-forest-800 flex items-center justify-between text-xs">
+                <div className="p-3 rounded-xl bg-black/30 border border-[#174B39] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-400" />
                     <div>
                       <span className="font-semibold block text-white">SDE_Roadmap.pdf</span>
-                      <span className="text-[10px] text-forest-400">2.4 MB</span>
+                      <span className="text-[10px] text-gray-400">2.4 MB</span>
                     </div>
                   </div>
                   <button
                     onClick={() => alert("Downloading SDE_Roadmap.pdf...")}
-                    className="p-1.5 rounded-lg bg-forest-800 hover:bg-forest-700 text-emerald-400"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="p-3 rounded-xl bg-forest-950 border border-forest-800 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-emerald-400" />
-                    <div>
-                      <span className="font-semibold block text-white">Project_Review_Notes.pdf</span>
-                      <span className="text-[10px] text-forest-400">1.8 MB</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => alert("Downloading Project_Review_Notes.pdf...")}
-                    className="p-1.5 rounded-lg bg-forest-800 hover:bg-forest-700 text-emerald-400"
+                    className="p-1.5 rounded-lg bg-[#174B39] hover:bg-[#21634A] text-emerald-400"
                   >
                     <Download className="w-3.5 h-3.5" />
                   </button>
@@ -312,9 +442,9 @@ export default function LiveSessionRoomPage() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-forest-800 text-center">
-            <span className="text-[10px] text-forest-400 block">
-              Mentor notes are auto-saved to your Progress history.
+          <div className="pt-6 border-t border-[#174B39] text-center">
+            <span className="text-[10px] text-[#DDE6D7]/70 block">
+              Notes and action items are automatically preserved in the session transcript ledger.
             </span>
           </div>
         </div>
@@ -322,4 +452,3 @@ export default function LiveSessionRoomPage() {
     </div>
   );
 }
-

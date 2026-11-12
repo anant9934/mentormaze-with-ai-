@@ -610,6 +610,129 @@ export async function initializeDatabaseSchema() {
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS locked_by VARCHAR(120);
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ DEFAULT now();
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
+
+    CREATE TABLE IF NOT EXISTS booking_policies (
+      id VARCHAR(64) PRIMARY KEY,
+      version VARCHAR(32) NOT NULL,
+      name VARCHAR(160) NOT NULL,
+      cancellation_cutoff_hours INTEGER DEFAULT 24 NOT NULL,
+      rescheduling_cutoff_hours INTEGER DEFAULT 12 NOT NULL,
+      max_reschedules INTEGER DEFAULT 2 NOT NULL,
+      refund_eligibility_percent INTEGER DEFAULT 100 NOT NULL,
+      no_show_refund_percent INTEGER DEFAULT 0 NOT NULL,
+      is_active BOOLEAN DEFAULT true NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      event_type VARCHAR(64) NOT NULL,
+      from_status VARCHAR(32),
+      to_status VARCHAR(32) NOT NULL,
+      actor_id UUID,
+      actor_role VARCHAR(32) DEFAULT 'system',
+      metadata JSONB DEFAULT '{}',
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS session_attendance_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      role VARCHAR(32) NOT NULL,
+      event_type VARCHAR(32) NOT NULL,
+      timestamp TIMESTAMPTZ DEFAULT now() NOT NULL,
+      metadata JSONB
+    );
+
+    CREATE TABLE IF NOT EXISTS interview_evaluations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID UNIQUE REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      student_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      category VARCHAR(64) NOT NULL,
+      target_role VARCHAR(160) NOT NULL,
+      difficulty VARCHAR(32) DEFAULT 'Medium' NOT NULL,
+      overall_score NUMERIC(4,2) NOT NULL,
+      dimension_scores JSONB NOT NULL,
+      strengths JSONB DEFAULT '[]' NOT NULL,
+      growth_areas JSONB DEFAULT '[]' NOT NULL,
+      detailed_feedback TEXT NOT NULL,
+      actionable_recommendations TEXT NOT NULL,
+      is_draft BOOLEAN DEFAULT true NOT NULL,
+      published_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS session_notes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID UNIQUE REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      student_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      session_agenda TEXT,
+      shared_action_items JSONB DEFAULT '[]',
+      student_visible_summary TEXT,
+      mentor_private_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mentor_settlements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      period_start TIMESTAMPTZ NOT NULL,
+      period_end TIMESTAMPTZ NOT NULL,
+      session_count INTEGER DEFAULT 0 NOT NULL,
+      gross_amount_paise INTEGER NOT NULL,
+      platform_fee_paise INTEGER NOT NULL,
+      net_payable_paise INTEGER NOT NULL,
+      status VARCHAR(32) DEFAULT 'pending' NOT NULL,
+      payout_method VARCHAR(64) DEFAULT 'manual_bank_transfer' NOT NULL,
+      payout_reference VARCHAR(160),
+      approved_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      approved_at TIMESTAMPTZ,
+      settled_at TIMESTAMPTZ,
+      failure_reason TEXT,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS disputes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      student_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      reason VARCHAR(120) NOT NULL,
+      student_explanation TEXT NOT NULL,
+      mentor_response TEXT,
+      evidence_urls JSONB DEFAULT '[]',
+      status VARCHAR(32) DEFAULT 'opened' NOT NULL,
+      resolution_notes TEXT,
+      refund_amount_paise INTEGER DEFAULT 0,
+      resolved_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      resolved_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS amount_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS currency VARCHAR(8) DEFAULT 'INR' NOT NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_free_session BOOLEAN DEFAULT false NOT NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS policy_version_id VARCHAR(64) DEFAULT 'policy-v1';
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reschedule_count INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS actual_start_time_utc TIMESTAMPTZ;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS actual_end_time_utc TIMESTAMPTZ;
+
+    ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS from_status VARCHAR(32);
+    ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS to_status VARCHAR(32);
+    ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS actor_id UUID;
+    ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS actor_role VARCHAR(32) DEFAULT 'system';
+    ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+
+    INSERT INTO booking_policies (id, version, name, cancellation_cutoff_hours, rescheduling_cutoff_hours, max_reschedules, refund_eligibility_percent, no_show_refund_percent, is_active)
+    VALUES ('policy-v1', '1.0', 'Standard MentorMaze Policy', 24, 12, 2, 100, 0, true)
+    ON CONFLICT (id) DO NOTHING;
   `;
 
   if (pgliteInstance) {
