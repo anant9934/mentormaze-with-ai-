@@ -35,7 +35,7 @@ class MentorMazeDataStore {
   // Platform configuration state
   private platformSettings = {
     platformName: "MentorMaze",
-    supportEmail: "support@mentormaze.com",
+    supportEmail: process.env.SMTP_USER || "hellomentormaze@gmail.com",
     commissionPercent: 15.0,
     defaultSessionMinutes: 30,
     matchingWeights: {
