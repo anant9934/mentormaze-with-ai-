@@ -318,6 +318,10 @@ export async function initializeDatabaseSchema() {
       status VARCHAR(32) DEFAULT 'pending' NOT NULL,
       retry_count INTEGER DEFAULT 0 NOT NULL,
       error_message TEXT,
+      locked_at TIMESTAMPTZ,
+      locked_by VARCHAR(120),
+      next_retry_at TIMESTAMPTZ DEFAULT now(),
+      idempotency_key VARCHAR(255),
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
       processed_at TIMESTAMPTZ
     );
@@ -340,6 +344,11 @@ export async function initializeDatabaseSchema() {
       updated_by_user_id UUID,
       updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
+
+    ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ;
+    ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS locked_by VARCHAR(120);
+    ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ DEFAULT now();
+    ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
   `;
 
   if (pgliteInstance) {

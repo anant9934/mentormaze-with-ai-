@@ -181,3 +181,4 @@ The outbox background worker (`lib/workers/outbox-worker.ts`) guarantees at-leas
 4. On success, `status` is set to `'completed'`. On failure, `retry_count` is incremented.
 
 This pattern eliminates lost notifications during transient network or service failures.
+

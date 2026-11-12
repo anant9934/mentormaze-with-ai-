@@ -117,3 +117,4 @@ In early prototypes, persona switching operated via React context and `localStor
 | **CSRF** | SameSite=Lax cookies, JSON content-type body requirements on mutation routes, Next.js server actions CSRF headers. | **PASS** |
 | **Secret Leakage in Bundles** | Verified browser bundles (`.next/static/chunks/`). `CASHFREE_SECRET_KEY`, `LIVEKIT_API_SECRET`, and `DATABASE_URL` are not prefixed with `NEXT_PUBLIC_` and never bundled into client JS. | **PASS** |
 | **Audit Trail** | Sensitive actions (booking cancellation, mentor application approval/rejection, payment ledger updates) write immutable rows to `ledger_transactions` and `outbox_events`. | **PASS** |
+

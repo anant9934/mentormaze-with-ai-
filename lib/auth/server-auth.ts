@@ -24,6 +24,10 @@ export async function getServerSession(): Promise<AuthenticatedUser | null> {
       return null;
     }
 
+    // SHA-256 digest of session token (tokens stored hashed in DB)
+    const crypto = await import("crypto");
+    const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
+
     const db = getDb();
     const queryResult: any = await db.execute(sql`
       SELECT 
@@ -36,7 +40,7 @@ export async function getServerSession(): Promise<AuthenticatedUser | null> {
         s.expires_at
       FROM user_sessions s
       JOIN users u ON u.id = s.user_id
-      WHERE s.token = ${sessionToken}
+      WHERE (s.token = ${tokenHash} OR s.token = ${sessionToken})
         AND s.expires_at > now()
         AND u.account_status = 'active'
       LIMIT 1;
@@ -77,3 +81,4 @@ export async function requireServerRole(
   }
   return user;
 }
+

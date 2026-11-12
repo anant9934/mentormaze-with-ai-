@@ -3,9 +3,21 @@ import { getDb } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { rateLimiter } from "@/lib/security/rate-limiter";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || req.ip || "127.0.0.1";
+
+    // Enforce rate limiting: 10 login attempts per minute per IP
+    const rateCheck = rateLimiter.check(`login_${ip}`, 10, 60);
+    if (!rateCheck.success) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Please try again in " + rateCheck.resetInSeconds + " seconds." },
+        { status: 429, headers: { "Retry-After": rateCheck.resetInSeconds.toString() } }
+      );
+    }
+
     const body = await req.json();
     const { email, password, role } = body;
 
@@ -52,17 +64,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate secure 32-byte session token
+    // Generate secure 32-byte session token and store its SHA-256 hash in database
     const sessionToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Persist session to PostgreSQL user_sessions
+    // Persist session to PostgreSQL user_sessions (hashed token only)
     const userAgent = req.headers.get("user-agent") || "unknown";
-    const ip = req.headers.get("x-forwarded-for") || req.ip || "127.0.0.1";
 
     await db.execute(sql`
       INSERT INTO user_sessions (user_id, token, expires_at, user_agent, ip_address)
-      VALUES (${user.id}, ${sessionToken}, ${expiresAt.toISOString()}, ${userAgent}, ${ip});
+      VALUES (${user.id}, ${tokenHash}, ${expiresAt.toISOString()}, ${userAgent}, ${ip});
     `);
 
     // Update last_login_at
@@ -97,3 +109,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }
+

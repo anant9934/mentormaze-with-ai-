@@ -151,4 +151,50 @@ describe("PostgreSQL Database Integration & Schema Verification", () => {
     expect(notif).toBeDefined();
     expect(notif.type).toBe("booking_confirmed");
   });
+
+  it("enforces strict concurrency: exactly 1 of 20 simultaneous overlapping requests succeeds", async () => {
+    const { createBookingInDb } = await import("../lib/db/booking-service");
+
+    const mentorId = "30000000-0000-0000-0000-000000000001";
+    const studentId = "00000000-0000-0000-0000-000000000001";
+    const startTimeUtc = "2026-12-25T14:00:00.000Z";
+    const endTimeUtc = "2026-12-25T14:30:00.000Z";
+
+    // Clean up any existing bookings for this test slot
+    const db = getDb();
+    await db.execute(sql`
+      DELETE FROM bookings 
+      WHERE mentor_profile_id = ${mentorId} 
+        AND start_time_utc = ${startTimeUtc};
+    `);
+
+    // Submit 20 simultaneous booking requests for the exact same mentor and overlapping slot
+    const concurrentRequests = Array.from({ length: 20 }, (_, i) =>
+      createBookingInDb({
+        studentUserId: studentId,
+        mentorProfileId: mentorId,
+        serviceType: "1on1_mentorship",
+        sessionDurationMinutes: 30,
+        startTimeUtc,
+        endTimeUtc,
+        userTimezone: "Asia/Kolkata",
+        priceInr: 249,
+        studentDiscussionPoints: `Concurrent Request #${i + 1}`,
+      })
+    );
+
+    const results = await Promise.all(concurrentRequests);
+
+    const successes = results.filter((r) => r.success);
+    const failures = results.filter((r) => !r.success);
+
+    // EXACTLY 1 must succeed
+    expect(successes.length).toBe(1);
+    expect(failures.length).toBe(19);
+
+    // All 19 failures must report slot reservation collision
+    failures.forEach((f) => {
+      expect(f.error).toContain("Slot reservation collision");
+    });
+  });
 });

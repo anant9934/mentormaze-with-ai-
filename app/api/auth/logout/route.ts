@@ -7,9 +7,11 @@ export async function POST(req: NextRequest) {
     const sessionToken = req.cookies.get("mm_session_token")?.value;
 
     if (sessionToken) {
+      const crypto = await import("crypto");
+      const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
       const db = getDb();
       await db.execute(sql`
-        DELETE FROM user_sessions WHERE token = ${sessionToken};
+        DELETE FROM user_sessions WHERE token = ${tokenHash} OR token = ${sessionToken};
       `);
     }
 
@@ -23,3 +25,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to logout" }, { status: 500 });
   }
 }
+

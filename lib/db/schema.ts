@@ -325,9 +325,13 @@ export const outboxEvents = pgTable("outbox_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   eventType: varchar("event_type", { length: 120 }).notNull(), // booking.created, session.reminder, mentor.application_updated
   payload: jsonb("payload").notNull(),
-  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, processed, failed
+  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, processing, completed, failed, dead_letter
   retryCount: integer("retry_count").default(0).notNull(),
   errorMessage: text("error_message"),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  lockedBy: varchar("locked_by", { length: 120 }),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }).defaultNow(),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true }),
 });

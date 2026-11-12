@@ -101,3 +101,4 @@ When running in production (`process.env.NODE_ENV === "production"`):
 2. **Persona Switcher Disabled**: `RoleSwitcher` returns `null` immediately.
 3. **Real Session Tokens**: Authentication creates verified records in `user_sessions`, and cookies are marked `secure: true`.
 4. **Direct Database Routing**: APIs interact directly with PostgreSQL via Drizzle ORM and `booking-service.ts`.
+

@@ -3,6 +3,12 @@ import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function seedDatabase() {
+  // Prevent predictable demo credentials from ever being seeded in production
+  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_PROD_SEED) {
+    console.warn("[Security] Seed aborted: Default demo fixtures are strictly forbidden in production.");
+    return;
+  }
+
   const db = await initializeDatabaseSchema();
 
   const studentPasswordHash = await bcrypt.hash("student123", 10);
