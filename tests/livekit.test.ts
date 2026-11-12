@@ -74,3 +74,4 @@ describe("LiveKit Two-Client Authorization & Token Verification", () => {
     expect(cancelledBooking.status).toBe("cancelled");
   });
 });
+

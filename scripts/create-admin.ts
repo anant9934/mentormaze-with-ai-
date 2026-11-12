@@ -49,3 +49,4 @@ provisionAdmin().catch((err) => {
   console.error("Failed to provision administrator:", err);
   process.exit(1);
 });
+

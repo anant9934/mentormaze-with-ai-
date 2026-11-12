@@ -150,3 +150,4 @@ When a session is cancelled due to mentor unavailability or student schedule con
 | Refund Status Reversal | **Unit-Tested & Verified** | Verified in `tests/payment.test.ts` |
 | Live Payment Processing | **Blocked by Credentials** | Awaiting Cashfree merchant KYC approval |
 | Automated Mentor Bank Payouts | **Blocked by Credentials** | Awaiting Cashfree Payouts API credentials |
+

@@ -216,11 +216,14 @@ export function CurvedHeroCarousel() {
           offsetRef.current += speed * delta;
           updateCardTransforms();
         }
+      } else {
+        updateCardTransforms();
       }
       lastTimeRef.current = time;
       animId = requestAnimationFrame(tick);
     };
 
+    updateCardTransforms();
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
   }, [updateCardTransforms]);

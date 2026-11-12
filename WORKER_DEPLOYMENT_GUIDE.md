@@ -170,3 +170,4 @@ The outbox worker emits structured JSON log lines for every processed event:
 ```
 
 These logs are compatible with Datadog, AWS CloudWatch, LogDNA, and Axiom for real-time alerting on error spikes or elevated queue latency.
+
