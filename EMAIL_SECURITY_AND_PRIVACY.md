@@ -42,3 +42,4 @@ Custom template bodies edited via the Admin Console are sanitized with `sanitize
 - **No Passwords or Secrets in Email**: Temporary passwords, API keys, LiveKit admin secrets, and credit card numbers are strictly forbidden from template variables.
 - **Single-Use Expiring Tokens**: Verification and password reset tokens expire within 24 hours and 1 hour respectively, and are invalidated immediately upon use.
 - **Redacted Error Logs**: Delivery logs in `email_delivery_logs` redact authorization headers, passwords, and sensitive query tokens before persisting to PostgreSQL.
+

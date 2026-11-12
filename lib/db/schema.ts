@@ -279,8 +279,76 @@ export const notifications = pgTable("notifications", {
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   type: varchar("type", { length: 64 }).notNull(), // booking, session, chat, verification, payment, system
+  category: varchar("category", { length: 64 }).default("general").notNull(), // bookings, messages, payments, mentorship, mock_interviews, account_security, announcements, general
+  priority: varchar("priority", { length: 32 }).default("normal").notNull(), // low, normal, high, urgent
   linkUrl: text("link_url"),
+  actionUrl: text("action_url"),
+  actionLabel: varchar("action_label", { length: 120 }),
   isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).unique().notNull(),
+  inAppEnabled: boolean("in_app_enabled").default(true).notNull(),
+  pushEnabled: boolean("push_enabled").default(true).notNull(),
+  emailEnabled: boolean("email_enabled").default(true).notNull(),
+  bookingReminders: boolean("booking_reminders").default(true).notNull(),
+  chatMessages: boolean("chat_messages").default(true).notNull(),
+  mentorshipUpdates: boolean("mentorship_updates").default(true).notNull(),
+  mockInterviewAlerts: boolean("mock_interview_alerts").default(true).notNull(),
+  paymentReceipts: boolean("payment_receipts").default(true).notNull(),
+  marketingAnnouncements: boolean("marketing_announcements").default(false).notNull(),
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false).notNull(),
+  quietHoursStart: varchar("quiet_hours_start", { length: 5 }).default("22:00").notNull(),
+  quietHoursEnd: varchar("quiet_hours_end", { length: 5 }).default("08:00").notNull(),
+  timezone: varchar("timezone", { length: 64 }).default("Asia/Kolkata").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  endpoint: text("endpoint").unique().notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const notificationDeliveries = pgTable("notification_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  notificationId: uuid("notification_id").references(() => notifications.id, { onDelete: "cascade" }).notNull(),
+  channel: varchar("channel", { length: 32 }).notNull(), // in_app, sse, push, email
+  status: varchar("status", { length: 32 }).notNull(), // delivered, queued, failed, suppressed
+  errorMessage: text("error_message"),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const notificationAnnouncements = pgTable("notification_announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  audience: varchar("audience", { length: 64 }).default("all").notNull(), // all, students, mentors, admins
+  priority: varchar("priority", { length: 32 }).default("normal").notNull(),
+  actionUrl: text("action_url"),
+  actionLabel: varchar("action_label", { length: 120 }),
+  channels: jsonb("channels").default(["in_app", "push"]).notNull(),
+  publishedByUserId: uuid("published_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  recipientCount: integer("recipient_count").default(0).notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const scheduledNotifications = pgTable("scheduled_notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reminderType: varchar("reminder_type", { length: 32 }).notNull(), // reminder_24h, reminder_1h, reminder_15m
+  scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, sent, cancelled
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

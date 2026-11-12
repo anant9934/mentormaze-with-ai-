@@ -51,3 +51,4 @@ nodemailer.createTransport({
    - Host: `smtp.gmail.com`
    - Encryption: `SSL/TLS Direct`
 5. To test end-to-end inbox delivery, use the **Send Real Test Email** form to send a live test message to any authorized email address.
+

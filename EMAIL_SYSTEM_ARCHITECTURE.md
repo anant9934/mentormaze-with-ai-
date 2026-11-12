@@ -97,3 +97,4 @@ The email shell follows the MentorMaze visual design system:
 - [`app/support/page.tsx`](file:///Users/quantum/Desktop/MENTOR%20MAZE/app/support/page.tsx): User-facing support ticket portal.
 - [`app/settings/email-preferences/page.tsx`](file:///Users/quantum/Desktop/MENTOR%20MAZE/app/settings/email-preferences/page.tsx): User email preferences.
 - [`app/unsubscribe/page.tsx`](file:///Users/quantum/Desktop/MENTOR%20MAZE/app/unsubscribe/page.tsx): 1-click unsubscribe endpoint.
+

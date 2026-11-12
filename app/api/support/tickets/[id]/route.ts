@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { emailService } from "@/lib/email/service";
 import { dispatchEmailEvent } from "@/lib/email/dispatcher";
+import { notificationService } from "@/lib/notifications/service";
 import { TicketStatus, TicketPriority } from "@/lib/email/types";
 
 export const dynamic = "force-dynamic";
@@ -93,6 +94,23 @@ export async function POST(
           ticket_url: `https://mentormaze.aitathastu.com/support?ticket=${ticketData.ticket.id}`,
         },
       });
+
+      if (ticketData.ticket.userId) {
+        try {
+          await notificationService.dispatch({
+            userId: ticketData.ticket.userId,
+            title: `Support Ticket Updated: ${ticketData.ticket.ticketNumber}`,
+            message: `${senderName} replied to your request: "${message.substring(0, 80)}..."`,
+            category: "messages",
+            priority: "high",
+            actionUrl: `/support?ticket=${ticketData.ticket.id}`,
+            actionLabel: "View Reply",
+            channels: ["in_app", "sse", "push"],
+          });
+        } catch (e) {
+          console.error("Failed to dispatch support reply notification:", e);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, message: newMessage });

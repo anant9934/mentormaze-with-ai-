@@ -60,3 +60,4 @@ This catalog indexes all 31 registered, designed email templates supported in th
 | `newsletter.product_update` | Product Updates Digest | Monthly community newsletter | No | `{{user_name}}`, `{{newsletter_headline}}`, `{{newsletter_content}}` |
 | `account.deletion_requested` | Account Deletion Request | User requests data erasure | Yes | `{{user_name}}`, `{{user_email}}`, `{{grace_period}}` |
 | `privacy.consent_update` | Privacy & Consent Policy Update | Terms / Policy modification | Yes | `{{user_name}}`, `{{effective_date}}`, `{{summary_of_changes}}` |
+

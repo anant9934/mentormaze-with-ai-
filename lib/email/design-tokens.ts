@@ -34,3 +34,4 @@ export const EMAIL_TOKENS = {
     tagline: "Human mentorship, career guidance and mock interview practice.",
   },
 };
+

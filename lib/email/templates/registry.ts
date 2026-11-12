@@ -1687,3 +1687,4 @@ export function getTemplateById(id: string): TemplateDefinition | undefined {
 export function getAllTemplates(): TemplateDefinition[] {
   return TEMPLATE_DEFINITIONS;
 }
+

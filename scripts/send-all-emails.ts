@@ -101,6 +101,8 @@ async function sendAllTemplates() {
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,
+        category: template.category,
+        templateId: template.id,
       });
 
       if (sendResult.success) {

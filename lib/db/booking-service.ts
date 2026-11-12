@@ -1,5 +1,6 @@
 import { getDb } from "./index";
 import { sql } from "drizzle-orm";
+import { notificationService } from "@/lib/notifications/service";
 
 export interface CreateBookingInput {
   studentUserId: string;
@@ -67,7 +68,7 @@ export async function createBookingInDb(input: CreateBookingInput) {
     return await db.transaction(async (tx: any) => {
       // 1. Acquire row lock on mentor profile: verifies approval and prevents concurrent DB operations
       const mentorCheck: any = await tx.execute(sql`
-        SELECT id, verification_status, is_accepting_bookings
+        SELECT id, user_id, verification_status, is_accepting_bookings
         FROM mentor_profiles
         WHERE id = ${input.mentorProfileId}
         FOR UPDATE;
@@ -187,6 +188,41 @@ export async function createBookingInDb(input: CreateBookingInput) {
         );
       `);
 
+      // 6. Real-time Multi-channel Notifications
+      try {
+        await notificationService.dispatch({
+          userId: input.studentUserId,
+          title: "Session Confirmed! 📅",
+          message: `Your mentorship session has been scheduled successfully. Meeting room ID: ${roomId}.`,
+          category: "bookings",
+          priority: "high",
+          actionUrl: "/dashboard/sessions",
+          actionLabel: "View Session",
+        });
+
+        if (mentor.user_id) {
+          await notificationService.dispatch({
+            userId: mentor.user_id,
+            title: "New Mentorship Booking 🚀",
+            message: `A student has booked a ${input.serviceType.replace(/_/g, " ")} session with you.`,
+            category: "bookings",
+            priority: "high",
+            actionUrl: "/mentor/dashboard",
+            actionLabel: "Open Dashboard",
+          });
+
+          await notificationService.scheduleBookingReminders({
+            id: booking.id,
+            studentUserId: input.studentUserId,
+            mentorUserId: mentor.user_id,
+            startTime: new Date(input.startTimeUtc),
+            title: input.serviceType,
+          });
+        }
+      } catch (notifErr) {
+        console.error("Non-blocking notification dispatch error:", notifErr);
+      }
+
       return { success: true, booking };
     });
   });
@@ -214,6 +250,12 @@ export async function cancelBookingInDb(bookingId: string, reason: string) {
       INSERT INTO outbox_events (event_type, payload, status)
       VALUES ('booking.cancelled', ${JSON.stringify({ bookingId, reason })}, 'pending');
     `);
+
+    try {
+      await notificationService.cancelBookingReminders(bookingId);
+    } catch (err) {
+      console.error("Error cancelling booking reminders:", err);
+    }
 
     return { success: true };
   });

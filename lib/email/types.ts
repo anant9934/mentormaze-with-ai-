@@ -134,3 +134,4 @@ export interface SmtpDiagnosticState {
   lastCheckedAt: string;
   lastError?: string;
 }
+

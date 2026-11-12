@@ -51,3 +51,4 @@ When transient network errors or SMTP rate limits occur:
 4. `Attempt 4`: Retries after 20 seconds (`2^3 * 2.5s`).
 5. `Attempt 5`: Retries after 40 seconds.
 6. `Exhaustion`: Moves to `dead_letter` status in `outbox_events` and marks as `failed` in `email_delivery_logs`. Administrators can trigger manual retries with a single click from the Admin Email Management Center.
+

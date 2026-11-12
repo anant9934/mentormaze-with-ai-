@@ -164,12 +164,17 @@ export async function dispatchEmailEvent(options: DispatchEmailEventOptions): Pr
     // Database outbox logging is supplementary; in-memory delivery logs remain intact
   }
 
-  // 6. TRANSMIT EMAIL OVER SMTP
+  // 6. TRANSMIT EMAIL OVER SMTP WITH DELIVERABILITY HEADERS
+  const userPrefs = await emailService.getUserPreferences(email, recipient.userId);
+
   const sendResult = await sendEmailDirect({
     to: email,
     subject: rendered.subject,
     html: rendered.html,
     text: rendered.text,
+    category: templateDef.category,
+    templateId,
+    unsubscribeToken: userPrefs.unsubscribeToken,
   });
 
   // 7. RECORD FINAL DELIVERY STATUS
@@ -207,3 +212,4 @@ export async function dispatchEmailEvent(options: DispatchEmailEventOptions): Pr
     };
   }
 }
+

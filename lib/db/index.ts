@@ -287,10 +287,85 @@ export async function initializeDatabaseSchema() {
       title VARCHAR(255) NOT NULL,
       message TEXT NOT NULL,
       type VARCHAR(64) NOT NULL,
+      category VARCHAR(64) DEFAULT 'general' NOT NULL,
+      priority VARCHAR(32) DEFAULT 'normal' NOT NULL,
       link_url TEXT,
+      action_url TEXT,
+      action_label VARCHAR(120),
       is_read BOOLEAN DEFAULT false NOT NULL,
+      read_at TIMESTAMPTZ,
+      metadata JSONB,
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS notification_preferences (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+      in_app_enabled BOOLEAN DEFAULT true NOT NULL,
+      push_enabled BOOLEAN DEFAULT true NOT NULL,
+      email_enabled BOOLEAN DEFAULT true NOT NULL,
+      booking_reminders BOOLEAN DEFAULT true NOT NULL,
+      chat_messages BOOLEAN DEFAULT true NOT NULL,
+      mentorship_updates BOOLEAN DEFAULT true NOT NULL,
+      mock_interview_alerts BOOLEAN DEFAULT true NOT NULL,
+      payment_receipts BOOLEAN DEFAULT true NOT NULL,
+      marketing_announcements BOOLEAN DEFAULT false NOT NULL,
+      quiet_hours_enabled BOOLEAN DEFAULT false NOT NULL,
+      quiet_hours_start VARCHAR(5) DEFAULT '22:00' NOT NULL,
+      quiet_hours_end VARCHAR(5) DEFAULT '08:00' NOT NULL,
+      timezone VARCHAR(64) DEFAULT 'Asia/Kolkata' NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_deliveries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      notification_id UUID REFERENCES notifications(id) ON DELETE CASCADE NOT NULL,
+      channel VARCHAR(32) NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      error_message TEXT,
+      delivered_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_announcements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title VARCHAR(255) NOT NULL,
+      content TEXT NOT NULL,
+      audience VARCHAR(64) DEFAULT 'all' NOT NULL,
+      priority VARCHAR(32) DEFAULT 'normal' NOT NULL,
+      action_url TEXT,
+      action_label VARCHAR(120),
+      channels JSONB DEFAULT '["in_app", "push"]' NOT NULL,
+      published_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      recipient_count INTEGER DEFAULT 0 NOT NULL,
+      published_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      reminder_type VARCHAR(32) NOT NULL,
+      scheduled_for TIMESTAMPTZ NOT NULL,
+      status VARCHAR(32) DEFAULT 'pending' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS category VARCHAR(64) DEFAULT 'general';
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(32) DEFAULT 'normal';
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url TEXT;
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_label VARCHAR(120);
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+    ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
 
     CREATE TABLE IF NOT EXISTS ledger_transactions (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

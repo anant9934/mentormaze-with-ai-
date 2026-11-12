@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Logo } from "@/components/shared/logo";
 import { useAuth } from "@/lib/auth/context";
 import { Menu, X, ArrowRight, LayoutDashboard } from "lucide-react";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -72,14 +73,17 @@ export function Navbar() {
         {/* Right CTA Button: "Get Started →" */}
         <div className="hidden md:flex items-center gap-3">
           {user ? (
-            <Link
-              href={getDashboardHref()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#123B2E] hover:bg-[#0E2E24] transition-all shadow-sm"
-            >
-              <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-              <span>{role === "admin" ? "Admin Portal" : role === "mentor" ? "Mentor Space" : "Dashboard"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <>
+              <NotificationBell />
+              <Link
+                href={getDashboardHref()}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#123B2E] hover:bg-[#0E2E24] transition-all shadow-sm"
+              >
+                <LayoutDashboard className="w-4 h-4 text-emerald-400" />
+                <span>{role === "admin" ? "Admin Portal" : role === "mentor" ? "Mentor Space" : "Dashboard"}</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
           ) : (
             <Link
               href="/login"

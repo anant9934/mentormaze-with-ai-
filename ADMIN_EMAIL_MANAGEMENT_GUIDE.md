@@ -44,3 +44,4 @@
 ### Tab 6: SMTP Diagnostics
 - **Connection Test**: Executes live `transporter.verify()` against Gmail SMTP.
 - **Live Test Sender**: Dispatches a real test email to any authorized address using actual template variables.
+

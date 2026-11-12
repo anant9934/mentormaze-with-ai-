@@ -56,3 +56,4 @@ When an administrator changes a ticket's status to `Resolved`:
 1. The ticket's `resolvedAt` timestamp is recorded in PostgreSQL.
 2. An automated email (`support.ticket_resolved`) is dispatched informing the user that their inquiry is complete.
 3. If the user replies to the email, the ticket automatically transitions back to `Open`.
+
