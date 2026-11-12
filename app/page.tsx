@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { CurvedHeroCarousel } from "@/components/landing/curved-hero-carousel";
 import {
   User,
   Target,
@@ -22,61 +23,7 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
-
-  // 7 Curved Panorama Mentor Portrait Cards matching the mockup
-  const mentorCards = [
-    {
-      id: "mentor-1",
-      name: "Alex Rivera",
-      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#D97706]", // Warm terracotta/yellow
-      tilt: "rotate-y-[14deg] -translate-y-2 opacity-85",
-    },
-    {
-      id: "mentor-2",
-      name: "Devon Vance",
-      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#6D28D9]", // Rich purple
-      tilt: "rotate-y-[8deg] -translate-y-1.5",
-    },
-    {
-      id: "mentor-3",
-      name: "Marcus Cole",
-      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#1F2937]", // Dark charcoal
-      tilt: "rotate-y-[4deg] -translate-y-0.5",
-    },
-    {
-      id: "mentor-4",
-      name: "Elena Rostova",
-      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#0D9488]", // Teal/cyan
-      tilt: "rotate-y-0 translate-y-0 scale-105 z-20 shadow-2xl ring-2 ring-white/50",
-    },
-    {
-      id: "mentor-5",
-      name: "Zayan Khan",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#DB2777]", // Soft pink/mauve
-      tilt: "rotate-y-[-4deg] -translate-y-0.5",
-    },
-    {
-      id: "mentor-6",
-      name: "Maya Lin",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#9333EA]", // Magenta/violet
-      tilt: "rotate-y-[-8deg] -translate-y-1.5",
-    },
-    {
-      id: "mentor-7",
-      name: "Julian Harris",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-      bgColor: "bg-[#EA580C]", // Bright orange
-      tilt: "rotate-y-[-14deg] -translate-y-2 opacity-85",
-    },
-  ];
 
   // Testimonial Cards
   const testimonials = [
@@ -147,48 +94,10 @@ export default function HomePage() {
             </div>
 
             {/* ======================================================== */}
-            {/* CURVED 3D MENTOR PORTRAIT CAROUSEL                       */}
+            {/* 3D CONCAVE CYLINDRICAL AUTO-SCROLLING MENTOR CAROUSEL    */}
             {/* ======================================================== */}
-            <div className="mt-14 sm:mt-18 relative w-full overflow-hidden py-4">
-              {/* Outer soft curved background glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#EDF3EB]/40 to-transparent pointer-events-none rounded-full blur-2xl" />
-
-              {/* Panorama Cards Row with 3D Curvature */}
-              <div className="relative flex items-center justify-center gap-2 sm:gap-3.5 px-4 overflow-x-auto no-scrollbar scroll-smooth">
-                {mentorCards.map((mentor, idx) => (
-                  <div
-                    key={mentor.id}
-                    className={`relative flex-shrink-0 w-28 sm:w-36 md:w-44 lg:w-48 aspect-[3/4] rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg transition-all duration-500 transform hover:scale-105 hover:z-30 cursor-pointer ${mentor.tilt}`}
-                  >
-                    <Image
-                      src={mentor.image}
-                      alt={mentor.name}
-                      fill
-                      sizes="(max-width: 768px) 140px, 200px"
-                      className="object-cover"
-                      priority={idx === 3}
-                    />
-                    {/* Subtle bottom gradient to enhance depth */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
-                  </div>
-                ))}
-              </div>
-
-              {/* 4 Pagination Indicator Dots */}
-              <div className="mt-7 flex items-center justify-center gap-2">
-                {[0, 1, 2, 3].map((dot) => (
-                  <button
-                    key={dot}
-                    onClick={() => setActiveCarouselIndex(dot)}
-                    className={`transition-all rounded-full ${
-                      activeCarouselIndex === dot
-                        ? "w-2.5 h-2.5 bg-[#123B2E]"
-                        : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
-                    }`}
-                    aria-label={`Go to slide ${dot + 1}`}
-                  />
-                ))}
-              </div>
+            <div className="mt-8 sm:mt-12 w-full">
+              <CurvedHeroCarousel />
             </div>
 
             {/* ======================================================== */}
