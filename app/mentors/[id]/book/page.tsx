@@ -8,6 +8,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { store } from "@/lib/data/store";
 import { useAuth } from "@/lib/auth/context";
+import { BookingCalendar, BookingSlot } from "@/components/booking/booking-calendar";
 import {
   ArrowLeft,
   Calendar,
@@ -33,24 +34,18 @@ export default function BookSessionPage() {
 
   // Booking Flow States
   const [sessionType, setSessionType] = useState<"1:1" | "group">("1:1");
-  const [selectedDateIndex, setSelectedDateIndex] = useState(1); // Default Tuesday Feb 11
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState("7:30 PM");
+  const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
+    slot?: BookingSlot;
+    holdId?: string;
+    expiresAt?: string;
+  }>({});
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState("Selected Slot");
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [discussionPoints, setDiscussionPoints] = useState(
     "Career path in Software Engineering, Interview preparation strategy, Project review and feedback"
   );
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const dates = [
-    { day: "Mon", date: "Feb 10", fullDate: "2026-11-10" },
-    { day: "Tue", date: "Feb 11", fullDate: "2026-11-11" },
-    { day: "Wed", date: "Feb 12", fullDate: "2026-11-12" },
-    { day: "Thu", date: "Feb 13", fullDate: "2026-11-13" },
-    { day: "Fri", date: "Feb 14", fullDate: "2026-11-14" },
-  ];
-
-  const timeSlots = ["4:00 PM", "5:00 PM", "7:30 PM", "8:30 PM"];
 
   const calculatePrice = () => {
     if (durationMinutes === 15) return mentor.price15MinInr;
@@ -62,17 +57,12 @@ export default function BookSessionPage() {
     setIsSubmitting(true);
     setBookingError(null);
 
-    const chosenDate = dates[selectedDateIndex].fullDate;
-    // Map time slot string to UTC timestamp
-    const hourMap: Record<string, string> = {
-      "4:00 PM": "10:30:00Z", // 4:00 PM IST is 10:30 UTC
-      "5:00 PM": "11:30:00Z",
-      "7:30 PM": "14:00:00Z",
-      "8:30 PM": "15:00:00Z",
-    };
-    const startUtc = `${chosenDate}T${hourMap[selectedTimeSlot] || "14:00:00Z"}`;
-    const endDate = new Date(new Date(startUtc).getTime() + durationMinutes * 60000);
-    const endUtc = endDate.toISOString();
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() + 24 * 3600 * 1000).toISOString();
+    const startUtc = selectedSlotInfo.slot?.startTimeUtc || defaultStart;
+    const endUtc =
+      selectedSlotInfo.slot?.endTimeUtc ||
+      new Date(new Date(startUtc).getTime() + durationMinutes * 60000).toISOString();
 
     const currentStudentId = user?.id || "user-student-1";
 
@@ -243,63 +233,18 @@ export default function BookSessionPage() {
             </div>
           </div>
 
-          {/* STEP 2: SELECT DATE & TIME */}
+          {/* STEP 2: SELECT DATE & TIME WITH REAL-TIME CALENDAR */}
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-forest-900 text-white text-[11px] font-bold flex items-center justify-center">
-                  2
-                </span>
-                <h2 className="text-xs font-bold text-ink-950 uppercase tracking-wider">
-                  Select a Date & Time
-                </h2>
-              </div>
-              <span className="text-xs font-semibold text-ink-500">IST (GMT+5:30)</span>
-            </div>
-
-            {/* Date Picker Carousel */}
-            <div className="grid grid-cols-5 gap-2 mb-4">
-              {dates.map((d, index) => {
-                const isSelected = selectedDateIndex === index;
-                return (
-                  <button
-                    key={d.date}
-                    type="button"
-                    onClick={() => setSelectedDateIndex(index)}
-                    className={`p-3 rounded-2xl border text-center transition-all ${
-                      isSelected
-                        ? "bg-forest-900 text-white border-forest-900 shadow-sm"
-                        : "bg-white text-ink-950 border-border hover:bg-cream-100"
-                    }`}
-                  >
-                    <span className="block text-[11px] opacity-80">{d.day}</span>
-                    <span className="block text-xs font-bold mt-0.5">{d.date}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Time Slot Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {timeSlots.map((slot) => {
-                const isSelected = selectedTimeSlot === slot;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setSelectedTimeSlot(slot)}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
-                      isSelected
-                        ? "bg-forest-900 text-white border-forest-900"
-                        : "bg-white text-ink-700 border-border hover:bg-cream-100"
-                    }`}
-                  >
-                    <span>{slot}</span>
-                    {isSelected && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                  </button>
-                );
-              })}
-            </div>
+            <BookingCalendar
+              mentorId={mentor.id}
+              mentorName={mentor.headline || "Mentor"}
+              selectedDuration={durationMinutes}
+              onDurationChange={(d) => setDurationMinutes(d)}
+              onSlotSelected={(slotData) => {
+                setSelectedSlotInfo(slotData);
+                setSelectedTimeSlot(slotData.slot.startTimeLocal);
+              }}
+            />
           </div>
 
           {/* STEP 3: ADD SESSION DETAILS */}

@@ -94,3 +94,4 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.redirect(redirectUrl.toString(), 302);
 }
+

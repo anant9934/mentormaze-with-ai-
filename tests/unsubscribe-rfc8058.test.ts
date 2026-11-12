@@ -156,3 +156,4 @@ describe("RFC 8058 & RFC 2369 One-Click Unsubscribe Verification", () => {
     expect(securityResult.success).toBe(true);
   });
 });
+

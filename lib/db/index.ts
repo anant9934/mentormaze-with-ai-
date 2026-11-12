@@ -17,6 +17,7 @@ export function getDb() {
 
   // Use Neon / Remote PostgreSQL if connection string is configured and valid
   const isRemotePostgres =
+    process.env.USE_LOCAL_DB !== "true" &&
     connectionString &&
     !connectionString.includes("localhost:5432") &&
     (connectionString.includes("neon.tech") || connectionString.startsWith("postgresql://"));
@@ -205,6 +206,17 @@ export async function initializeDatabaseSchema() {
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS availability_exceptions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      exception_date DATE NOT NULL,
+      is_blocked BOOLEAN DEFAULT true NOT NULL,
+      start_time TIME,
+      end_time TIME,
+      reason VARCHAR(255),
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS bookings (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       student_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
@@ -358,6 +370,66 @@ export async function initializeDatabaseSchema() {
       scheduled_for TIMESTAMPTZ NOT NULL,
       status VARCHAR(32) DEFAULT 'pending' NOT NULL,
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mentor_availability_settings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+      buffer_time_minutes INTEGER DEFAULT 15 NOT NULL,
+      min_notice_hours INTEGER DEFAULT 2 NOT NULL,
+      max_advance_days INTEGER DEFAULT 30 NOT NULL,
+      daily_session_limit INTEGER DEFAULT 4 NOT NULL,
+      weekly_session_limit INTEGER DEFAULT 20 NOT NULL,
+      custom_session_durations JSONB DEFAULT '[15, 30, 45, 60]' NOT NULL,
+      timezone VARCHAR(64) DEFAULT 'Asia/Kolkata' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_holds (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      student_user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      service_type VARCHAR(64) NOT NULL,
+      session_duration_minutes INTEGER NOT NULL,
+      start_time_utc TIMESTAMPTZ NOT NULL,
+      end_time_utc TIMESTAMPTZ NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      status VARCHAR(32) DEFAULT 'active' NOT NULL,
+      idempotency_key VARCHAR(255) UNIQUE NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS calendar_connections (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      provider VARCHAR(64) DEFAULT 'google_calendar' NOT NULL,
+      account_email VARCHAR(255),
+      access_token_encrypted TEXT,
+      refresh_token_encrypted TEXT,
+      token_expires_at TIMESTAMPTZ,
+      sync_token TEXT,
+      watch_channel_id VARCHAR(255),
+      watch_channel_expiration TIMESTAMPTZ,
+      status VARCHAR(32) DEFAULT 'connected' NOT NULL,
+      last_synced_at TIMESTAMPTZ,
+      last_error TEXT,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS external_calendar_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      connection_id UUID REFERENCES calendar_connections(id) ON DELETE CASCADE NOT NULL,
+      mentor_profile_id UUID REFERENCES mentor_profiles(id) ON DELETE CASCADE NOT NULL,
+      external_event_id VARCHAR(255) NOT NULL,
+      booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+      start_time_utc TIMESTAMPTZ NOT NULL,
+      end_time_utc TIMESTAMPTZ NOT NULL,
+      is_busy BOOLEAN DEFAULT true NOT NULL,
+      etag VARCHAR(255),
+      last_synced_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
 
     ALTER TABLE notifications ADD COLUMN IF NOT EXISTS category VARCHAR(64) DEFAULT 'general';

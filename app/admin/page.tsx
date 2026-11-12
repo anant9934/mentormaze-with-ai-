@@ -19,6 +19,7 @@ import {
   Settings,
   Mail,
   LifeBuoy,
+  Calendar,
 } from "lucide-react";
 
 export default function AdminPortalPage() {
@@ -53,6 +54,13 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/calendar"
+              className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"
+            >
+              <Calendar className="w-3.5 h-3.5 text-forest-700" />
+              <span>Calendar Engine</span>
+            </Link>
             <Link
               href="/admin/communications/email"
               className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"

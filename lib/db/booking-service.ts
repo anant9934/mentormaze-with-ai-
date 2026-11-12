@@ -1,6 +1,7 @@
 import { getDb } from "./index";
 import { sql } from "drizzle-orm";
 import { notificationService } from "@/lib/notifications/service";
+import { MentorLockManager } from "./concurrency";
 
 export interface CreateBookingInput {
   studentUserId: string;
@@ -15,42 +16,6 @@ export interface CreateBookingInput {
   resumeAttachmentUrl?: string;
 }
 
-/**
- * Mentor-level Async Lock Manager.
- * Serializes concurrent booking requests targeting the same mentor within the Node.js process.
- * Eliminates race conditions before touching the database connection pool.
- */
-class MentorLockManager {
-  private static queues = new Map<string, Promise<void>>();
-
-  static async acquire<T>(mentorId: string, task: () => Promise<T>): Promise<T> {
-    const currentQueue = this.queues.get(mentorId) || Promise.resolve();
-
-    let releaseLock!: () => void;
-    const nextInQueue = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-
-    // Chain this task onto the mentor's queue
-    const queuedTask = currentQueue.then(async () => {
-      try {
-        return await task();
-      } finally {
-        releaseLock();
-      }
-    });
-
-    this.queues.set(mentorId, nextInQueue);
-
-    try {
-      return await queuedTask;
-    } finally {
-      if (this.queues.get(mentorId) === nextInQueue) {
-        this.queues.delete(mentorId);
-      }
-    }
-  }
-}
 
 /**
  * Creates a booking atomically inside PostgreSQL with two-tier concurrency protection:

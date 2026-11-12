@@ -176,6 +176,66 @@ export const availabilityExceptions = pgTable("availability_exceptions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const mentorAvailabilitySettings = pgTable("mentor_availability_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).unique().notNull(),
+  bufferTimeMinutes: integer("buffer_time_minutes").default(15).notNull(),
+  minNoticeHours: integer("min_notice_hours").default(2).notNull(),
+  maxAdvanceDays: integer("max_advance_days").default(30).notNull(),
+  dailySessionLimit: integer("daily_session_limit").default(4).notNull(),
+  weeklySessionLimit: integer("weekly_session_limit").default(20).notNull(),
+  customSessionDurations: jsonb("custom_session_durations").default([15, 30, 45, 60]).notNull(),
+  timezone: varchar("timezone", { length: 64 }).default("Asia/Kolkata").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const bookingHolds = pgTable("booking_holds", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  serviceType: varchar("service_type", { length: 64 }).notNull(),
+  sessionDurationMinutes: integer("session_duration_minutes").notNull(),
+  startTimeUtc: timestamp("start_time_utc", { withTimezone: true }).notNull(),
+  endTimeUtc: timestamp("end_time_utc", { withTimezone: true }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  status: varchar("status", { length: 32 }).default("active").notNull(), // active, converted, expired, released
+  idempotencyKey: varchar("idempotency_key", { length: 255 }).unique().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const calendarConnections = pgTable("calendar_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  provider: varchar("provider", { length: 64 }).default("google_calendar").notNull(),
+  accountEmail: varchar("account_email", { length: 255 }),
+  accessTokenEncrypted: text("access_token_encrypted"),
+  refreshTokenEncrypted: text("refresh_token_encrypted"),
+  tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  syncToken: text("sync_token"),
+  watchChannelId: varchar("watch_channel_id", { length: 255 }),
+  watchChannelExpiration: timestamp("watch_channel_expiration", { withTimezone: true }),
+  status: varchar("status", { length: 32 }).default("connected").notNull(), // connected, expired, revoked, error
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const externalCalendarEvents = pgTable("external_calendar_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  connectionId: uuid("connection_id").references(() => calendarConnections.id, { onDelete: "cascade" }).notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  externalEventId: varchar("external_event_id", { length: 255 }).notNull(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+  startTimeUtc: timestamp("start_time_utc", { withTimezone: true }).notNull(),
+  endTimeUtc: timestamp("end_time_utc", { withTimezone: true }).notNull(),
+  isBusy: boolean("is_busy").default(true).notNull(),
+  etag: varchar("etag", { length: 255 }),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ==========================================
 // 5. BOOKINGS & SESSIONS
 // ==========================================

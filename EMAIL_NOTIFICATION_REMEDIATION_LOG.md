@@ -73,3 +73,4 @@ The following actions cannot be performed autonomously by an agent and require m
   * The application is fully ready for operational deployment using `hellomentormaze@gmail.com`.
   * Multi-channel notifications, in-app bell, SSE streaming, Web Push, and RFC 8058 1-click unsubscribe are 100% verified and functional.
   * Enterprise branded sending under `@mentormaze.aitathastu.com` is **BLOCKED** on manual DNS delegation and Google Workspace / SES provisioning by the domain owner.
+

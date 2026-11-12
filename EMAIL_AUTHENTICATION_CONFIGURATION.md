@@ -110,3 +110,4 @@ BUSINESS_MAILING_ADDRESS="MentorMaze by AI Tathastu, 12th Floor, MG Road, Bengal
 
 If left unconfigured, the system defaults to:
 `MentorMaze by AI Tathastu • Bengaluru, Karnataka, India`
+

@@ -79,3 +79,4 @@ await notificationService.scheduleBookingReminders({
 });
 ```
 * **Verified Result:** Stale countdown reminders for the old slot are marked `cancelled` and will not trigger; fresh 24h, 1h, and 15m reminders are registered against the updated start timestamp.
+
