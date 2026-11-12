@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { CurvedHeroCarousel } from "@/components/landing/curved-hero-carousel";
+import { RealImpactCarousel } from "@/components/landing/real-impact-carousel";
 import {
   User,
   Target,
@@ -23,33 +24,6 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const [testimonialIndex, setTestimonialIndex] = useState(0);
-
-  // Testimonial Cards
-  const testimonials = [
-    {
-      id: "t1",
-      name: "Aman Sharma",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
-      quote: "“",
-      rating: 5,
-    },
-    {
-      id: "t2",
-      name: "Ananya Roy",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-      quote: "“",
-      rating: 5,
-    },
-    {
-      id: "t3",
-      name: "Karan Johar",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-      quote: "”",
-      rating: 5,
-    },
-  ];
-
   return (
     <div className="flex flex-col min-h-screen bg-[#FBF8F1] text-[#111827] font-sans antialiased selection:bg-[#123B2E] selection:text-white">
       {/* Top Navigation */}
@@ -284,10 +258,12 @@ export default function HomePage() {
         {/* ======================================================== */}
         {/* 3. "REAL IMPACT." TESTIMONIALS SECTION                   */}
         {/* ======================================================== */}
-        <section className="py-14 sm:py-20 text-center">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 3. "REAL IMPACT." VERTICAL CAPSULE TESTIMONIAL CAROUSEL  */}
+        {/* ======================================================== */}
+        <section className="py-14 sm:py-20 text-center overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header with Laurel Branches flanking the title */}
-            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
+            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2">
               {/* Left Laurel Branch */}
               <svg
                 width="32"
@@ -357,63 +333,13 @@ export default function HomePage() {
               </svg>
             </div>
 
-            {/* Carousel Row with Navigation Chevrons */}
-            <div className="relative flex items-center justify-center gap-3 sm:gap-6">
-              {/* Left Arrow Button */}
-              <button
-                onClick={() => setTestimonialIndex((prev) => (prev > 0 ? prev - 1 : 2))}
-                className="w-10 h-10 rounded-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:text-black transition-colors flex-shrink-0"
-                aria-label="Previous testimonial"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
+            {/* Subtitle matching reference design */}
+            <p className="text-sm sm:text-base text-gray-600 mb-6 font-medium tracking-tight">
+              Real people. Real guidance. Real progress.
+            </p>
 
-              {/* 3 Testimonial Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full max-w-4xl">
-                {testimonials.map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-2xl sm:rounded-3xl bg-white p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between text-left min-h-[140px] hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between">
-                      {/* Avatar */}
-                      <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
-                        <Image
-                          src={t.avatar}
-                          alt={t.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-
-                      {/* Large Quotation Mark */}
-                      <span className="font-serif text-3xl font-bold text-[#111827] leading-none select-none">
-                        {t.quote}
-                      </span>
-                    </div>
-
-                    {/* 5 Yellow Stars */}
-                    <div className="mt-4 flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308]"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Right Arrow Button */}
-              <button
-                onClick={() => setTestimonialIndex((prev) => (prev < 2 ? prev + 1 : 0))}
-                className="w-10 h-10 rounded-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:text-black transition-colors flex-shrink-0"
-                aria-label="Next testimonial"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+            {/* Interactive Vertical Capsule Testimonials Carousel */}
+            <RealImpactCarousel />
           </div>
         </section>
 
