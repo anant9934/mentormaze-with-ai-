@@ -1,441 +1,570 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import {
-  Users,
-  Compass,
-  TrendingUp,
+  User,
+  Target,
+  BarChart3,
   Video,
-  Calendar,
-  Sparkles,
+  Calendar as CalendarIcon,
+  TrendingUp,
   ArrowRight,
   Play,
+  ChevronLeft,
+  ChevronRight,
   Star,
-  CheckCircle2,
-  ShieldCheck,
-  Award,
+  Mic,
+  PhoneOff,
 } from "lucide-react";
 
 export default function HomePage() {
-  const mentorAvatars = [
+  const [activeCarouselIndex, setActiveCarouselIndex] = useState(0);
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
+
+  // 7 Curved Panorama Mentor Portrait Cards matching the mockup
+  const mentorCards = [
     {
-      name: "Rohan Mehta",
-      role: "Data Scientist @ Google",
-      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+      id: "mentor-1",
+      name: "Alex Rivera",
+      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#D97706]", // Warm terracotta/yellow
+      tilt: "rotate-y-[14deg] -translate-y-2 opacity-85",
     },
     {
-      name: "Priya Sharma",
-      role: "Software Engineer @ Microsoft",
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
+      id: "mentor-2",
+      name: "Devon Vance",
+      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#6D28D9]", // Rich purple
+      tilt: "rotate-y-[8deg] -translate-y-1.5",
     },
     {
-      name: "Aditya Singh",
-      role: "Product Manager @ Adobe",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
+      id: "mentor-3",
+      name: "Marcus Cole",
+      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#1F2937]", // Dark charcoal
+      tilt: "rotate-y-[4deg] -translate-y-0.5",
     },
     {
-      name: "Simran Kaur",
-      role: "Backend Lead @ Razorpay",
-      image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80",
+      id: "mentor-4",
+      name: "Elena Rostova",
+      image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#0D9488]", // Teal/cyan
+      tilt: "rotate-y-0 translate-y-0 scale-105 z-20 shadow-2xl ring-2 ring-white/50",
     },
     {
-      name: "Karan Verma",
-      role: "AI Engineer @ DeepMind",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
+      id: "mentor-5",
+      name: "Zayan Khan",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#DB2777]", // Soft pink/mauve
+      tilt: "rotate-y-[-4deg] -translate-y-0.5",
+    },
+    {
+      id: "mentor-6",
+      name: "Maya Lin",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#9333EA]", // Magenta/violet
+      tilt: "rotate-y-[-8deg] -translate-y-1.5",
+    },
+    {
+      id: "mentor-7",
+      name: "Julian Harris",
+      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+      bgColor: "bg-[#EA580C]", // Bright orange
+      tilt: "rotate-y-[-14deg] -translate-y-2 opacity-85",
+    },
+  ];
+
+  // Testimonial Cards
+  const testimonials = [
+    {
+      id: "t1",
+      name: "Aman Sharma",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+      quote: "“",
+      rating: 5,
+    },
+    {
+      id: "t2",
+      name: "Ananya Roy",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      quote: "“",
+      rating: 5,
+    },
+    {
+      id: "t3",
+      name: "Karan Johar",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+      quote: "”",
+      rating: 5,
     },
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-[#FBF8F1] text-[#111827] font-sans antialiased selection:bg-[#123B2E] selection:text-white">
+      {/* Top Navigation */}
       <Navbar />
 
       <main className="flex-1">
-        {/* HERO SECTION */}
-        <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-cream-50 via-cream-100 to-cream-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            {/* Tagline */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sage-100 border border-sage-200 text-forest-800 text-xs font-bold uppercase tracking-wider mb-6 animate-fade-in">
-              <Sparkles className="w-3.5 h-3.5 text-forest-700" />
-              <span>Real People. Real Guidance.</span>
-            </div>
-
-            {/* Main Headline */}
-            <h1 className="font-serif text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-ink-950 max-w-4xl mx-auto leading-[1.15]">
-              Find the Right Mentor.{" "}
-              <span className="text-forest-900 underline decoration-emerald-500/30 underline-offset-8">
-                Grow Faster.
-              </span>
-            </h1>
-
-            {/* Subtitle */}
-            <p className="mt-6 text-lg sm:text-xl text-ink-700 max-w-2xl mx-auto leading-relaxed">
-              Connect 1-on-1 with verified engineers, data scientists, and product leaders for personalized mentorship and human-led mock interviews.
+        {/* ======================================================== */}
+        {/* 1. HERO SECTION                                          */}
+        {/* ======================================================== */}
+        <section className="pt-8 pb-14 sm:pt-14 sm:pb-20 overflow-hidden text-center">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Top Tagline */}
+            <p className="text-xs sm:text-sm font-bold tracking-[0.22em] text-[#164E3A] uppercase mb-4">
+              Real People. Real Guidance.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* Main Headline */}
+            <h1 className="font-sans text-4xl sm:text-6xl lg:text-[4.25rem] font-extrabold tracking-tight text-[#111827] leading-[1.12]">
+              Find the Right Mentor.
+              <span className="block text-[#123B2E] mt-1 sm:mt-2">Grow Faster.</span>
+            </h1>
+
+            {/* Action Buttons */}
+            <div className="mt-7 sm:mt-9 flex items-center justify-center gap-4 flex-wrap">
               <Link
                 href="/mentors"
-                className="btn-primary text-base px-8 py-3.5 shadow-md flex items-center gap-2 group w-full sm:w-auto"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#123B2E] hover:bg-[#0E2E24] text-white text-sm font-semibold transition-all shadow-sm group"
               >
                 <span>Explore Mentors</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
+
               <Link
                 href="/how-it-works"
-                className="btn-secondary text-base px-7 py-3.5 flex items-center gap-2 w-full sm:w-auto"
+                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-white hover:bg-gray-50 border border-gray-300 text-[#1F2937] text-sm font-semibold transition-all shadow-sm"
               >
-                <Play className="w-4 h-4 fill-ink-950 text-ink-950" />
+                <div className="w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center">
+                  <Play className="w-2 h-2 fill-[#1F2937] text-[#1F2937] ml-0.5" />
+                </div>
                 <span>Watch Demo</span>
               </Link>
             </div>
 
-            {/* Mentor Portrait Carousel Card Strip */}
-            <div className="mt-14 relative max-w-5xl mx-auto">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 items-center justify-center">
-                {mentorAvatars.map((mentor, idx) => (
+            {/* ======================================================== */}
+            {/* CURVED 3D MENTOR PORTRAIT CAROUSEL                       */}
+            {/* ======================================================== */}
+            <div className="mt-14 sm:mt-18 relative w-full overflow-hidden py-4">
+              {/* Outer soft curved background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#EDF3EB]/40 to-transparent pointer-events-none rounded-full blur-2xl" />
+
+              {/* Panorama Cards Row with 3D Curvature */}
+              <div className="relative flex items-center justify-center gap-2 sm:gap-3.5 px-4 overflow-x-auto no-scrollbar scroll-smooth">
+                {mentorCards.map((mentor, idx) => (
                   <div
-                    key={idx}
-                    className={`group relative rounded-2xl overflow-hidden border border-border bg-white shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated ${
-                      idx === 1 ? "ring-2 ring-forest-700 scale-105 z-10" : ""
-                    }`}
+                    key={mentor.id}
+                    className={`relative flex-shrink-0 w-28 sm:w-36 md:w-44 lg:w-48 aspect-[3/4] rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg transition-all duration-500 transform hover:scale-105 hover:z-30 cursor-pointer ${mentor.tilt}`}
                   >
-                    <div className="aspect-[4/5] relative w-full overflow-hidden bg-cream-100">
-                      <Image
-                        src={mentor.image}
-                        alt={mentor.name}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="p-2.5 text-left bg-white">
-                      <div className="flex items-center gap-1 font-semibold text-xs text-ink-950 truncate">
-                        <span>{mentor.name}</span>
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" />
-                      </div>
-                      <p className="text-[10px] text-ink-500 truncate">{mentor.role}</p>
-                    </div>
+                    <Image
+                      src={mentor.image}
+                      alt={mentor.name}
+                      fill
+                      sizes="(max-width: 768px) 140px, 200px"
+                      className="object-cover"
+                      priority={idx === 3}
+                    />
+                    {/* Subtle bottom gradient to enhance depth */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                   </div>
+                ))}
+              </div>
+
+              {/* 4 Pagination Indicator Dots */}
+              <div className="mt-7 flex items-center justify-center gap-2">
+                {[0, 1, 2, 3].map((dot) => (
+                  <button
+                    key={dot}
+                    onClick={() => setActiveCarouselIndex(dot)}
+                    className={`transition-all rounded-full ${
+                      activeCarouselIndex === dot
+                        ? "w-2.5 h-2.5 bg-[#123B2E]"
+                        : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
+                    }`}
+                    aria-label={`Go to slide ${dot + 1}`}
+                  />
                 ))}
               </div>
             </div>
 
-            {/* Three Value Props Under Hero */}
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto pt-8 border-t border-border">
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center text-forest-800">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-bold text-sm text-ink-950">Expert Mentors</h3>
-                  <p className="text-xs text-ink-500">Verified industry professionals</p>
+            {/* ======================================================== */}
+            {/* VALUE PROPS TRIPLET                                      */}
+            {/* ======================================================== */}
+            <div className="mt-10 sm:mt-14 max-w-2xl mx-auto flex items-center justify-center gap-6 sm:gap-14 text-center">
+              {/* Item 1: Expert Mentors */}
+              <div className="flex flex-col items-center gap-2 flex-1">
+                <User className="w-6 h-6 text-[#123B2E]" strokeWidth={1.75} />
+                <span className="font-bold text-xs sm:text-sm text-[#111827]">
+                  Expert Mentors
+                </span>
+              </div>
+
+              {/* Divider 1 */}
+              <div className="h-8 w-px bg-gray-300 flex-shrink-0" />
+
+              {/* Item 2: Smart Match */}
+              <div className="flex flex-col items-center gap-2 flex-1">
+                <Target className="w-6 h-6 text-[#123B2E]" strokeWidth={1.75} />
+                <span className="font-bold text-xs sm:text-sm text-[#111827]">
+                  Smart Match
+                </span>
+              </div>
+
+              {/* Divider 2 */}
+              <div className="h-8 w-px bg-gray-300 flex-shrink-0" />
+
+              {/* Item 3: Track Growth */}
+              <div className="flex flex-col items-center gap-2 flex-1">
+                <BarChart3 className="w-6 h-6 text-[#123B2E]" strokeWidth={1.75} />
+                <span className="font-bold text-xs sm:text-sm text-[#111827]">
+                  Track Growth
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 2. BENTO GRID FEATURE CARDS                              */}
+        {/* ======================================================== */}
+        <section className="py-6 sm:py-10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            {/* ---------------------------------------------------- */}
+            {/* CARD 1: LIVE MENTORSHIP (TOP FULL-WIDTH)            */}
+            {/* ---------------------------------------------------- */}
+            <div className="rounded-[28px] sm:rounded-[36px] overflow-hidden bg-[#0D382B] shadow-sm grid grid-cols-1 md:grid-cols-12 min-h-[300px] sm:min-h-[340px]">
+              {/* Left Half: Woman on Laptop during Live Video Call */}
+              <div className="md:col-span-7 relative min-h-[260px] md:min-h-full bg-black/10 overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1573497620053-ea5300f94f21?auto=format&fit=crop&w=1200&q=80"
+                  alt="Live Mentorship Video Session"
+                  fill
+                  className="object-cover object-center"
+                />
+
+                {/* Simulated WebRTC Call Control Overlay on Laptop */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 shadow-lg">
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Mic className="w-3 h-3" />
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Video className="w-3 h-3" />
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white">
+                    <PhoneOff className="w-3 h-3" />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center text-forest-800">
-                  <Compass className="w-5 h-5" />
+              {/* Right Half: Live Mentorship Green Banner */}
+              <div className="md:col-span-5 p-8 sm:p-12 flex flex-col justify-between relative bg-gradient-to-br from-[#0D382B] to-[#124B3A]">
+                <div>
+                  {/* Camera Icon */}
+                  <Video className="w-8 h-8 text-[#A8D5BA] mb-4" strokeWidth={1.5} />
+
+                  {/* Title */}
+                  <h3 className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] text-white font-normal leading-tight">
+                    Live Mentorship
+                  </h3>
+
+                  {/* Subtle underline accent */}
+                  <div className="w-14 h-0.5 bg-[#8FBFA5]/50 mt-3" />
                 </div>
-                <div className="text-left">
-                  <h3 className="font-bold text-sm text-ink-950">Smart Match</h3>
-                  <p className="text-xs text-ink-500">Explainable goal-to-expertise fit</p>
+
+                {/* Action Arrow Button */}
+                <div className="mt-8 flex justify-end">
+                  <Link
+                    href="/mentors"
+                    className="w-11 h-11 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-[#0D382B] shadow-md transition-transform hover:scale-105"
+                    aria-label="Book live mentorship"
+                  >
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* ---------------------------------------------------- */}
+            {/* CARDS 2 & 3: BOTTOM SPLIT GRID                       */}
+            {/* ---------------------------------------------------- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 2: Flexible Schedule */}
+              <div className="rounded-[28px] sm:rounded-[36px] bg-[#F5EFE6] p-7 sm:p-9 flex items-center justify-between overflow-hidden shadow-sm min-h-[190px] group">
+                <div className="space-y-3 max-w-[55%]">
+                  <CalendarIcon className="w-6 h-6 text-[#8B5E3C]" strokeWidth={1.75} />
+                  <h3 className="font-serif text-2xl sm:text-3xl font-normal text-[#1F2937]">
+                    Flexible Schedule
+                  </h3>
+                </div>
+
+                {/* Standing Desk Calendar Illustration */}
+                <div className="relative w-36 h-32 sm:w-44 sm:h-36 flex-shrink-0 flex items-center justify-center">
+                  <div className="w-32 h-28 sm:w-36 sm:h-32 rounded-xl bg-white p-3 shadow-md border border-amber-900/10 flex flex-col justify-between rotate-3 transition-transform group-hover:rotate-0">
+                    {/* Spiral Ring Top */}
+                    <div className="flex justify-between items-center px-1 pb-1 border-b border-gray-200">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-amber-700/60" />
+                      ))}
+                    </div>
+                    {/* Calendar Month & Grid */}
+                    <div className="text-center">
+                      <span className="text-[9px] font-bold text-red-600 uppercase tracking-widest block">
+                        OCTOBER
+                      </span>
+                      <div className="grid grid-cols-5 gap-1 mt-1 text-[8px] text-gray-500 font-mono">
+                        <span>12</span>
+                        <span>13</span>
+                        <span className="font-bold text-white bg-[#123B2E] rounded-full p-0.5">14</span>
+                        <span>15</span>
+                        <span>16</span>
+                      </div>
+                    </div>
+                    {/* Desk base shadow */}
+                    <div className="h-1 bg-amber-900/20 rounded-full" />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center text-forest-800">
-                  <TrendingUp className="w-5 h-5" />
+              {/* Card 3: See Progress */}
+              <div className="rounded-[28px] sm:rounded-[36px] bg-[#E5EFE2] p-7 sm:p-9 flex items-center justify-between overflow-hidden shadow-sm min-h-[190px] group">
+                <div className="space-y-3 max-w-[55%]">
+                  <TrendingUp className="w-6 h-6 text-[#2D6A4F]" strokeWidth={1.75} />
+                  <h3 className="font-serif text-2xl sm:text-3xl font-normal text-[#1F2937]">
+                    See Progress
+                  </h3>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-bold text-sm text-ink-950">Track Growth</h3>
-                  <p className="text-xs text-ink-500">Rubric scores & actionable milestones</p>
+
+                {/* 3D Green Bar Chart Blocks with Upward Arrow */}
+                <div className="relative w-36 h-32 sm:w-44 sm:h-36 flex-shrink-0 flex items-end justify-center pb-2">
+                  <svg
+                    width="140"
+                    height="100"
+                    viewBox="0 0 140 100"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="overflow-visible"
+                  >
+                    {/* Bar 1 */}
+                    <rect x="15" y="65" width="18" height="25" rx="3" fill="#6EA888" />
+                    {/* Bar 2 */}
+                    <rect x="42" y="50" width="18" height="40" rx="3" fill="#529972" />
+                    {/* Bar 3 */}
+                    <rect x="69" y="35" width="18" height="55" rx="3" fill="#3D855E" />
+                    {/* Bar 4 */}
+                    <rect x="96" y="20" width="18" height="70" rx="3" fill="#2D6A4F" />
+
+                    {/* Surging Upward Green Arrow */}
+                    <path
+                      d="M10 75C40 65 70 40 120 15"
+                      stroke="#4ADE80"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+                    <polygon points="125,12 112,14 118,24" fill="#4ADE80" />
+                  </svg>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* BENTO GRID FEATURE SHOWCASE */}
-        <section className="py-20 bg-cream-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-14">
-              <h2 className="font-serif text-3xl sm:text-5xl font-bold text-ink-950">
-                A Structured Way to Prepare & Accelerate
+        {/* ======================================================== */}
+        {/* 3. "REAL IMPACT." TESTIMONIALS SECTION                   */}
+        {/* ======================================================== */}
+        <section className="py-14 sm:py-20 text-center">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header with Laurel Branches flanking the title */}
+            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
+              {/* Left Laurel Branch */}
+              <svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-[#3A7D5C]"
+              >
+                <path
+                  d="M26 32C18 30 12 24 9 14C8 9 9 3 9 2"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M14 6C11 4 7 5 6 7C5 9 8 12 11 11C13 10 14 8 14 6Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+                <path
+                  d="M18 14C14 13 10 15 10 17C10 20 14 21 16 19C19 17 19 15 18 14Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+                <path
+                  d="M22 22C18 21 15 24 16 26C17 28 21 28 23 25C24 23 23 22 22 22Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+              </svg>
+
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-[2.6rem] font-semibold text-[#111827]">
+                Real Impact.
               </h2>
-              <p className="mt-4 text-ink-700 text-base">
-                Everything you need from initial career orientation to live coding practice and measurable milestones.
-              </p>
+
+              {/* Right Laurel Branch (Mirrored) */}
+              <svg
+                width="32"
+                height="36"
+                viewBox="0 0 32 36"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-[#3A7D5C] scale-x-[-1]"
+              >
+                <path
+                  d="M26 32C18 30 12 24 9 14C8 9 9 3 9 2"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M14 6C11 4 7 5 6 7C5 9 8 12 11 11C13 10 14 8 14 6Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+                <path
+                  d="M18 14C14 13 10 15 10 17C10 20 14 21 16 19C19 17 19 15 18 14Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+                <path
+                  d="M22 22C18 21 15 24 16 26C17 28 21 28 23 25C24 23 23 22 22 22Z"
+                  fill="currentColor"
+                  opacity="0.85"
+                />
+              </svg>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Feature 1: Large Forest Card - Live Mentorship */}
-              <div className="lg:col-span-2 rounded-3xl bg-forest-900 text-white p-8 sm:p-10 relative overflow-hidden flex flex-col justify-between shadow-card">
-                <div className="relative z-10 max-w-md">
-                  <div className="w-10 h-10 rounded-full bg-forest-800 flex items-center justify-center text-emerald-400 mb-6">
-                    <Video className="w-5 h-5" />
+            {/* Carousel Row with Navigation Chevrons */}
+            <div className="relative flex items-center justify-center gap-3 sm:gap-6">
+              {/* Left Arrow Button */}
+              <button
+                onClick={() => setTestimonialIndex((prev) => (prev > 0 ? prev - 1 : 2))}
+                className="w-10 h-10 rounded-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:text-black transition-colors flex-shrink-0"
+                aria-label="Previous testimonial"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              {/* 3 Testimonial Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full max-w-4xl">
+                {testimonials.map((t) => (
+                  <div
+                    key={t.id}
+                    className="rounded-2xl sm:rounded-3xl bg-white p-6 shadow-[0_4px_24px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between text-left min-h-[140px] hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      {/* Avatar */}
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+                        <Image
+                          src={t.avatar}
+                          alt={t.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Large Quotation Mark */}
+                      <span className="font-serif text-3xl font-bold text-[#111827] leading-none select-none">
+                        {t.quote}
+                      </span>
+                    </div>
+
+                    {/* 5 Yellow Stars */}
+                    <div className="mt-4 flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className="w-3.5 h-3.5 fill-[#EAB308] text-[#EAB308]"
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <h3 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
-                    Live 1-on-1 Mentorship
+                ))}
+              </div>
+
+              {/* Right Arrow Button */}
+              <button
+                onClick={() => setTestimonialIndex((prev) => (prev < 2 ? prev + 1 : 0))}
+                className="w-10 h-10 rounded-full bg-white hover:bg-gray-50 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:text-black transition-colors flex-shrink-0"
+                aria-label="Next testimonial"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* 4. "START YOUR JOURNEY." CTA BANNER                      */}
+        {/* ======================================================== */}
+        <section className="py-6 sm:py-12">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-[28px] sm:rounded-[36px] overflow-hidden bg-[#0A3023] shadow-md grid grid-cols-1 md:grid-cols-12 min-h-[220px] sm:min-h-[260px]">
+              {/* Left Half: Green Wavy Banner + Heading + Button */}
+              <div className="md:col-span-6 p-8 sm:p-12 flex flex-col justify-center relative bg-gradient-to-r from-[#07241A] via-[#0A3023] to-[#0D382B]">
+                {/* Background topographic contour curves */}
+                <div className="absolute inset-0 opacity-15 pointer-events-none">
+                  <svg width="100%" height="100%" viewBox="0 0 500 250" fill="none">
+                    <path
+                      d="M-50 180C100 120 250 220 400 150C500 100 600 160 700 120"
+                      stroke="#6EE7B7"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M-50 220C120 160 270 260 420 190C520 140 620 200 720 160"
+                      stroke="#6EE7B7"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                </div>
+
+                <div className="relative z-10 space-y-6">
+                  <h3 className="font-serif italic text-3xl sm:text-4xl lg:text-[2.75rem] text-white font-normal leading-tight">
+                    Start Your Journey.
                   </h3>
-                  <p className="mt-3 text-forest-200 text-sm leading-relaxed">
-                    Face-to-face WebRTC sessions with personalized agenda checklists, live note taking, screen sharing, and post-session action items.
-                  </p>
-                  <div className="mt-6">
+
+                  <div>
                     <Link
-                      href="/mentors"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-500 text-forest-950 font-bold text-sm hover:bg-emerald-400 transition-colors"
+                      href="/login"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white hover:bg-gray-100 text-[#0A3023] text-sm font-semibold transition-all shadow-sm group"
                     >
-                      <span>Find a Mentor</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <span>Get Started</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                   </div>
                 </div>
-
-                {/* Visual Video Session Graphic */}
-                <div className="mt-8 lg:mt-0 lg:absolute lg:right-6 lg:bottom-6 w-full lg:w-72 rounded-2xl bg-forest-800/80 p-3 border border-forest-700/60 backdrop-blur-sm">
-                  <div className="flex items-center justify-between pb-2 border-b border-forest-700 text-xs text-forest-300">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      LiveKit Session: 24:16
-                    </span>
-                    <span className="font-mono text-[10px] bg-forest-900 px-2 py-0.5 rounded">1:1</span>
-                  </div>
-                  <div className="mt-2 aspect-video bg-forest-950 rounded-xl flex items-center justify-center text-forest-400 text-xs relative overflow-hidden">
-                    <Image
-                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80"
-                      alt="Priya Sharma"
-                      fill
-                      className="object-cover opacity-80"
-                    />
-                    <div className="absolute bottom-2 left-2 bg-forest-950/80 px-2 py-0.5 rounded text-[10px] text-white">
-                      Priya Sharma (Microsoft)
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Feature 2: Flexible Schedule */}
-              <div className="rounded-3xl bg-cream-100 border border-border p-8 flex flex-col justify-between shadow-card">
-                <div>
-                  <div className="w-10 h-10 rounded-full bg-sage-200 flex items-center justify-center text-forest-900 mb-6">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-serif text-2xl font-bold text-ink-950">
-                    Flexible Schedule
-                  </h3>
-                  <p className="mt-2 text-ink-700 text-sm leading-relaxed">
-                    Book slots that work with your college timetable. Instant calendar invites and zero timezone confusion.
-                  </p>
-                </div>
-                <div className="mt-8 p-4 rounded-2xl bg-white border border-border">
-                  <div className="text-xs font-semibold text-forest-900 mb-2 flex items-center justify-between">
-                    <span>Upcoming Slots</span>
-                    <span className="text-[10px] text-ink-500">IST (GMT+5:30)</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-sage-100 text-forest-900 font-medium text-center border border-sage-200">
-                      Today, 7:30 PM
-                    </div>
-                    <div className="p-2 rounded-lg bg-cream-50 text-ink-700 text-center border border-border">
-                      Tomorrow, 6:00 PM
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 3: Mock Interview Practice */}
-              <div className="rounded-3xl bg-cream-100 border border-border p-8 flex flex-col justify-between shadow-card">
-                <div>
-                  <div className="w-10 h-10 rounded-full bg-sage-200 flex items-center justify-center text-forest-900 mb-6">
-                    <Award className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-serif text-2xl font-bold text-ink-950">
-                    Human Mock Interviews
-                  </h3>
-                  <p className="mt-2 text-ink-700 text-sm leading-relaxed">
-                    Practice with senior engineers in real Technical, HR, and System Design rounds. Get a transparent 1-10 rubric evaluation.
-                  </p>
-                </div>
-                <div className="mt-8 p-4 rounded-2xl bg-white border border-border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-ink-700">Overall Performance</span>
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">8.2 / 10</span>
-                  </div>
-                  <div className="mt-3 space-y-1.5">
-                    <div className="w-full bg-cream-100 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-forest-700 h-1.5 rounded-full" style={{ width: "85%" }}></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-ink-500">
-                      <span>Technical Accuracy</span>
-                      <span>8.5 / 10</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 4: Large Progress & Goals Card */}
-              <div className="lg:col-span-2 rounded-3xl bg-white border border-border p-8 sm:p-10 flex flex-col justify-between shadow-card">
-                <div>
-                  <div className="w-10 h-10 rounded-full bg-sage-100 flex items-center justify-center text-forest-900 mb-6">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-serif text-2xl sm:text-3xl font-bold text-ink-950">
-                    See Real Measurable Progress
-                  </h3>
-                  <p className="mt-2 text-ink-700 text-sm max-w-xl">
-                    Every session generates student-approved summaries, learning milestones, and follow-up action items. Never wonder what to practice next.
-                  </p>
-                </div>
-
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-cream-50 border border-border">
-                    <div className="flex items-center justify-between text-xs font-semibold text-ink-950 mb-1">
-                      <span>Crack SDE Interview</span>
-                      <span className="text-forest-800">60%</span>
-                    </div>
-                    <div className="w-full bg-sand-200 rounded-full h-2 mb-2">
-                      <div className="bg-forest-900 h-2 rounded-full" style={{ width: "60%" }}></div>
-                    </div>
-                    <p className="text-[11px] text-ink-500">Next: Practice Dynamic Programming & Graph traversal</p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-cream-50 border border-border">
-                    <div className="flex items-center justify-between text-xs font-semibold text-ink-950 mb-1">
-                      <span>Build Portfolio Project</span>
-                      <span className="text-forest-800">40%</span>
-                    </div>
-                    <div className="w-full bg-sand-200 rounded-full h-2 mb-2">
-                      <div className="bg-forest-900 h-2 rounded-full" style={{ width: "40%" }}></div>
-                    </div>
-                    <p className="text-[11px] text-ink-500">Next: Implement WebSocket realtime sync</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* TESTIMONIALS SECTION */}
-        <section className="py-20 bg-cream-100/60 border-y border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center gap-1.5 text-forest-800 text-sm font-semibold mb-2">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-              <span>Real Impact.</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-ink-950">
-              Trusted by Ambitious Students
-            </h2>
-
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-              <div className="card-warm flex flex-col justify-between">
-                <div>
-                  <div className="flex text-amber-400 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-ink-700 italic leading-relaxed">
-                    &ldquo;Priya helped me structure my learning and crack my summer internship at a product company. Her system design tips were spot on!&rdquo;
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center gap-3 pt-4 border-t border-border">
-                  <div className="w-9 h-9 rounded-full bg-forest-900 text-white flex items-center justify-center font-bold text-xs">
-                    AV
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-ink-950">Ankit Verma</h4>
-                    <p className="text-[10px] text-ink-500">CS Student @ Delhi</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-warm flex flex-col justify-between">
-                <div>
-                  <div className="flex text-amber-400 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-ink-700 italic leading-relaxed">
-                    &ldquo;Incredible feedback on my resume and portfolio project. She gave me specific action items that elevated my interviews immediately.&rdquo;
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center gap-3 pt-4 border-t border-border">
-                  <div className="w-9 h-9 rounded-full bg-forest-900 text-white flex items-center justify-center font-bold text-xs">
-                    NG
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-ink-950">Neha Gupta</h4>
-                    <p className="text-[10px] text-ink-500">B.Tech Final Year @ LPU</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card-warm flex flex-col justify-between">
-                <div>
-                  <div className="flex text-amber-400 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-ink-700 italic leading-relaxed">
-                    &ldquo;The mock interview with Rohan felt like a real tier-1 tech round. The rubric breakdown showed me exactly where I was losing points.&rdquo;
-                  </p>
-                </div>
-                <div className="mt-6 flex items-center gap-3 pt-4 border-t border-border">
-                  <div className="w-9 h-9 rounded-full bg-forest-900 text-white flex items-center justify-center font-bold text-xs">
-                    RK
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-ink-950">Ravi Kumar</h4>
-                    <p className="text-[10px] text-ink-500">Aspiring ML Engineer</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* BOTTOM CTA BANNER */}
-        <section className="py-20 bg-cream-50">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="relative rounded-3xl bg-forest-900 text-white p-10 sm:p-14 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 shadow-elevated">
-              <div className="relative z-10 max-w-xl">
-                <span className="text-emerald-400 text-xs font-bold tracking-widest uppercase">
-                  Start Your Journey
-                </span>
-                <h2 className="font-serif text-3xl sm:text-5xl font-bold mt-2 text-white">
-                  Get Guidance From Mentors Who’ve Walked the Path.
-                </h2>
-                <p className="mt-4 text-forest-200 text-sm sm:text-base leading-relaxed">
-                  Join hundreds of students mastering interviews, building verified projects, and receiving structured feedback.
-                </p>
-              </div>
-              <div className="relative z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <Link
-                  href="/login"
-                  className="btn-primary bg-emerald-500 text-forest-950 hover:bg-emerald-400 font-bold px-8 py-4 text-base"
-                >
-                  Get Started Now
-                </Link>
-                <Link
-                  href="/mentor/apply"
-                  className="btn-secondary bg-transparent text-white border-forest-700 hover:bg-forest-800 px-6 py-4 text-base text-center"
-                >
-                  Apply as Mentor
-                </Link>
+              {/* Right Half: Hiker sitting on mountain peak watching golden sunrise */}
+              <div className="md:col-span-6 relative min-h-[220px] md:min-h-full overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1501555088652-021faa106b9b?auto=format&fit=crop&w=1200&q=80"
+                  alt="Hiker watching sunrise on mountain"
+                  fill
+                  className="object-cover object-center"
+                />
               </div>
             </div>
           </div>
         </section>
       </main>
 
+      {/* Bottom Organic Wave Footer */}
       <Footer />
     </div>
   );
 }
-

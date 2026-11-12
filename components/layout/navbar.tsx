@@ -12,12 +12,15 @@ export function Navbar() {
   const { user, role } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = [
+  const leftNavLinks = [
     { label: "Programs", href: "/programs" },
     { label: "Mentors", href: "/mentors" },
-    { label: "Mock Interviews", href: "/mock-interviews" },
-    { label: "Pricing", href: "/pricing" },
-    { label: "How It Works", href: "/how-it-works" },
+    { label: "Resources", href: "/how-it-works" },
+  ];
+
+  const rightNavLinks = [
+    { label: "About", href: "/how-it-works" },
+    { label: "Contact", href: "#contact" },
   ];
 
   const getDashboardHref = () => {
@@ -27,64 +30,72 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-cream-50/95 backdrop-blur-md border-b border-border transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        {/* Logo */}
+    <header className="sticky top-0 z-40 w-full bg-[#FBF8F1]/95 backdrop-blur-md transition-all">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-20 flex items-center justify-between">
+        {/* Left: Brand Logo */}
         <Logo />
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-ink-700">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
+        {/* Center: Navigation Links */}
+        <nav className="hidden md:flex items-center gap-9 text-sm font-semibold text-[#1F2937]">
+          <div className="flex items-center gap-8">
+            {leftNavLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={`transition-colors hover:text-[#123B2E] ${
+                    isActive ? "text-[#123B2E] font-bold" : "text-[#1F2937]"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="w-8" />
+
+          <div className="flex items-center gap-8">
+            {rightNavLinks.map((link) => (
               <Link
-                key={link.href}
+                key={link.label}
                 href={link.href}
-                className={`transition-colors hover:text-forest-900 ${
-                  isActive ? "text-forest-900 font-semibold" : ""
-                }`}
+                className="transition-colors hover:text-[#123B2E] text-[#1F2937]"
               >
                 {link.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </nav>
 
-        {/* Right CTA */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* Right CTA Button: "Get Started →" */}
+        <div className="hidden md:flex items-center gap-3">
           {user ? (
             <Link
               href={getDashboardHref()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-white bg-forest-900 hover:bg-forest-800 transition-all shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#123B2E] hover:bg-[#0E2E24] transition-all shadow-sm"
             >
               <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-              <span>{role === "admin" ? "Admin Portal" : role === "mentor" ? "Mentor Space" : "My Dashboard"}</span>
+              <span>{role === "admin" ? "Admin Portal" : role === "mentor" ? "Mentor Space" : "Dashboard"}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           ) : (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium text-ink-700 hover:text-forest-900 transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/login"
-                className="btn-primary text-sm inline-flex items-center gap-2"
-              >
-                <span>Get Started</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-[#123B2E] hover:bg-[#0E2E24] transition-all shadow-sm"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           )}
         </div>
 
-        {/* Mobile menu button */}
+        {/* Mobile menu trigger */}
         <div className="flex md:hidden items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-ink-700 hover:text-forest-900 focus:outline-none"
+            className="p-2 text-[#1F2937] hover:text-[#123B2E] focus:outline-none"
             aria-label="Toggle Navigation"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -94,48 +105,29 @@ export function Navbar() {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-cream-50 px-4 pt-2 pb-6 space-y-3">
-          {navLinks.map((link) => (
+        <div className="md:hidden border-b border-border bg-[#FBF8F1] px-6 pt-3 pb-6 space-y-3 shadow-lg">
+          {[...leftNavLinks, ...rightNavLinks].map((link) => (
             <Link
-              key={link.href}
+              key={link.label}
               href={link.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-base font-medium text-ink-700 hover:bg-cream-100 hover:text-forest-900"
+              className="block py-2 text-sm font-semibold text-[#1F2937] hover:text-[#123B2E]"
             >
               {link.label}
             </Link>
           ))}
-          <div className="pt-4 border-t border-border flex flex-col gap-2">
-            {user ? (
-              <Link
-                href={getDashboardHref()}
-                onClick={() => setMobileMenuOpen(false)}
-                className="btn-primary w-full text-center"
-              >
-                Go to Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="btn-secondary w-full text-center"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="btn-primary w-full text-center"
-                >
-                  Get Started
-                </Link>
-              </>
-            )}
+          <div className="pt-3 border-t border-gray-200">
+            <Link
+              href={user ? getDashboardHref() : "/login"}
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-[#123B2E]"
+            >
+              <span>{user ? "Go to Dashboard" : "Get Started"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       )}
     </header>
   );
 }
-

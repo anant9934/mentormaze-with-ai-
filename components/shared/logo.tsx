@@ -1,27 +1,44 @@
 import React from "react";
 import Link from "next/link";
 
-export function Logo({ className = "" }: { className?: string }) {
+export function Logo({
+  className = "",
+  variant = "dark",
+}: {
+  className?: string;
+  variant?: "dark" | "light";
+}) {
+  const isLight = variant === "light";
+
   return (
-    <Link href="/" className={`inline-flex items-center gap-2.5 font-bold tracking-tight ${className}`}>
-      {/* MentorMaze geometric 'M' brand mark */}
-      <div className="w-8 h-8 rounded-lg bg-forest-900 flex items-center justify-center text-white shadow-sm ring-1 ring-forest-800">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
+    <Link
+      href="/"
+      className={`inline-flex items-center gap-2 font-bold tracking-tight select-none group ${className}`}
+    >
+      {/* MentorMaze geometric interconnected 'M' brand mark */}
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 28 28"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="transition-transform group-hover:scale-105"
+      >
+        <path
+          d="M5 21V8.5L10 14L14 9.5L18 14L23 8.5V21M5 21H8.5M19.5 21H23"
+          stroke={isLight ? "#34D399" : "#123B2E"}
+          strokeWidth="2.75"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="w-5 h-5 text-emerald-400"
-        >
-          <path d="M4 19V5l8 7 8-7v14" />
-        </svg>
-      </div>
-      <span className="font-serif text-2xl tracking-normal text-forest-900">
-        Mentor<span className="text-emerald-700 font-sans font-extrabold">Maze</span>
+        />
+      </svg>
+      <span
+        className={`font-sans font-extrabold text-[1.35rem] tracking-tight leading-none ${
+          isLight ? "text-white" : "text-[#111827]"
+        }`}
+      >
+        MentorMaze
       </span>
     </Link>
   );
 }
-
