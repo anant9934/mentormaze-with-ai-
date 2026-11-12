@@ -280,7 +280,7 @@ export default function BookSessionPage() {
               <div>
                 <span className="text-[10px] text-ink-500 block">Selected Slot</span>
                 <span className="font-bold text-xs text-ink-950">
-                  {dates[selectedDateIndex].day}, {dates[selectedDateIndex].date} · {selectedTimeSlot} (IST)
+                  {selectedSlotInfo.slot ? new Date(selectedSlotInfo.slot.startTimeUtc).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) : "Upcoming Slot"} · {selectedTimeSlot}
                 </span>
                 <span className="text-[10px] text-ink-500 block">
                   {sessionType === "1:1" ? "1:1 Session" : "Group Session"} ({durationMinutes} mins) · ₹{calculatePrice()}

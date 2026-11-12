@@ -100,3 +100,4 @@ When a booking is cancelled or rescheduled:
 2. **Notification Engine:** Pending reminder jobs in `scheduled_notifications` are marked cancelled.
 3. **Calendar Synchronizer:** If the mentor connected Google Calendar, external sync events are updated or deleted.
 4. **Outbox Event:** Emits `booking.cancelled` or `booking.rescheduled` for downstream audit pipelines.
+

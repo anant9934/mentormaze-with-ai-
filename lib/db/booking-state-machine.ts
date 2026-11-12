@@ -12,6 +12,7 @@ import { getDb, initializeDatabaseSchema } from "./index";
 import { sql } from "drizzle-orm";
 import { MentorLockManager } from "./concurrency";
 import { notificationService } from "@/lib/notifications/service";
+import { PolicyEngine } from "@/lib/policies/policy-engine";
 
 export type BookingStatus =
   | "draft"
@@ -172,10 +173,10 @@ export class BookingStateMachine {
     await initializeDatabaseSchema();
     const db = getDb();
 
-    return await db.transaction(async (tx: any) => {
+    const txResult: any = await db.transaction(async (tx: any) => {
       // 1. Lock booking
       const bookingQuery: any = await tx.execute(sql`
-        SELECT b.id, b.student_user_id, b.mentor_profile_id, b.status, b.payment_status, b.price_inr, b.amount_paise, b.service_type, b.start_time_utc, b.end_time_utc,
+        SELECT b.id, b.student_user_id, b.mentor_profile_id, b.status, b.payment_status, b.price_inr, b.amount_paise, b.service_type, b.start_time_utc, b.end_time_utc, b.policy_version_id,
                m.user_id as mentor_user_id
         FROM bookings b
         JOIN mentor_profiles m ON m.id = b.mentor_profile_id
@@ -196,9 +197,11 @@ export class BookingStateMachine {
         return { success: false, error: `Cannot confirm payment for booking in "${booking.status}" status.` };
       }
 
+      const policy = await PolicyEngine.getPolicy(booking.policy_version_id, tx);
       const grossPaise = paymentDetails.amountPaise || (booking.amount_paise > 0 ? booking.amount_paise : booking.price_inr * 100);
-      const platformFeePaise = Math.round((grossPaise * 15) / 100); // 15% marketplace commission
-      const mentorPayablePaise = grossPaise - platformFeePaise;
+      const split = PolicyEngine.calculateSplitPaise(grossPaise, policy);
+      const platformFeePaise = split.platformFeePaise;
+      const mentorPayablePaise = split.mentorPayablePaise;
 
       const roomId = `room-${booking.mentor_profile_id.slice(0, 8)}-${Date.now()}`;
 
@@ -214,15 +217,22 @@ export class BookingStateMachine {
       `);
 
       // 3. Upsert ledger transaction
-      await tx.execute(sql`
+      const ltResult: any = await tx.execute(sql`
         INSERT INTO ledger_transactions (
           booking_id,
           student_user_id,
           mentor_profile_id,
+          currency,
           gross_amount_inr,
+          gross_amount_paise,
           platform_commission_percent,
           platform_fee_inr,
+          platform_fee_paise,
           mentor_payable_inr,
+          mentor_payable_paise,
+          gateway_fee_paise,
+          tax_paise,
+          transaction_type,
           status,
           payment_provider,
           provider_order_id,
@@ -232,15 +242,53 @@ export class BookingStateMachine {
           ${bookingId},
           ${booking.student_user_id},
           ${booking.mentor_profile_id},
+          'INR',
           ${Math.round(grossPaise / 100)},
-          15.00,
+          ${grossPaise},
+          ${policy.platformCommissionPercent},
           ${Math.round(platformFeePaise / 100)},
+          ${platformFeePaise},
           ${Math.round(mentorPayablePaise / 100)},
+          ${mentorPayablePaise},
+          ${split.gatewayFeePaise},
+          ${split.taxPaise},
+          'payment',
           'settled',
           ${paymentDetails.paymentProvider || 'cashfree'},
           ${paymentDetails.orderId},
           ${paymentDetails.paymentId},
           now()
+        )
+        RETURNING id;
+      `);
+
+      const txId = ltResult.rows?.[0]?.id || ltResult?.[0]?.id;
+
+      // 4. Double-Entry General Ledger Journal Entries
+      // Debit: Cash/Gateway Receivables (+grossPaise)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${txId}, ${bookingId}, 'debit', 'cash_gateway', ${grossPaise}, 'INR', 'Payment collected via Cashfree'
+        );
+      `);
+
+      // Credit: Mentor Payable (+mentorPayablePaise)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${txId}, ${bookingId}, 'credit', 'mentor_payable', ${mentorPayablePaise}, 'INR', 'Mentor earnings payable'
+        );
+      `);
+
+      // Credit: Platform Revenue (+platformFeePaise)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${txId}, ${bookingId}, 'credit', 'platform_revenue', ${platformFeePaise}, 'INR', 'Platform commission earned'
         );
       `);
 

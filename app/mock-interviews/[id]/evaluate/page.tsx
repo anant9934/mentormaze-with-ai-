@@ -14,7 +14,7 @@ import {
   FileCheck,
   Send,
 } from "lucide-react";
-import { CATEGORY_RUBRICS, InterviewCategory } from "@/lib/interview/rubric-service";
+import { CATEGORY_RUBRICS, InterviewCategory } from "@/lib/interview/rubric-constants";
 
 export default function MentorEvaluateMockPage() {
   const params = useParams();
@@ -431,3 +431,4 @@ export default function MentorEvaluateMockPage() {
     </div>
   );
 }
+

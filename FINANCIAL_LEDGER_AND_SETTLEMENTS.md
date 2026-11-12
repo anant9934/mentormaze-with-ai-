@@ -123,3 +123,4 @@ Administrators have access to operations controls:
 - Filter settlements by status (`all`, `pending`, `approved`, `settled`).
 - Batch approve pending settlement invoices.
 - Record bank transfer UTR references with timestamping.
+

@@ -250,14 +250,14 @@ export class SlotGenerator {
 
       // Check full day block
       const isFullDayBlocked = dayExceptions.some(
-        (ex) => ex.isBlocked && (!ex.startTime || !ex.endTime)
+        (ex: any) => ex.isBlocked && (!ex.startTime || !ex.endTime)
       );
       if (isFullDayBlocked) continue;
 
       // Determine active time windows for this day
       let windows: TimeWindow[] = [];
       const overrideException = dayExceptions.find(
-        (ex) => !ex.isBlocked && ex.startTime && ex.endTime
+        (ex: any) => !ex.isBlocked && ex.startTime && ex.endTime
       );
 
       if (overrideException && overrideException.startTime && overrideException.endTime) {
@@ -275,7 +275,7 @@ export class SlotGenerator {
       const dayStartApprox = new Date(`${dateKey}T00:00:00Z`);
       const dayEndApprox = new Date(`${dateKey}T23:59:59Z`);
       const sessionsOnThisDay = existingBookings.filter(
-        (b) => b.startTimeUtc >= dayStartApprox && b.startTimeUtc <= dayEndApprox
+        (b: any) => b.startTimeUtc >= dayStartApprox && b.startTimeUtc <= dayEndApprox
       ).length;
 
       const dailyLimitExceeded = sessionsOnThisDay >= (settings.dailySessionLimit || 4);

@@ -92,7 +92,7 @@ export class SettlementService {
     const settlements = settlementQuery.rows || settlementQuery || [];
 
     for (const s of settlements) {
-      if (s.status === "settled") {
+      if (s.status === "settled" || s.status === "manually_recorded") {
         settledPayoutPaise += s.net_payable_paise;
       }
     }
@@ -181,6 +181,7 @@ export class SettlementService {
 
   /**
    * Finalizes and marks a settlement as settled with a payout transaction reference.
+   * Accurately labels status as 'manually_recorded' and records balancing journal entries.
    */
   public static async markSettlementPaid(
     settlementId: string,
@@ -189,15 +190,48 @@ export class SettlementService {
     await initializeDatabaseSchema();
     const db = getDb();
 
-    await db.execute(sql`
-      UPDATE mentor_settlements
-      SET status = 'settled',
-          payout_reference = ${payoutReference},
-          settled_at = now()
-      WHERE id = ${settlementId}
-        AND status IN ('pending', 'approved');
-    `);
+    return await db.transaction(async (tx: any) => {
+      const q: any = await tx.execute(sql`
+        SELECT id, mentor_profile_id, net_payable_paise, status
+        FROM mentor_settlements
+        WHERE id = ${settlementId}
+        FOR UPDATE;
+      `);
 
-    return { success: true };
+      const batch = q.rows?.[0] || q?.[0];
+      if (!batch) {
+        return { success: false, error: "Settlement batch not found." };
+      }
+
+      await tx.execute(sql`
+        UPDATE mentor_settlements
+        SET status = 'manually_recorded',
+            payout_reference = ${payoutReference},
+            settled_at = now()
+        WHERE id = ${settlementId}
+          AND status IN ('pending', 'approved');
+      `);
+
+      // Double-entry disbursement journal entries:
+      // Debit: mentor_payable (reduces liability to mentor)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          'debit', 'mentor_payable', ${batch.net_payable_paise}, 'INR', ${`Manual disbursement recorded with UTR ${payoutReference}`}
+        );
+      `);
+
+      // Credit: cash_bank (reduces bank cash account)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          'credit', 'cash_bank', ${batch.net_payable_paise}, 'INR', ${`Manual bank transfer executed: UTR ${payoutReference}`}
+        );
+      `);
+
+      return { success: true };
+    });
   }
 }

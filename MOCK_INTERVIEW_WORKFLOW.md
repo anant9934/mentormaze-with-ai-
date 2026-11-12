@@ -106,3 +106,4 @@ The candidate scorecard features:
 - **Narrative Assessment:** Mentor's qualitative review.
 - **Recommended Study Roadmap:** Step-by-step next steps to prepare for actual company interviews.
 - **PDF Export:** Printable, shareable verification document.
+

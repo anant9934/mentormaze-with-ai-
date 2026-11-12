@@ -324,9 +324,11 @@ export class NotificationService {
         if (user) {
           await dispatchEmailEvent({
             eventType: `notification.${category}`,
-            recipientEmail: user.email,
-            recipientName: user.displayName,
-            recipientUserId: input.userId,
+            recipient: {
+              email: user.email,
+              name: user.displayName || undefined,
+              userId: input.userId,
+            },
             variables: {
               title: input.title,
               message: input.message,

@@ -306,6 +306,7 @@ describe("MentorMaze End-to-End Booking, Payment & Session Lifecycle Test Suite"
         LiveKitTokenService.generateTokenForBooking({
           bookingId: activeBookingId,
           userId: "random-unauthorized-user-uuid",
+          userName: "Unauthorized User",
         })
       ).rejects.toThrow("UNAUTHORIZED_PARTICIPANT");
     });
@@ -331,6 +332,7 @@ describe("MentorMaze End-to-End Booking, Payment & Session Lifecycle Test Suite"
         LiveKitTokenService.generateTokenForBooking({
           bookingId: futureBookingId,
           userId: STUDENT_ID,
+          userName: "Anant Kumar",
         })
       ).rejects.toThrow("JOIN_WINDOW_NOT_OPEN");
     });

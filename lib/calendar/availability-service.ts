@@ -42,21 +42,21 @@ export class AvailabilityService {
       .limit(1);
 
     // 2. Weekly Rules
-    const rawRules = await db
+    const rawRules: any = await db
       .select()
       .from(schema.availabilityRules)
       .where(eq(schema.availabilityRules.mentorProfileId, mentorProfileId));
 
     const rulesByDay: DayAvailabilityRule[] = [];
     for (let day = 0; day <= 6; day++) {
-      const dayRows = rawRules.filter((r) => r.dayOfWeek === day);
+      const dayRows = rawRules.filter((r: any) => r.dayOfWeek === day);
       rulesByDay.push({
         dayOfWeek: day,
-        windows: dayRows.map((r) => ({
+        windows: dayRows.map((r: any) => ({
           startTime: r.startTime.slice(0, 5),
           endTime: r.endTime.slice(0, 5),
         })),
-        isActive: dayRows.length > 0 && dayRows.some((r) => r.isActive),
+        isActive: dayRows.length > 0 && dayRows.some((r: any) => r.isActive),
       });
     }
 

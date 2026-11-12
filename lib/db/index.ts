@@ -730,8 +730,76 @@ export async function initializeDatabaseSchema() {
     ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS actor_role VARCHAR(32) DEFAULT 'system';
     ALTER TABLE booking_events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 
-    INSERT INTO booking_policies (id, version, name, cancellation_cutoff_hours, rescheduling_cutoff_hours, max_reschedules, refund_eligibility_percent, no_show_refund_percent, is_active)
-    VALUES ('policy-v1', '1.0', 'Standard MentorMaze Policy', 24, 12, 2, 100, 0, true)
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS platform_commission_percent NUMERIC(4,2) DEFAULT 15.00 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS mentor_revenue_share_percent NUMERIC(4,2) DEFAULT 85.00 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS gateway_fee_percent NUMERIC(4,2) DEFAULT 2.00 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS tax_gst_percent NUMERIC(4,2) DEFAULT 18.00 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS payout_frequency VARCHAR(32) DEFAULT 'weekly' NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS min_payout_threshold_paise INTEGER DEFAULT 50000 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS settlement_hold_days INTEGER DEFAULT 3 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS dispute_window_hours INTEGER DEFAULT 72 NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS effective_from_utc TIMESTAMPTZ DEFAULT now() NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS effective_to_utc TIMESTAMPTZ;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS approval_status VARCHAR(32) DEFAULT 'pending_approval' NOT NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS approved_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE booking_policies ADD COLUMN IF NOT EXISTS approval_notes TEXT;
+
+    CREATE TABLE IF NOT EXISTS policy_audit_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      policy_id VARCHAR(64) NOT NULL,
+      changed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(64) NOT NULL,
+      previous_state JSONB,
+      new_state JSONB NOT NULL,
+      reason TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS currency VARCHAR(8) DEFAULT 'INR' NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS gross_amount_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS platform_fee_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS mentor_payable_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS gateway_fee_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS tax_paise INTEGER DEFAULT 0 NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS transaction_type VARCHAR(32) DEFAULT 'payment' NOT NULL;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS parent_transaction_id UUID;
+    ALTER TABLE ledger_transactions ADD COLUMN IF NOT EXISTS refund_amount_paise INTEGER DEFAULT 0;
+
+    CREATE TABLE IF NOT EXISTS journal_entries (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      transaction_id UUID REFERENCES ledger_transactions(id) ON DELETE CASCADE,
+      booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+      entry_type VARCHAR(16) NOT NULL,
+      account VARCHAR(64) NOT NULL,
+      amount_paise INTEGER NOT NULL,
+      currency VARCHAR(8) DEFAULT 'INR' NOT NULL,
+      description TEXT,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      provider VARCHAR(32) DEFAULT 'cashfree' NOT NULL,
+      event_id VARCHAR(160) UNIQUE NOT NULL,
+      order_id VARCHAR(160),
+      event_type VARCHAR(64) NOT NULL,
+      raw_payload JSONB NOT NULL,
+      status VARCHAR(32) DEFAULT 'processed' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    INSERT INTO booking_policies (
+      id, version, name, platform_commission_percent, mentor_revenue_share_percent,
+      gateway_fee_percent, tax_gst_percent, cancellation_cutoff_hours,
+      rescheduling_cutoff_hours, max_reschedules, refund_eligibility_percent,
+      no_show_refund_percent, payout_frequency, min_payout_threshold_paise,
+      settlement_hold_days, dispute_window_hours, approval_status, approval_notes, is_active
+    )
+    VALUES (
+      'policy-v1', '1.0', 'Standard MentorMaze Policy (Unapproved Baseline)', 15.00, 85.00,
+      2.00, 18.00, 24, 12, 2, 100, 0, 'weekly', 50000, 3, 72,
+      'pending_approval', 'Default baseline awaiting formal business owner sign-off', true
+    )
     ON CONFLICT (id) DO NOTHING;
   `;
 

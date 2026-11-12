@@ -244,7 +244,7 @@ describe("MentorMaze Real-Time Notifications & Email Anti-Spam Deliverability", 
 
     // User B fetches their notifications -> MUST NOT see User A's notification
     const listB = await service.getNotifications(userB);
-    const leak = listB.notifications.find((n) => n.id === resA.notification.id);
+    const leak = listB.notifications.find((n: any) => n.id === resA.notification.id);
     expect(leak).toBeUndefined();
 
     // User B attempts to mark User A's notification as read -> MUST FAIL / return undefined
@@ -254,7 +254,7 @@ describe("MentorMaze Real-Time Notifications & Email Anti-Spam Deliverability", 
     // User B attempts to delete User A's notification -> User A's notification MUST remain intact
     await service.deleteNotification(resA.notification.id, userB);
     const listA = await service.getNotifications(userA);
-    const stillExists = listA.notifications.some((n) => n.id === resA.notification.id);
+    const stillExists = listA.notifications.some((n: any) => n.id === resA.notification.id);
     expect(stillExists).toBe(true);
   });
 });

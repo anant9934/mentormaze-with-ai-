@@ -99,3 +99,4 @@ MentorMaze features a multi-provider LiveKit routing architecture (`LiveKitRoute
 - Sessions are pinned to an assigned provider on first token minting to prevent split-brain WebRTC rooms.
 - Providers maintain circuit-breaker states (`CLOSED`, `HALF_OPEN`, `OPEN`).
 - Health checks run periodically. If a provider degrades, incoming new sessions failover to healthy alternatives while existing pinned sessions remain undisturbed.
+

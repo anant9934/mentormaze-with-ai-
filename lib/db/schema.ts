@@ -284,12 +284,36 @@ export const bookingPolicies = pgTable("booking_policies", {
   id: varchar("id", { length: 64 }).primaryKey(), // e.g. "policy-v1"
   version: varchar("version", { length: 32 }).notNull(), // "1.0"
   name: varchar("name", { length: 160 }).notNull(),
+  platformCommissionPercent: numeric("platform_commission_percent", { precision: 4, scale: 2 }).default("15.00").notNull(),
+  mentorRevenueSharePercent: numeric("mentor_revenue_share_percent", { precision: 4, scale: 2 }).default("85.00").notNull(),
+  gatewayFeePercent: numeric("gateway_fee_percent", { precision: 4, scale: 2 }).default("2.00").notNull(),
+  taxGstPercent: numeric("tax_gst_percent", { precision: 4, scale: 2 }).default("18.00").notNull(),
   cancellationCutoffHours: integer("cancellation_cutoff_hours").default(24).notNull(),
   reschedulingCutoffHours: integer("rescheduling_cutoff_hours").default(12).notNull(),
   maxReschedules: integer("max_reschedules").default(2).notNull(),
   refundEligibilityPercent: integer("refund_eligibility_percent").default(100).notNull(),
   noShowRefundPercent: integer("no_show_refund_percent").default(0).notNull(),
+  payoutFrequency: varchar("payout_frequency", { length: 32 }).default("weekly").notNull(), // weekly, biweekly, monthly
+  minPayoutThresholdPaise: integer("min_payout_threshold_paise").default(50000).notNull(), // ₹500
+  settlementHoldDays: integer("settlement_hold_days").default(3).notNull(),
+  disputeWindowHours: integer("dispute_window_hours").default(72).notNull(),
+  effectiveFromUtc: timestamp("effective_from_utc", { withTimezone: true }).defaultNow().notNull(),
+  effectiveToUtc: timestamp("effective_to_utc", { withTimezone: true }),
+  approvalStatus: varchar("approval_status", { length: 32 }).default("pending_approval").notNull(), // draft, pending_approval, approved, deprecated
+  approvedByUserId: uuid("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  approvalNotes: text("approval_notes"),
   isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const policyAuditLogs = pgTable("policy_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  policyId: varchar("policy_id", { length: 64 }).notNull(),
+  changedByUserId: uuid("changed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 64 }).notNull(), // created, approved, updated, deprecated
+  previousState: jsonb("previous_state"),
+  newState: jsonb("new_state").notNull(),
+  reason: text("reason").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -525,18 +549,50 @@ export const ledgerTransactions = pgTable("ledger_transactions", {
   bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
   studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("INR").notNull(),
   grossAmountInr: integer("gross_amount_inr").notNull(),
+  grossAmountPaise: integer("gross_amount_paise").default(0).notNull(),
   platformCommissionPercent: numeric("platform_commission_percent", { precision: 4, scale: 2 }).default("15.00").notNull(),
   platformFeeInr: integer("platform_fee_inr").notNull(),
+  platformFeePaise: integer("platform_fee_paise").default(0).notNull(),
   mentorPayableInr: integer("mentor_payable_inr").notNull(),
+  mentorPayablePaise: integer("mentor_payable_paise").default(0).notNull(),
+  gatewayFeePaise: integer("gateway_fee_paise").default(0).notNull(),
+  taxPaise: integer("tax_paise").default(0).notNull(),
+  transactionType: varchar("transaction_type", { length: 32 }).default("payment").notNull(), // payment, refund, settlement_payout, adjustment
+  parentTransactionId: uuid("parent_transaction_id"),
   status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, settled, refunded, held
   paymentProvider: varchar("payment_provider", { length: 64 }).default("cashfree").notNull(),
   providerOrderId: varchar("provider_order_id", { length: 160 }),
   providerPaymentId: varchar("provider_payment_id", { length: 160 }),
   refundAmountInr: integer("refund_amount_inr").default(0),
+  refundAmountPaise: integer("refund_amount_paise").default(0),
   refundReason: text("refund_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   settledAt: timestamp("settled_at", { withTimezone: true }),
+});
+
+export const journalEntries = pgTable("journal_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  transactionId: uuid("transaction_id").references(() => ledgerTransactions.id, { onDelete: "cascade" }),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }),
+  entryType: varchar("entry_type", { length: 16 }).notNull(), // debit, credit
+  account: varchar("account", { length: 64 }).notNull(), // cash_gateway, mentor_payable, platform_revenue, gateway_fee_expense, tax_payable, cash_bank
+  amountPaise: integer("amount_paise").notNull(),
+  currency: varchar("currency", { length: 8 }).default("INR").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const webhookEvents = pgTable("webhook_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  provider: varchar("provider", { length: 32 }).default("cashfree").notNull(),
+  eventId: varchar("event_id", { length: 160 }).unique().notNull(),
+  orderId: varchar("order_id", { length: 160 }),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  rawPayload: jsonb("raw_payload").notNull(),
+  status: varchar("status", { length: 32 }).default("processed").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ==========================================

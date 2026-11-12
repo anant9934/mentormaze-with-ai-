@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const syncEnd = new Date(now.getTime() + 30 * 24 * 3600 * 1000); // 30 days ahead
 
     // Fetch busy intervals from Google Calendar
-    const busyIntervals = await provider.fetchFreeBusy(now, syncEnd);
+    const busyIntervals = await provider.listBusyPeriods(now, syncEnd);
 
     // Save/update external calendar events inside a transaction
     await db.transaction(async (tx: any) => {

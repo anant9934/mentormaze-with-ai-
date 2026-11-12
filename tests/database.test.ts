@@ -188,15 +188,15 @@ describe("PostgreSQL Database Integration & Schema Verification", () => {
 
     const results = await Promise.all(concurrentRequests);
 
-    const successes = results.filter((r) => r.success);
-    const failures = results.filter((r) => !r.success);
+    const successes = results.filter((r: any) => r.success);
+    const failures = results.filter((r: any) => !r.success);
 
     // EXACTLY 1 must succeed
     expect(successes.length).toBe(1);
     expect(failures.length).toBe(19);
 
     // All 19 failures must report slot reservation collision
-    failures.forEach((f) => {
+    failures.forEach((f: any) => {
       expect(f.error).toContain("Slot reservation collision");
     });
   });

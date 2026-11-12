@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     // 1. Signature Verification
     const isSignatureValid = paymentGateway.verifyWebhookSignature(rawBody, timestamp, signature);
 
-    if (!isSignatureValid && process.env.NODE_ENV === "production") {
+    if (!isSignatureValid) {
       return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
     }
 
@@ -35,11 +35,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Malformed payload" }, { status: 400 });
     }
 
+    const orderCurrency = payload?.data?.order?.order_currency || payload?.orderCurrency || "INR";
+    if (orderCurrency !== "INR") {
+      return NextResponse.json({ error: "CURRENCY_MISMATCH", message: "Only INR transactions are supported" }, { status: 400 });
+    }
+
     const orderId = payload?.data?.order?.order_id || payload?.orderId;
     const paymentStatus = payload?.data?.payment?.payment_status || payload?.status || "SUCCESS";
     const paymentId = payload?.data?.payment?.cf_payment_id || payload?.paymentId || `pay_${Date.now()}`;
     const orderAmount = payload?.data?.order?.order_amount || payload?.orderAmount || 0;
     const amountPaise = orderAmount > 0 ? Math.round(orderAmount * 100) : 0;
+    const eventId = payload?.event_id || payload?.data?.payment?.cf_payment_id || `evt_${orderId}_${paymentId}`;
+
+    const db = getDb();
+
+    // 2. Persistent Event Idempotency Check
+    const existingWebhook: any = await db.execute(sql`
+      SELECT id FROM webhook_events WHERE event_id = ${eventId} LIMIT 1;
+    `);
+    if ((existingWebhook.rows?.length || existingWebhook?.length || 0) > 0) {
+      return NextResponse.json({ received: true, status: "already_processed", eventId });
+    }
 
     // Extract booking ID from orderId format (order_cf_<bookingId> or order_<bookingId>)
     const bookingId = orderId?.replace("order_cf_", "")?.replace("order_", "");
@@ -47,8 +63,6 @@ export async function POST(req: NextRequest) {
     if (!bookingId) {
       return NextResponse.json({ received: true, message: "Ignored webhook without bookingId" });
     }
-
-    const db = getDb();
 
     // 2. Lock and inspect booking record
     const bookingQuery: any = await db.execute(sql`
@@ -72,6 +86,15 @@ export async function POST(req: NextRequest) {
         bookingId,
         status: booking.status,
       });
+    }
+
+    // 4. Underpayment / Amount Verification
+    const expectedPaise = booking.amount_paise > 0 ? booking.amount_paise : (booking.price_inr * 100);
+    if (amountPaise > 0 && expectedPaise > 0 && amountPaise < expectedPaise) {
+      return NextResponse.json({
+        error: "UNDERPAYMENT_REJECTED",
+        message: `Received ${amountPaise} paise, but booking requires ${expectedPaise} paise.`
+      }, { status: 400 });
     }
 
     if (paymentStatus === "SUCCESS") {
@@ -178,6 +201,15 @@ export async function POST(req: NextRequest) {
         memBooking.paymentStatus = "paid";
         memBooking.status = "confirmed";
       }
+
+      // Record processed webhook event for persistent audit and idempotency
+      await db.execute(sql`
+        INSERT INTO webhook_events (
+          provider, event_id, order_id, event_type, raw_payload, status
+        ) VALUES (
+          'cashfree', ${eventId}, ${orderId}, ${paymentStatus}, ${rawBody}, 'processed'
+        ) ON CONFLICT (event_id) DO NOTHING;
+      `);
 
       return NextResponse.json({
         received: true,

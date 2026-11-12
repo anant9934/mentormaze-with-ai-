@@ -67,13 +67,97 @@ export async function POST(req: NextRequest) {
         WHERE id = ${bookingId};
       `);
 
+      // 1. Fetch original ledger transaction
+      const origLtQuery: any = await tx.execute(sql`
+        SELECT id, gross_amount_paise, platform_fee_paise, mentor_payable_paise, platform_commission_percent
+        FROM ledger_transactions
+        WHERE booking_id = ${bookingId} AND transaction_type = 'payment'
+        ORDER BY created_at DESC
+        LIMIT 1;
+      `);
+      const origLt = origLtQuery.rows?.[0] || origLtQuery?.[0];
+      const commissionPercent = Number(origLt?.platform_commission_percent || 15.0);
+      const platformFeeRefundPaise = Math.round((refundPaise * commissionPercent) / 100);
+      const mentorRefundPaise = refundPaise - platformFeeRefundPaise;
+
+      // 2. Insert reversing refund ledger transaction
+      const refundLtResult: any = await tx.execute(sql`
+        INSERT INTO ledger_transactions (
+          booking_id,
+          student_user_id,
+          mentor_profile_id,
+          currency,
+          gross_amount_inr,
+          gross_amount_paise,
+          platform_commission_percent,
+          platform_fee_inr,
+          platform_fee_paise,
+          mentor_payable_inr,
+          mentor_payable_paise,
+          transaction_type,
+          parent_transaction_id,
+          status,
+          refund_amount_inr,
+          refund_amount_paise,
+          refund_reason,
+          payment_provider,
+          provider_order_id,
+          provider_payment_id,
+          settled_at
+        ) VALUES (
+          ${bookingId},
+          ${booking.student_user_id},
+          ${booking.mentor_profile_id},
+          'INR',
+          -${refundInr},
+          -${refundPaise},
+          ${commissionPercent},
+          -${Math.round(platformFeeRefundPaise / 100)},
+          -${platformFeeRefundPaise},
+          -${Math.round(mentorRefundPaise / 100)},
+          -${mentorRefundPaise},
+          'refund',
+          ${origLt?.id || null},
+          'refunded',
+          ${refundInr},
+          ${refundPaise},
+          ${reason || "Refund issued"},
+          'cashfree',
+          ${orderId},
+          ${refundResult.refundId},
+          now()
+        )
+        RETURNING id;
+      `);
+
+      const refundTxId = refundLtResult.rows?.[0]?.id || refundLtResult?.[0]?.id;
+
+      // 3. Double-entry reversing journal entries:
+      // Debit: Mentor Payable (reduces liability to mentor)
       await tx.execute(sql`
-        UPDATE ledger_transactions
-        SET status = ${newPaymentStatus},
-            refund_amount_inr = ${refundInr},
-            refund_reason = ${reason || "Refund issued"},
-            settled_at = now()
-        WHERE booking_id = ${bookingId};
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${refundTxId}, ${bookingId}, 'debit', 'mentor_payable', ${mentorRefundPaise}, 'INR', 'Mentor payable reversal on refund'
+        );
+      `);
+
+      // Debit: Platform Revenue (reduces recognized revenue)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${refundTxId}, ${bookingId}, 'debit', 'platform_revenue', ${platformFeeRefundPaise}, 'INR', 'Platform commission reversal on refund'
+        );
+      `);
+
+      // Credit: Cash Gateway Receivables (cash refunded back to customer)
+      await tx.execute(sql`
+        INSERT INTO journal_entries (
+          transaction_id, booking_id, entry_type, account, amount_paise, currency, description
+        ) VALUES (
+          ${refundTxId}, ${bookingId}, 'credit', 'cash_gateway', ${refundPaise}, 'INR', 'Gateway cash refund to student'
+        );
       `);
 
       await tx.execute(sql`
@@ -127,3 +211,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

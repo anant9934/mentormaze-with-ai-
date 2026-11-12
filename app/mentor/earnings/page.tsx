@@ -362,14 +362,14 @@ export default function MentorEarningsPage() {
                         <td className="py-4 px-6 text-center">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              s.status === "settled"
+                              s.status === "settled" || s.status === "manually_recorded"
                                 ? "bg-[#EDF1E8] text-[#123B2E] border border-[#DDE6D7]"
                                 : s.status === "approved"
                                 ? "bg-blue-50 text-blue-700 border border-blue-200"
                                 : "bg-amber-50 text-amber-700 border border-amber-200"
                             }`}
                           >
-                            {s.status}
+                            {s.status === "manually_recorded" ? "Recorded (UTR)" : s.status}
                           </span>
                         </td>
                       </tr>
@@ -384,3 +384,4 @@ export default function MentorEarningsPage() {
     </div>
   );
 }
+

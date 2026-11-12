@@ -14,6 +14,7 @@ export interface CreateBookingInput {
   priceInr: number;
   studentDiscussionPoints?: string;
   resumeAttachmentUrl?: string;
+  policyVersionId?: string;
 }
 
 
@@ -30,7 +31,7 @@ export async function createBookingInDb(input: CreateBookingInput) {
     const db = getDb();
 
     // Execute within an ACID transaction
-    return await db.transaction(async (tx: any) => {
+    const txResult: any = await db.transaction(async (tx: any) => {
       // 1. Acquire row lock on mentor profile: verifies approval and prevents concurrent DB operations
       const mentorCheck: any = await tx.execute(sql`
         SELECT id, user_id, verification_status, is_accepting_bookings
@@ -88,6 +89,7 @@ export async function createBookingInDb(input: CreateBookingInput) {
           payment_status,
           student_discussion_points,
           resume_attachment_url,
+          policy_version_id,
           meeting_room_id
         ) VALUES (
           ${input.studentUserId},
@@ -99,43 +101,46 @@ export async function createBookingInDb(input: CreateBookingInput) {
           ${input.userTimezone},
           'confirmed',
           ${input.priceInr},
-          'paid',
+          ${input.priceInr === 0 ? 'free' : 'paid'},
           ${input.studentDiscussionPoints || null},
           ${input.resumeAttachmentUrl || null},
+          ${input.policyVersionId || 'policy-v1'},
           ${roomId}
         )
-        RETURNING id, student_user_id, mentor_profile_id, start_time_utc, end_time_utc, status, price_inr, meeting_room_id;
+        RETURNING id, student_user_id, mentor_profile_id, start_time_utc, end_time_utc, status, price_inr, payment_status, meeting_room_id;
       `);
 
       const booking = insertResult.rows?.[0] || insertResult?.[0];
 
-      // 4. Insert ledger transaction (15% marketplace commission)
-      const platformFee = Math.round(input.priceInr * 0.15);
-      const mentorPayable = input.priceInr - platformFee;
+      // 4. Insert ledger transaction for paid sessions
+      if (input.priceInr > 0) {
+        const platformFee = Math.round(input.priceInr * 0.15);
+        const mentorPayable = input.priceInr - platformFee;
 
-      await tx.execute(sql`
-        INSERT INTO ledger_transactions (
-          booking_id,
-          student_user_id,
-          mentor_profile_id,
-          gross_amount_inr,
-          platform_commission_percent,
-          platform_fee_inr,
-          mentor_payable_inr,
-          status,
-          payment_provider
-        ) VALUES (
-          ${booking.id},
-          ${input.studentUserId},
-          ${input.mentorProfileId},
-          ${input.priceInr},
-          15.00,
-          ${platformFee},
-          ${mentorPayable},
-          'pending',
-          'cashfree'
-        );
-      `);
+        await tx.execute(sql`
+          INSERT INTO ledger_transactions (
+            booking_id,
+            student_user_id,
+            mentor_profile_id,
+            gross_amount_inr,
+            platform_commission_percent,
+            platform_fee_inr,
+            mentor_payable_inr,
+            status,
+            payment_provider
+          ) VALUES (
+            ${booking.id},
+            ${input.studentUserId},
+            ${input.mentorProfileId},
+            ${input.priceInr},
+            15.00,
+            ${platformFee},
+            ${mentorPayable},
+            'pending',
+            'cashfree'
+          );
+        `);
+      }
 
       // 5. Insert audit outbox event for async notifications and calendar sync
       await tx.execute(sql`

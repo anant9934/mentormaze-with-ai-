@@ -211,14 +211,14 @@ export default function AdminSettlementsPage() {
                       <td className="py-4 px-4 text-center">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                            s.status === "settled"
+                            s.status === "settled" || s.status === "manually_recorded"
                               ? "bg-[#EDF1E8] text-[#123B2E] border border-[#DDE6D7]"
                               : s.status === "approved"
                               ? "bg-blue-50 text-blue-700 border border-blue-200"
                               : "bg-amber-50 text-amber-700 border border-amber-200"
                           }`}
                         >
-                          {s.status}
+                          {s.status === "manually_recorded" ? "Recorded (UTR)" : s.status}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right space-x-2">
@@ -242,7 +242,7 @@ export default function AdminSettlementsPage() {
                             Record Payout
                           </button>
                         )}
-                        {s.status === "settled" && (
+                        {(s.status === "settled" || s.status === "manually_recorded") && (
                           <span className="text-xs font-mono text-[#46514B]">
                             Ref: {s.payout_reference}
                           </span>
@@ -315,3 +315,4 @@ export default function AdminSettlementsPage() {
     </div>
   );
 }
+

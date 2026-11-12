@@ -156,3 +156,4 @@ To prevent database transactions from hanging on external network connections (s
 - Transactions record pending notification messages into `outbox_events`.
 - Notification dispatching and scheduled reminder creation occur **strictly after** the database transaction has committed.
 - If email transport is delayed or unavailable, the booking transaction remains 100% successful.
+
