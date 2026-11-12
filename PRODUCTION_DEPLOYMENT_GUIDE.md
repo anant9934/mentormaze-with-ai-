@@ -78,3 +78,4 @@ Set the following environment variables in the hosting dashboard (e.g., Vercel P
 - [ ] Inspect session cookie in browser DevTools $\rightarrow$ Confirm `Secure`, `HttpOnly`, and `SameSite=Lax`.
 - [ ] Check `https://mentormaze.aitathastu.com/sitemap.xml` $\rightarrow$ Confirm dynamic generation of all 39+ routes.
 - [ ] Check `https://mentormaze.aitathastu.com/robots.txt` $\rightarrow$ Confirm proper crawler directives.
+

@@ -47,3 +47,4 @@ Local development at `http://localhost:3000` remains fully intact and functional
 - Dynamic fallback checks: `process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")`.
 - When running locally, authentication, callbacks, and calendar generation automatically use `localhost:3000`.
 - When deployed to production with `NODE_ENV=production` and `NEXT_PUBLIC_APP_URL=https://mentormaze.aitathastu.com`, the official domain takes full precedence.
+

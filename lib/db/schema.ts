@@ -367,6 +367,123 @@ export const platformSettings = pgTable("platform_settings", {
 });
 
 // ==========================================
+// 10. EMAIL COMMUNICATION & SUPPORT SYSTEM
+// ==========================================
+
+export const emailTemplates = pgTable("email_templates", {
+  id: varchar("id", { length: 120 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 64 }).notNull(), // auth, student, mentor, payment, support, system
+  subject: varchar("subject", { length: 255 }).notNull(),
+  previewText: varchar("preview_text", { length: 255 }),
+  htmlBody: text("html_body").notNull(),
+  textBody: text("text_body").notNull(),
+  variables: jsonb("variables").default([]).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isSystemCritical: boolean("is_system_critical").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const emailAutomations = pgTable("email_automations", {
+  id: varchar("id", { length: 120 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  eventType: varchar("event_type", { length: 120 }).notNull(),
+  templateId: varchar("template_id", { length: 120 }).notNull(),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  recipientType: varchar("recipient_type", { length: 64 }).default("user").notNull(),
+  delaySeconds: integer("delay_seconds").default(0).notNull(),
+  maxRetries: integer("max_retries").default(5).notNull(),
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false).notNull(),
+  lastExecutedAt: timestamp("last_executed_at", { withTimezone: true }),
+  executionCount: integer("execution_count").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const emailDeliveryLogs = pgTable("email_delivery_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
+  recipientUserId: uuid("recipient_user_id").references(() => users.id, { onDelete: "set null" }),
+  recipientName: varchar("recipient_name", { length: 160 }),
+  templateId: varchar("template_id", { length: 120 }),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  category: varchar("category", { length: 64 }).default("system").notNull(),
+  eventType: varchar("event_type", { length: 120 }),
+  status: varchar("status", { length: 32 }).default("queued").notNull(), // queued, sent, delivered, failed, bounced, cancelled
+  attemptCount: integer("attempt_count").default(1).notNull(),
+  maxAttempts: integer("max_attempts").default(5).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }).unique(),
+  smtpResponse: text("smtp_response"),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata"),
+  queuedAt: timestamp("queued_at", { withTimezone: true }).defaultNow().notNull(),
+  lastAttemptedAt: timestamp("last_attempted_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+});
+
+export const emailPreferences = pgTable("email_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  marketingConsent: boolean("marketing_consent").default(false).notNull(),
+  recommendationsConsent: boolean("recommendations_consent").default(true).notNull(),
+  newsletterConsent: boolean("newsletter_consent").default(false).notNull(),
+  bookingRemindersConsent: boolean("booking_reminders_consent").default(true).notNull(),
+  unsubscribeToken: varchar("unsubscribe_token", { length: 128 }).unique().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const emailSuppressions = pgTable("email_suppressions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  reason: varchar("reason", { length: 64 }).notNull(), // hard_bounce, complaint, manual_admin, unsubscribed_all
+  source: varchar("source", { length: 120 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const supportTickets = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketNumber: varchar("ticket_number", { length: 64 }).unique().notNull(), // MM-2026-XXXX
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  userEmail: varchar("user_email", { length: 255 }).notNull(),
+  userName: varchar("user_name", { length: 160 }).notNull(),
+  category: varchar("category", { length: 64 }).notNull(),
+  priority: varchar("priority", { length: 32 }).default("medium").notNull(),
+  status: varchar("status", { length: 32 }).default("open").notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
+  paymentReference: varchar("payment_reference", { length: 120 }),
+  assignedToUserId: uuid("assigned_to_user_id"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const supportMessages = pgTable("support_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketId: uuid("ticket_id").references(() => supportTickets.id, { onDelete: "cascade" }).notNull(),
+  senderUserId: uuid("sender_user_id"),
+  senderName: varchar("sender_name", { length: 160 }).notNull(),
+  senderRole: varchar("sender_role", { length: 32 }).notNull(),
+  message: text("message").notNull(),
+  isInternalNote: boolean("is_internal_note").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const emailAuditLogs = pgTable("email_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorUserId: uuid("actor_user_id"),
+  actorEmail: varchar("actor_email", { length: 255 }),
+  action: varchar("action", { length: 120 }).notNull(),
+  targetId: varchar("target_id", { length: 120 }),
+  details: jsonb("details"),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ==========================================
 // RELATIONS
 // ==========================================
 

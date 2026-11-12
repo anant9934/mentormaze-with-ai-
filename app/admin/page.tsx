@@ -17,6 +17,8 @@ import {
   AlertCircle,
   ArrowRight,
   Settings,
+  Mail,
+  LifeBuoy,
 } from "lucide-react";
 
 export default function AdminPortalPage() {
@@ -51,6 +53,13 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/communications/email"
+              className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"
+            >
+              <Mail className="w-3.5 h-3.5 text-forest-700" />
+              <span>Email System</span>
+            </Link>
             <Link
               href="/admin/video"
               className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"
@@ -221,6 +230,56 @@ export default function AdminPortalPage() {
                 className="text-xs font-bold text-forest-900 hover:underline flex items-center gap-1"
               >
                 <span>Edit Platform Settings</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Module 5: Email Communication System */}
+          <div className="card-warm bg-white p-6 rounded-3xl border border-border flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-sage-100 flex items-center justify-center text-forest-900">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <span className="badge-match text-[10px] font-bold">20+ Templates</span>
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-950">Email Communications</h3>
+              <p className="text-xs text-ink-700 mt-1 leading-relaxed">
+                Production SMTP gateway, responsive email shells, automated event triggers, delivery logs, and template editor.
+              </p>
+            </div>
+            <div className="pt-6 border-t border-border mt-6">
+              <Link
+                href="/admin/communications/email"
+                className="text-xs font-bold text-forest-900 hover:underline flex items-center gap-1"
+              >
+                <span>Manage Email System</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Module 6: Support Tickets & Inquiries */}
+          <div className="card-warm bg-white p-6 rounded-3xl border border-border flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-sage-100 flex items-center justify-center text-forest-900">
+                  <LifeBuoy className="w-5 h-5" />
+                </div>
+                <span className="badge-sage text-[10px] font-bold">Customer Care</span>
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-950">Support Tickets</h3>
+              <p className="text-xs text-ink-700 mt-1 leading-relaxed">
+                Customer support thread management, staff internal notes, automated email notifications, and resolution tracking.
+              </p>
+            </div>
+            <div className="pt-6 border-t border-border mt-6">
+              <Link
+                href="/admin/support"
+                className="text-xs font-bold text-forest-900 hover:underline flex items-center gap-1"
+              >
+                <span>View Support Queue</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

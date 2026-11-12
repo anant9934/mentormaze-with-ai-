@@ -66,3 +66,4 @@ When linking MentorMaze with the parent AI Tathastu OIDC Identity Gateway (`auth
 | **4** | Google Cloud Console Origin & Redirect URIs Added | `Updated but not externally verified` (Awaiting live DNS) |
 | **5** | Session Cookie Scoping to `mentormaze.aitathastu.com` | `Completed and verified` |
 | **6** | Production Token Exchange over HTTPS | `Completed and verified in code` |
+

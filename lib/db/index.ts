@@ -345,6 +345,119 @@ export async function initializeDatabaseSchema() {
       updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS email_templates (
+      id VARCHAR(120) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      category VARCHAR(64) NOT NULL,
+      subject VARCHAR(255) NOT NULL,
+      preview_text VARCHAR(255),
+      html_body TEXT NOT NULL,
+      text_body TEXT NOT NULL,
+      variables JSONB DEFAULT '[]' NOT NULL,
+      is_active BOOLEAN DEFAULT true NOT NULL,
+      is_system_critical BOOLEAN DEFAULT false NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_automations (
+      id VARCHAR(120) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      event_type VARCHAR(120) NOT NULL,
+      template_id VARCHAR(120) NOT NULL,
+      is_enabled BOOLEAN DEFAULT true NOT NULL,
+      recipient_type VARCHAR(64) DEFAULT 'user' NOT NULL,
+      delay_seconds INTEGER DEFAULT 0 NOT NULL,
+      max_retries INTEGER DEFAULT 5 NOT NULL,
+      quiet_hours_enabled BOOLEAN DEFAULT false NOT NULL,
+      last_executed_at TIMESTAMPTZ,
+      execution_count INTEGER DEFAULT 0 NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_delivery_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipient_email VARCHAR(255) NOT NULL,
+      recipient_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      recipient_name VARCHAR(160),
+      template_id VARCHAR(120),
+      subject VARCHAR(255) NOT NULL,
+      category VARCHAR(64) DEFAULT 'system' NOT NULL,
+      event_type VARCHAR(120),
+      status VARCHAR(32) DEFAULT 'queued' NOT NULL,
+      attempt_count INTEGER DEFAULT 1 NOT NULL,
+      max_attempts INTEGER DEFAULT 5 NOT NULL,
+      idempotency_key VARCHAR(255) UNIQUE,
+      smtp_response TEXT,
+      error_message TEXT,
+      metadata JSONB,
+      queued_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      last_attempted_at TIMESTAMPTZ,
+      sent_at TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS email_preferences (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      marketing_consent BOOLEAN DEFAULT false NOT NULL,
+      recommendations_consent BOOLEAN DEFAULT true NOT NULL,
+      newsletter_consent BOOLEAN DEFAULT false NOT NULL,
+      booking_reminders_consent BOOLEAN DEFAULT true NOT NULL,
+      unsubscribe_token VARCHAR(128) UNIQUE NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_suppressions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email VARCHAR(255) UNIQUE NOT NULL,
+      reason VARCHAR(64) NOT NULL,
+      source VARCHAR(120),
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      ticket_number VARCHAR(64) UNIQUE NOT NULL,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      user_email VARCHAR(255) NOT NULL,
+      user_name VARCHAR(160) NOT NULL,
+      category VARCHAR(64) NOT NULL,
+      priority VARCHAR(32) DEFAULT 'medium' NOT NULL,
+      status VARCHAR(32) DEFAULT 'open' NOT NULL,
+      subject VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+      payment_reference VARCHAR(120),
+      assigned_to_user_id UUID,
+      resolved_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      ticket_id UUID REFERENCES support_tickets(id) ON DELETE CASCADE NOT NULL,
+      sender_user_id UUID,
+      sender_name VARCHAR(160) NOT NULL,
+      sender_role VARCHAR(32) NOT NULL,
+      message TEXT NOT NULL,
+      is_internal_note BOOLEAN DEFAULT false NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_audit_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      actor_user_id UUID,
+      actor_email VARCHAR(255),
+      action VARCHAR(120) NOT NULL,
+      target_id VARCHAR(120),
+      details JSONB,
+      ip_address VARCHAR(64),
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ;
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS locked_by VARCHAR(120);
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ DEFAULT now();
