@@ -52,6 +52,13 @@ export default function AdminPortalPage() {
 
           <div className="flex items-center gap-3">
             <Link
+              href="/admin/video"
+              className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Video Infrastructure</span>
+            </Link>
+            <Link
               href="/admin/verification"
               className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
             >
@@ -116,7 +123,7 @@ export default function AdminPortalPage() {
         </div>
 
         {/* ADMIN OPERATION MODULES GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Module 1: Mentor Verification Queue */}
           <div className="card-warm bg-white p-6 rounded-3xl border border-border flex flex-col justify-between">
             <div>
@@ -169,7 +176,32 @@ export default function AdminPortalPage() {
             </div>
           </div>
 
-          {/* Module 3: Platform Settings */}
+          {/* Module 3: Video Infrastructure & Multi-Cluster LiveKit */}
+          <div className="card-warm bg-white p-6 rounded-3xl border border-border flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-sage-100 flex items-center justify-center text-forest-900">
+                  <Video className="w-5 h-5" />
+                </div>
+                <span className="badge-match text-[10px] font-bold">80/20 Weighted</span>
+              </div>
+              <h3 className="font-serif text-xl font-bold text-ink-950">Video Infrastructure</h3>
+              <p className="text-xs text-ink-700 mt-1 leading-relaxed">
+                Multi-provider LiveKit routing, circuit breakers, 12 cloud clusters, traffic weights, and room pinning.
+              </p>
+            </div>
+            <div className="pt-6 border-t border-border mt-6">
+              <Link
+                href="/admin/video"
+                className="text-xs font-bold text-forest-900 hover:underline flex items-center gap-1"
+              >
+                <span>Manage LiveKit Clusters</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Module 4: Platform Settings */}
           <div className="card-warm bg-white p-6 rounded-3xl border border-border flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
