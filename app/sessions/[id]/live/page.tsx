@@ -131,6 +131,189 @@ LIMIT 10;
 `,
 };
 
+const TRACK_STARTERS: Record<string, { lang: "javascript" | "python" | "sql"; code: string }> = {
+  sde_backend: {
+    lang: "javascript",
+    code: `// LRU Cache Implementation - Goal: O(1) get & put
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.map = new Map();
+  }
+
+  get(key) {
+    if (!this.map.has(key)) return -1;
+    const val = this.map.get(key);
+    this.map.delete(key);
+    this.map.set(key, val);
+    return val;
+  }
+
+  put(key, value) {
+    if (this.map.has(key)) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.capacity) {
+      const oldest = this.map.keys().next().value;
+      this.map.delete(oldest);
+    }
+  }
+}
+
+// Test Run
+const cache = new LRUCache(2);
+cache.put(1, 100);
+cache.put(2, 200);
+console.log("get(1):", cache.get(1)); // 100
+cache.put(3, 300); // evicts key 2
+console.log("get(2):", cache.get(2)); // -1 (evicted)
+`,
+  },
+  sde_frontend: {
+    lang: "javascript",
+    code: `// Search Typeahead with Debounce & AbortController
+function createTypeahead(endpoint, delay = 200) {
+  let timer = null;
+  let controller = null;
+
+  return function search(query, onComplete) {
+    if (timer) clearTimeout(timer);
+    if (controller) controller.abort();
+
+    controller = new AbortController();
+    timer = setTimeout(async () => {
+      console.log("Fetching results for query:", query);
+      onComplete([query + " - Matched Item 1", query + " - Matched Item 2"]);
+    }, delay);
+  };
+}
+
+const searchFn = createTypeahead("/api/search");
+searchFn("React", (res) => console.log("Search Results:", res));
+`,
+  },
+  system_design: {
+    lang: "javascript",
+    code: `// High-Level URL Shortener Architecture Blueprint
+// 1. Ingestion: Client -> Cloudflare CDN -> Nginx Ingress
+// 2. Compute: Stateless Node.js / Go microservices (Autoscaled)
+// 3. ID Generation: Snowflake / Base62 encode [a-zA-Z0-9]
+// 4. Cache: Redis Cluster (LRU Eviction, 20% hot links = 80% read QPS)
+// 5. Database: Sharded PostgreSQL with Read Replicas
+
+function base62Encode(uniqueId) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let str = "";
+  let n = uniqueId;
+  while (n > 0) {
+    str = chars[n % 62] + str;
+    n = Math.floor(n / 62);
+  }
+  return str.padStart(7, "0");
+}
+
+console.log("Short URL for ID 12530129:", "https://tath.st/" + base62Encode(12530129));
+`,
+  },
+  behavioral: {
+    lang: "javascript",
+    code: `// STAR Method Executive Structure Scratchpad
+// S - Situation: Context, team size, project scale, constraints
+// T - Task: Your specific ownership and objective
+// A - Action: Deep technical / leadership decisions YOU drove
+// R - Result: Quantifiable business outcome, latency gain, team impact
+
+console.log("STAR Framework Active for Tathastu Bar Raiser Evaluation");
+`,
+  },
+  data_science: {
+    lang: "python",
+    code: `# Machine Learning Pipeline & Metric Evaluation
+def evaluate_metrics(y_true, y_pred, threshold=0.5):
+    tp = sum(1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp >= threshold)
+    fp = sum(1 for yt, yp in zip(y_true, y_pred) if yt == 0 and yp >= threshold)
+    fn = sum(1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp < threshold)
+    
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    return {"precision": round(precision, 3), "recall": round(recall, 3), "f1_score": round(f1, 3)}
+
+print("Evaluation:", evaluate_metrics([1, 0, 1, 1], [0.9, 0.2, 0.8, 0.3]))
+`,
+  },
+  product_management: {
+    lang: "javascript",
+    code: `// Product Sense & Metric Decomposition Matrix
+const metricFramework = {
+  northStar: "Mentee Interview-to-Offer Conversion Rate",
+  leadingMetrics: [
+    "Weekly Mock Interviews Completed (> 2)",
+    "Action Item Completion Rate (> 85%)"
+  ],
+  guardrailMetrics: [
+    "Mentor CSAT Rating (> 4.85 / 5.0)",
+    "P99 Meeting Latency (< 100ms)"
+  ]
+};
+
+console.log(JSON.stringify(metricFramework, null, 2));
+`,
+  },
+};
+
+function renderInlineFormatting(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={idx} className="font-bold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={idx} className="px-1 py-0.5 rounded bg-black/50 text-emerald-300 font-mono text-[11px] border border-emerald-900/50">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
+function FormattedChatContent({ content }: { content: string }) {
+  const lines = content.split("\n");
+  return (
+    <div className="space-y-1.5 text-xs leading-relaxed">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-1" />;
+
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h4 key={i} className="font-bold text-sm text-emerald-300 mt-2 mb-1 flex items-center gap-1.5 border-b border-emerald-900/40 pb-1">
+              <span>{trimmed.replace(/^###\s*/, "")}</span>
+            </h4>
+          );
+        }
+
+        if (trimmed.startsWith("✓ ") || trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+          const bulletText = trimmed.replace(/^(✓|-|•)\s*/, "");
+          return (
+            <div key={i} className="flex items-start gap-1.5 pl-1">
+              <span className="text-emerald-400 font-bold text-xs mt-0.5">✓</span>
+              <span>{renderInlineFormatting(bulletText)}</span>
+            </div>
+          );
+        }
+
+        return <p key={i}>{renderInlineFormatting(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
+
 /**
  * Bulletproof Video Player Component
  * Automatically attaches media streams on mount, layout changes, and track updates.
@@ -224,6 +407,8 @@ export default function LiveSessionRoomPage() {
 
   // Role detection: URL query param overrides default user auth for testing 2-way call or AI interviewer
   const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | "ai_interviewer" | null>(null);
+  const [aiTrack, setAiTrack] = useState<string>("sde_backend");
+  const [aiDifficulty, setAiDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -235,6 +420,19 @@ export default function LiveSessionRoomPage() {
       const eng = urlParams.get("engine");
       if (eng === "livekit" || eng === "p2p") {
         setEngineMode(eng);
+      }
+      const t = urlParams.get("track");
+      if (t && ["sde_backend", "sde_frontend", "system_design", "behavioral", "data_science", "product_management"].includes(t)) {
+        setAiTrack(t);
+        const starter = TRACK_STARTERS[t];
+        if (starter) {
+          setCodeContent(starter.code);
+          setSelectedLanguage(starter.lang);
+        }
+      }
+      const d = urlParams.get("diff") as any;
+      if (d && ["Easy", "Medium", "Hard"].includes(d)) {
+        setAiDifficulty(d);
       }
     }
   }, []);
@@ -470,9 +668,9 @@ export default function LiveSessionRoomPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionTrack: "sde_backend",
-          targetRole: "Software Engineer (SDE-2)",
-          difficulty: "Medium",
+          sessionTrack: aiTrack,
+          targetRole: aiTrack === "system_design" ? "Systems Architect" : aiTrack === "sde_frontend" ? "Frontend Engineer" : "Software Engineer (SDE-2)",
+          difficulty: aiDifficulty,
           userMessage: text,
           codeSnippet: code || codeContent,
           history: historyPayload,
@@ -514,15 +712,17 @@ export default function LiveSessionRoomPage() {
     }
   };
 
-  const initAIInterviewer = async () => {
+  const initAIInterviewer = async (trackOverride?: string, diffOverride?: string) => {
     try {
+      const trackToUse = trackOverride || aiTrack;
+      const diffToUse = diffOverride || aiDifficulty;
       const res = await fetch("/api/ai-interviewer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionTrack: "sde_backend",
-          targetRole: "Software Engineer (SDE-2)",
-          difficulty: "Medium",
+          sessionTrack: trackToUse,
+          targetRole: trackToUse === "system_design" ? "Systems Architect" : trackToUse === "sde_frontend" ? "Frontend Engineer" : "Software Engineer (SDE-2)",
+          difficulty: diffToUse,
           userMessage: "",
           history: [],
           candidateName: currentName,
@@ -1559,7 +1759,11 @@ export default function LiveSessionRoomPage() {
         }),
       });
     } catch {}
-    router.push(`/sessions/${bookingId}/summary`);
+    if (isAIInterviewer) {
+      router.push(`/sessions/${bookingId}/summary?role=ai_interviewer&track=${aiTrack}&diff=${aiDifficulty}`);
+    } else {
+      router.push(`/sessions/${bookingId}/summary`);
+    }
   };
 
   return (
@@ -2352,7 +2556,7 @@ export default function LiveSessionRoomPage() {
                                 : "bg-[#152B21] text-[#EDF1E8] rounded-tl-none border border-[#214D3A]"
                             }`}
                           >
-                            {msg.content}
+                            <FormattedChatContent content={msg.content} />
                           </div>
                         </div>
                       );
@@ -2766,12 +2970,16 @@ export default function LiveSessionRoomPage() {
       {showConcludeModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0E2219] border border-[#234C3C] rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <div className="w-12 h-12 rounded-full bg-red-950/80 border border-red-800 flex items-center justify-center mx-auto mb-3">
-              <PhoneOff className="w-6 h-6 text-red-400" />
+            <div className={`w-12 h-12 rounded-full ${isAIInterviewer ? "bg-violet-950/80 border-violet-700" : "bg-red-950/80 border-red-800"} border flex items-center justify-center mx-auto mb-3`}>
+              {isAIInterviewer ? <Bot className="w-6 h-6 text-violet-400" /> : <PhoneOff className="w-6 h-6 text-red-400" />}
             </div>
-            <h3 className="font-bold text-white text-base mb-1">Leave Live Mentorship Room?</h3>
+            <h3 className="font-bold text-white text-base mb-1">
+              {isAIInterviewer ? "Conclude AI Mock Interview?" : "Leave Live Mentorship Room?"}
+            </h3>
             <p className="text-xs text-[#A3B899] mb-5 leading-relaxed">
-              Your shared notes, checklist milestones, and chat messages will be automatically preserved in your session summary.
+              {isAIInterviewer
+                ? "Your complete FAANG rubric scores, code analysis, and feedback report will be generated."
+                : "Your shared notes, checklist milestones, and chat messages will be automatically preserved in your session summary."}
             </p>
             <div className="flex gap-2.5 justify-center">
               <button
@@ -2782,9 +2990,13 @@ export default function LiveSessionRoomPage() {
               </button>
               <button
                 onClick={handleConcludeConfirmed}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold shadow-lg shadow-red-600/30"
+                className={`px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-lg ${
+                  isAIInterviewer
+                    ? "bg-violet-600 hover:bg-violet-500 shadow-violet-600/30"
+                    : "bg-red-600 hover:bg-red-500 shadow-red-600/30"
+                }`}
               >
-                Conclude & View Summary
+                {isAIInterviewer ? "Conclude & View Scorecard" : "Conclude & View Summary"}
               </button>
             </div>
           </div>

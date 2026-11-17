@@ -23,22 +23,38 @@ import {
   Volume2,
 } from "lucide-react";
 
+const TRACKS = [
+  { id: "sde_backend", label: "Backend & DSA", role: "SDE-2 (Backend Engineer)", desc: "Data structures, LRU cache, concurrency & asymptotic optimality" },
+  { id: "sde_frontend", label: "Frontend & UI Systems", role: "Senior Frontend Engineer", desc: "React hooks, virtualized lists, typeahead & web performance" },
+  { id: "system_design", label: "System Design", role: "Distributed Systems Architect", desc: "Global URL shorteners, Redis caching, CDN & high-scale QPS" },
+  { id: "behavioral", label: "Behavioral (STAR)", role: "Engineering Leader / Bar Raiser", desc: "Leadership principles, ownership, conflict resolution & ambiguity" },
+  { id: "data_science", label: "Data Science & ML", role: "Machine Learning Engineer", desc: "Statistical models, feature engineering, loss functions & A/B testing" },
+  { id: "product_management", label: "Product Management", role: "Senior Product Manager", desc: "Product sense, North Star metrics, GTM strategy & roadmap trade-offs" },
+];
+
 export default function MockInterviewPracticePage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [selectedTrack, setSelectedTrack] = useState<"Technical" | "HR" | "System Design" | "Behavioral" | "Mixed">("Technical");
-  const [targetRole, setTargetRole] = useState("SDE (Software Engineer)");
+  const [selectedTrackId, setSelectedTrackId] = useState<string>("sde_backend");
+  const [targetRole, setTargetRole] = useState("SDE-2 (Backend Engineer)");
   const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
   const [mode, setMode] = useState<"live" | "ai">("ai");
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
 
+  const activeTrackObj = TRACKS.find((t) => t.id === selectedTrackId) || TRACKS[0];
+
+  const handleSelectTrack = (track: typeof TRACKS[0]) => {
+    setSelectedTrackId(track.id);
+    setTargetRole(track.role);
+  };
+
   const handleStartInterview = () => {
     // Navigate to live session room for mock interview with selected settings
     if (mode === "ai") {
-      router.push(`/sessions/bk-test-123/live?role=ai_interviewer&track=${selectedTrack.toLowerCase()}&diff=${difficulty}`);
+      router.push(`/sessions/bk-test-123/live?role=ai_interviewer&track=${selectedTrackId}&diff=${difficulty}`);
     } else {
       router.push("/sessions/booking-2/live");
     }
@@ -74,17 +90,19 @@ export default function MockInterviewPracticePage() {
 
         {/* Interview Type Selector Tabs */}
         <div className="flex flex-wrap gap-2 mb-8">
-          {(["Technical", "HR", "System Design", "Behavioral", "Mixed"] as const).map((type) => (
+          {TRACKS.map((t) => (
             <button
-              key={type}
-              onClick={() => setSelectedTrack(type)}
-              className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
-                selectedTrack === type
-                  ? "bg-forest-900 text-white shadow-sm"
+              key={t.id}
+              onClick={() => handleSelectTrack(t)}
+              className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                selectedTrackId === t.id
+                  ? mode === "ai"
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-600/30 ring-2 ring-violet-400/40"
+                    : "bg-forest-900 text-white shadow-sm"
                   : "bg-white text-ink-700 border border-border hover:bg-cream-100"
               }`}
             >
-              {type}
+              <span>{t.label}</span>
             </button>
           ))}
         </div>
@@ -117,8 +135,11 @@ export default function MockInterviewPracticePage() {
                     <Bot className="w-5 h-5 text-violet-400" />
                     <span>Tathastu AI Bar Raiser</span>
                   </h3>
-                  <p className="text-xs text-violet-300/90 mb-4 text-center max-w-md">
-                    Full Voice & Chat Mock Round · Speech-to-Text Answers · Live Code Analysis · Real-time Rubric
+                  <div className="px-3 py-1 rounded-full bg-violet-900/60 border border-violet-500/40 text-[11px] text-violet-200 font-semibold mb-2">
+                    {activeTrackObj.label} · {activeTrackObj.role}
+                  </div>
+                  <p className="text-xs text-violet-300/80 mb-3 text-center max-w-md leading-relaxed">
+                    {activeTrackObj.desc}
                   </p>
 
                   {/* Audio Wave Visualizer Simulation */}
@@ -204,12 +225,13 @@ export default function MockInterviewPracticePage() {
               <select
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-border text-xs text-ink-950 bg-white focus:outline-none focus:ring-2 focus:ring-forest-700"
+                className="w-full p-2.5 rounded-xl border border-border text-xs text-ink-950 bg-white focus:outline-none focus:ring-2 focus:ring-forest-700 font-medium"
               >
-                <option value="SDE (Software Engineer)">SDE (Software Engineer)</option>
-                <option value="Data Scientist">Data Scientist</option>
-                <option value="Product Manager">Product Manager</option>
-                <option value="Frontend Engineer">Frontend Engineer</option>
+                {TRACKS.map((t) => (
+                  <option key={t.id} value={t.role}>
+                    {t.role} ({t.label})
+                  </option>
+                ))}
               </select>
             </div>
 
