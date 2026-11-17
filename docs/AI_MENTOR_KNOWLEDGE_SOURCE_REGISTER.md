@@ -80,3 +80,4 @@
   - **Publisher**: Dr. Aarav Mehta & Tathastu Principal Core
   - **Canonical URL**: `https://mentormaze.aitathastu.com/platform/pedagogy-doctrine`
   - **Operating Mandate**: Zero-fabrication, cognitive scaffolding, and human escalation thresholds.
+

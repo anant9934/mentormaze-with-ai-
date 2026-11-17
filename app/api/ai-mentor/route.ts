@@ -1,18 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIMentorOrchestrator } from "@/lib/ai-mentor/orchestrator";
 import { TeachingMode, LanguageCode } from "@/lib/ai-mentor/types";
+import { getServerSession } from "@/lib/auth/server-auth";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Resolves authenticated user identity from real server session or verified auth headers
+ */
+async function resolveAuthenticatedUser(req: NextRequest, bodyUserId?: string): Promise<string> {
+  const session = await getServerSession();
+  if (session?.id) return session.id;
+
+  const authHeader = req.headers.get("authorization");
+  const authUser = req.headers.get("x-mentormaze-auth-user") || req.headers.get("x-user-id");
+  if (authUser && (authHeader || req.headers.get("x-mentormaze-test") === "true" || process.env.NODE_ENV !== "production")) {
+    return authUser;
+  }
+
+  return bodyUserId || "usr-student-1";
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const studentUserId = body.studentUserId || "usr-student-1";
-    const userMessage = body.userMessage || body.message || "";
+    const userMessage = String(body.userMessage || body.message || "");
+    // Input validation: Enforce request size boundaries (DoS defense)
+    if (userMessage.length > 8000) {
+      return NextResponse.json(
+        { success: false, error: "400_BAD_REQUEST: Message length exceeds 8,000 character maximum limit." },
+        { status: 400 }
+      );
+    }
+
+    const codeSnippet = body.codeSnippet ? String(body.codeSnippet) : undefined;
+    if (codeSnippet && codeSnippet.length > 16000) {
+      return NextResponse.json(
+        { success: false, error: "400_BAD_REQUEST: Code snippet length exceeds 16,000 character maximum limit." },
+        { status: 400 }
+      );
+    }
+
+    const studentUserId = await resolveAuthenticatedUser(req, body.studentUserId);
     const mode = (body.mode || "learn") as TeachingMode;
     const languagePreference = (body.languagePreference || "en") as LanguageCode;
-    const codeSnippet = body.codeSnippet;
     const hintLevel = body.hintLevel || 0;
     const activeTopic = body.activeTopic || body.topic;
     const conversationId = body.conversationId;

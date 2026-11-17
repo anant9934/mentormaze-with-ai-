@@ -81,3 +81,4 @@ MentorMaze supports progressive Server-Sent Events (SSE) streaming via `/api/ai-
   - Cumulative USD cost
   - Recent provider error timestamps
 - **Zero-Fabrication Guarantee:** When running in deterministic fallback mode, a transparent banner informs the student that local rule-based pedagogy is active.
+

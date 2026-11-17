@@ -24,6 +24,7 @@ import { StudentMemoryService } from "./student-memory-service";
 import { HumanEscalationService } from "./human-escalation-service";
 import { SafetyGuardrails } from "./safety-guardrails";
 import { ConversationStore } from "./conversation-store";
+import { CurriculumKnowledgeService } from "./curriculum-knowledge";
 
 export interface OrchestratorTurnInput {
   studentUserId: string;
@@ -247,51 +248,61 @@ export class AIMentorOrchestrator {
 
     // Branch E: Practice Mode (Socratic Scaffolding)
     else if (mode === "practice" || pedagogyDecision.strategy === "socratic_guidance" || pedagogyDecision.strategy === "progressive_hints") {
-      const lower = sanitizedMessage.toLowerCase();
-      const isKnapsack = lower.includes("knapsack") || lower.includes("dp") || lower.includes("dynamic programming");
+      const curriculumMatch = CurriculumKnowledgeService.findMatchingTopic(sanitizedMessage);
+      const hintIdx = Math.min(2, Math.max(0, (pedagogyDecision.hintLevel || 1) - 1));
 
-      if (isKnapsack) {
-        if (pedagogyDecision.hintLevel === 1) {
-          responseText = `### 💡 Progressive Hint 1 of 3: Knapsack Decision Invariant\n\n`;
-          responseText += `Before looking at any table or recurrence, isolate the single decision you have to make for each item:\n\n`;
-          responseText += `> *For item $i$ with weight $w_i$ and value $v_i$, what are the only two choices you can make with respect to your current remaining capacity $W$?*\n\n`;
-          responseText += `Can you state these two choices in plain English without writing any loops yet?`;
-          voiceText = "For item i with weight w and value v, what are the only two choices you can make with your remaining capacity? Answer in plain words.";
-        } else if (pedagogyDecision.hintLevel === 2) {
-          responseText = `### 💡 Progressive Hint 2 of 3: Overlapping Subproblems & State Space\n\n`;
-          responseText += `Spot on! You either **include** the item (if $w_i \\le W$) or **exclude** it.\n\n`;
-          responseText += `- If excluded: Value is $\\text{dp}[i-1][W]$.\n`;
-          responseText += `- If included: Value is $v_i + \\text{dp}[i-1][W - w_i]$.\n\n`;
-          responseText += `What are the dimensions of the memoization table you need, and what is the base case when capacity is zero?`;
-          voiceText = "Hint 2: When included, your value is v plus the optimal subproblem for remaining capacity. What are the dimensions of your memoization table?";
-        } else {
-          responseText = `### 💡 Progressive Hint 3 of 3: Space Optimization from 2D to 1D\n\n`;
-          responseText += `You have the core recurrence! Notice that each row only depends on the previous row $(i-1)$:\n\n`;
-          responseText += `$$\\text{dp}[w] = \\max(\\text{dp}[w], v_i + \\text{dp}[w - w_i])$$\n\n`;
-          responseText += `⚠️ **Crucial Invariant**: In 0/1 Knapsack, you must iterate the weight loop backwards (from $W$ down to $w_i$). Why? (Hint: What would happen if you iterated forward?)`;
-          voiceText = "Hint 3: In 0/1 Knapsack, you can optimize to a single 1D array, but you must iterate the capacity backwards. Why is backward traversal required?";
-        }
+      if (curriculumMatch) {
+        responseText = `### 💡 Progressive Hint ${hintIdx + 1} of 3: ${curriculumMatch.title}\n\n`;
+        responseText += `${curriculumMatch.socraticHints[hintIdx]}\n\n`;
+        responseText += `Reflect on this constraint before writing any code. What invariant must hold true here?`;
+        voiceText = curriculumMatch.socraticHints[hintIdx];
       } else {
-        // Two Pointers default practice
-        if (pedagogyDecision.hintLevel === 1) {
-          responseText = `### 💡 Progressive Hint 1 of 3: Two Pointers & Monotonicity\n\n`;
-          responseText += `Before writing code, consider the fundamental invariant of this problem:\n\n`;
-          responseText += `> *What property must an array possess so that moving a left pointer inward always increases the sum, and moving a right pointer inward always decreases the sum?*\n\n`;
-          responseText += `Take 30 seconds to reflect on this. If the array is unsorted, what would happen if you greedily moved a pointer?`;
-          voiceText = "Here is Hint 1. What property must an array possess so that moving a pointer gives you a predictable direction? Reflect on whether the array needs to be sorted first.";
-        } else if (pedagogyDecision.hintLevel === 2) {
-          responseText = `### 💡 Progressive Hint 2 of 3: Sorted Invariant & Space Trade-Offs\n\n`;
-          responseText += `Exactly! A sorted array guarantees directional predictability.\n\n`;
-          responseText += `- If \`arr[left] + arr[right] < target\`, the current sum is too small. Which pointer MUST advance?\n`;
-          responseText += `- If \`arr[left] + arr[right] > target\`, the current sum is too large. Which pointer MUST advance?\n\n`;
-          responseText += `What is the time complexity of sorting the array first versus using a Hash Map?`;
-          voiceText = "Hint 2: If the sum is too small, which pointer must advance? And what are the time complexity tradeoffs of sorting versus a Hash Map?";
+        const lower = sanitizedMessage.toLowerCase();
+        const isKnapsack = lower.includes("knapsack") || lower.includes("dp") || lower.includes("dynamic programming");
+
+        if (isKnapsack) {
+          if (pedagogyDecision.hintLevel === 1) {
+            responseText = `### 💡 Progressive Hint 1 of 3: Knapsack Decision Invariant\n\n`;
+            responseText += `Before looking at any table or recurrence, isolate the single decision you have to make for each item:\n\n`;
+            responseText += `> *For item $i$ with weight $w_i$ and value $v_i$, what are the only two choices you can make with respect to your current remaining capacity $W$?*\n\n`;
+            responseText += `Can you state these two choices in plain English without writing any loops yet?`;
+            voiceText = "For item i with weight w and value v, what are the only two choices you can make with your remaining capacity? Answer in plain words.";
+          } else if (pedagogyDecision.hintLevel === 2) {
+            responseText = `### 💡 Progressive Hint 2 of 3: Overlapping Subproblems & State Space\n\n`;
+            responseText += `Spot on! You either **include** the item (if $w_i \\le W$) or **exclude** it.\n\n`;
+            responseText += `- If excluded: Value is $\\text{dp}[i-1][W]$.\n`;
+            responseText += `- If included: Value is $v_i + \\text{dp}[i-1][W - w_i]$.\n\n`;
+            responseText += `What are the dimensions of the memoization table you need, and what is the base case when capacity is zero?`;
+            voiceText = "Hint 2: When included, your value is v plus the optimal subproblem for remaining capacity. What are the dimensions of your memoization table?";
+          } else {
+            responseText = `### 💡 Progressive Hint 3 of 3: Space Optimization from 2D to 1D\n\n`;
+            responseText += `You have the core recurrence! Notice that each row only depends on the previous row $(i-1)$:\n\n`;
+            responseText += `$$\\text{dp}[w] = \\max(\\text{dp}[w], v_i + \\text{dp}[w - w_i])$$\n\n`;
+            responseText += `⚠️ **Crucial Invariant**: In 0/1 Knapsack, you must iterate the weight loop backwards (from $W$ down to $w_i$). Why? (Hint: What would happen if you iterated forward?)`;
+            voiceText = "Hint 3: In 0/1 Knapsack, you can optimize to a single 1D array, but you must iterate the capacity backwards. Why is backward traversal required?";
+          }
         } else {
-          responseText = `### 💡 Progressive Hint 3 of 3: The Hash Map Complement Pattern\n\n`;
-          responseText += `If you want to solve this in strict $O(N)$ linear time without mutating or sorting the original array, use the **Complement Pattern**:\n\n`;
-          responseText += `$$\\text{complement} = \\text{target} - \\text{nums}[i]$$\n\n`;
-          responseText += `For every element, check if \`seen.has(complement)\`. If yes, you found the pair in a single pass! If no, store \`seen.set(nums[i], i)\`. Can you implement this loop?`;
-          voiceText = "Hint 3: Use the complement pattern. For each element, check if target minus current number is already in your Hash Map.";
+          // Two Pointers default practice
+          if (pedagogyDecision.hintLevel === 1) {
+            responseText = `### 💡 Progressive Hint 1 of 3: Two Pointers & Monotonicity\n\n`;
+            responseText += `Before writing code, consider the fundamental invariant of this problem:\n\n`;
+            responseText += `> *What property must an array possess so that moving a left pointer inward always increases the sum, and moving a right pointer inward always decreases the sum?*\n\n`;
+            responseText += `Take 30 seconds to reflect on this. If the array is unsorted, what would happen if you greedily moved a pointer?`;
+            voiceText = "Here is Hint 1. What property must an array possess so that moving a pointer gives you a predictable direction? Reflect on whether the array needs to be sorted first.";
+          } else if (pedagogyDecision.hintLevel === 2) {
+            responseText = `### 💡 Progressive Hint 2 of 3: Sorted Invariant & Space Trade-Offs\n\n`;
+            responseText += `Exactly! A sorted array guarantees directional predictability.\n\n`;
+            responseText += `- If \`arr[left] + arr[right] < target\`, the current sum is too small. Which pointer MUST advance?\n`;
+            responseText += `- If \`arr[left] + arr[right] > target\`, the current sum is too large. Which pointer MUST advance?\n\n`;
+            responseText += `What is the time complexity of sorting the array first versus using a Hash Map?`;
+            voiceText = "Hint 2: If the sum is too small, which pointer must advance? And what are the time complexity tradeoffs of sorting versus a Hash Map?";
+          } else {
+            responseText = `### 💡 Progressive Hint 3 of 3: The Hash Map Complement Pattern\n\n`;
+            responseText += `If you want to solve this in strict $O(N)$ linear time without mutating or sorting the original array, use the **Complement Pattern**:\n\n`;
+            responseText += `$$\\text{complement} = \\text{target} - \\text{nums}[i]$$\n\n`;
+            responseText += `For every element, check if \`seen.has(complement)\`. If yes, you found the pair in a single pass! If no, store \`seen.set(nums[i], i)\`. Can you implement this loop?`;
+            voiceText = "Hint 3: Use the complement pattern. For each element, check if target minus current number is already in your Hash Map.";
+          }
         }
       }
 
@@ -364,9 +375,12 @@ ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on ve
         const fallbackBanner = `> ℹ️ **Notice**: Running on MentorMaze Local Pedagogical Rule-Engine (Deterministic Fallback Mode). Generative LLM provider keys (GEMINI_API_KEY, OPENAI_API_KEY) are not configured in the server environment.\n\n`;
 
         const lowerMsg = sanitizedMessage.toLowerCase();
+        const curriculumMatch = CurriculumKnowledgeService.findMatchingTopic(sanitizedMessage);
 
-        // Dynamic topic detection for local fallback
-        if (lowerMsg.includes("two pointer") || lowerMsg.includes("two-pointer") || lowerMsg.includes("sorted array")) {
+        if (curriculumMatch) {
+          responseText = fallbackBanner + curriculumMatch.conceptExplanation;
+          voiceText = `Here is a foundational deep-dive into ${curriculumMatch.title}. What operational trade-offs stand out to you?`;
+        } else if (lowerMsg.includes("two pointer") || lowerMsg.includes("two-pointer") || lowerMsg.includes("sorted array")) {
           responseText = fallbackBanner + `### 📚 Deep-Dive: Two Pointers Pattern & Invariant Maintenance\n\n`;
           responseText += `#### **1. Intuition (Why This Matters)**\n`;
           responseText += `The Two Pointers pattern replaces brute-force nested loops ($O(N^2)$) with linear-time directional traversal ($O(N)$) and constant auxiliary space ($O(1)$).\n\n`;
@@ -436,7 +450,22 @@ ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on ve
 
     // Phase 5: Formulate Post-Interaction Learning Check
     const lowerMessage = sanitizedMessage.toLowerCase();
-    if (mode === "learn" || mode === "practice") {
+    const checkTopic = CurriculumKnowledgeService.findMatchingTopic(sanitizedMessage);
+
+    if (checkTopic) {
+      postInteractionCheck = {
+        question: checkTopic.conceptCheck.question,
+        expectedKeyPoints: checkTopic.conceptCheck.expectedKeyPoints,
+        options: [
+          `Primary: ${checkTopic.conceptCheck.expectedKeyPoints[0]}`,
+          `Secondary: Invariant maintenance across state transitions`,
+          `Alternative: Unconstrained linear scaling`,
+          `None of the above`,
+        ],
+        correctOptionIndex: 0,
+        explanation: `Core invariant involves: ${checkTopic.conceptCheck.expectedKeyPoints.join(", ")}.`,
+      };
+    } else if (mode === "learn" || mode === "practice") {
       if (lowerMessage.includes("two pointer") || lowerMessage.includes("two-pointer")) {
         postInteractionCheck = {
           question: "Under what condition does moving the left pointer inward guarantee a monotonic increase in sum?",

@@ -62,3 +62,4 @@ $$\text{SQ} = w_1 \cdot \text{ScaffoldPreservation} + w_2 \cdot \text{Progressiv
 - **Prompt:** *"Should I update or delete Redis key on database write?"*
 - **Ground Truth**: Invalidate/delete to eliminate concurrent update interleaving anomalies.
 - **Result**: **PASS** (Accuracy: 100%, Groundedness: 100%, Sources: `doc-sys-01`).
+

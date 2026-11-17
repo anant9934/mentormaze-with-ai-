@@ -1,9 +1,11 @@
 /**
- * Persistent Student Memory Service
- * Structured Memory Lifecycle (Create, Inspect, Correct, Delete, Expire) with Strict Provenance & Cross-User Security Isolation.
- * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Student Memory Lifecycle Service
+ * Manages persistent preferences, goals, diagnosed gaps, and explicit student-confirmed facts
+ * Brand: MentorMaze by AI Tathastu
  */
 
+import fs from "fs";
+import path from "path";
 import { ProvenanceType } from "./types";
 
 export type MemoryCategory =
@@ -14,11 +16,7 @@ export type MemoryCategory =
   | "active_projects"
   | "career_objectives"
   | "interview_prep_progress"
-  | "saved_facts"
-  | "goal"
-  | "preference"
-  | "gap"
-  | "repeated_mistake";
+  | "saved_facts";
 
 export interface StudentMemoryItem {
   id: string;
@@ -26,7 +24,7 @@ export interface StudentMemoryItem {
   category: MemoryCategory;
   key: string;
   value: string;
-  source: string;
+  source?: "student_explicit" | "mentor_verified" | "assessment_result" | "system_inferred" | "user_explicit";
   confidence: number;
   provenance: ProvenanceType;
   studentConfirmed: boolean;
@@ -39,11 +37,45 @@ export interface StudentMemoryItem {
 
 export class StudentMemoryService {
   private static memoryStore: Map<string, StudentMemoryItem[]> = new Map();
+  private static storageFilePath = path.resolve(process.cwd(), ".mentormaze-memories.json");
+  private static isInitialized = false;
+
+  private static ensureLoaded(): void {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
+
+    try {
+      if (fs.existsSync(this.storageFilePath)) {
+        const raw = fs.readFileSync(this.storageFilePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          for (const [userId, items] of Object.entries(parsed)) {
+            this.memoryStore.set(userId, items as StudentMemoryItem[]);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[StudentMemoryService] Failed to load memories from disk:", err);
+    }
+  }
+
+  private static persistToDisk(): void {
+    try {
+      const obj: Record<string, StudentMemoryItem[]> = {};
+      for (const [userId, items] of this.memoryStore.entries()) {
+        obj[userId] = items;
+      }
+      fs.writeFileSync(this.storageFilePath, JSON.stringify(obj, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("[StudentMemoryService] Failed to write memories to disk:", err);
+    }
+  }
 
   /**
    * Retrieves all active, non-expired memories for a student with ownership authorization
    */
   public static getMemories(studentUserId: string, requestingUserId?: string): StudentMemoryItem[] {
+    this.ensureLoaded();
     // Cross-user privacy isolation
     if (requestingUserId && requestingUserId !== studentUserId) {
       throw new Error("403_FORBIDDEN: You do not have permission to access another student's memory profile.");
@@ -108,7 +140,7 @@ export class StudentMemoryService {
               studentUserId,
               category: "career_objectives",
               key: "Target Role",
-              value: "SDE-1 at Tier-1 Tech Firm (Google, Microsoft, or top-tier product startup)",
+              value: "Software Development Engineer (SDE-1) at Google or Microsoft Core Systems",
               source: "student_explicit",
               confidence: 1.0,
               provenance: "student_reported",
@@ -122,8 +154,8 @@ export class StudentMemoryService {
               id: `mem-${studentUserId}-2`,
               studentUserId,
               category: "learning_preferences",
-              key: "Learning Style",
-              value: "Prefers code examples and intuitive analogies before mathematical proofs",
+              key: "Learning Modality",
+              value: "Prefers Socratic questioning and progressive hints before seeing full implementation code",
               source: "student_explicit",
               confidence: 0.95,
               provenance: "student_reported",
@@ -137,8 +169,8 @@ export class StudentMemoryService {
               id: `mem-${studentUserId}-3`,
               studentUserId,
               category: "confirmed_weaknesses",
-              key: "Known Weakness",
-              value: "Formulating recurrence relations for 2D Dynamic Programming knapsack problems",
+              key: "Identified Knowledge Gap",
+              value: "Dynamic Programming (0/1 Knapsack space optimization) and distributed consensus (Raft)",
               source: "mentor_verified",
               confidence: 0.88,
               provenance: "mentor_assessed",
@@ -165,6 +197,7 @@ export class StudentMemoryService {
             },
           ];
       this.memoryStore.set(studentUserId, initial);
+      this.persistToDisk();
     }
 
     const all = this.memoryStore.get(studentUserId) || [];
@@ -187,6 +220,7 @@ export class StudentMemoryService {
     studentConfirmed: boolean = true,
     requestingUserId?: string
   ): StudentMemoryItem {
+    this.ensureLoaded();
     if (requestingUserId && requestingUserId !== studentUserId) {
       throw new Error("403_FORBIDDEN: You do not have permission to modify another student's memory profile.");
     }
@@ -199,6 +233,7 @@ export class StudentMemoryService {
     const now = new Date().toISOString();
     const expiresAt = ttlHours ? new Date(Date.now() + ttlHours * 3600000).toISOString() : undefined;
 
+    let res: StudentMemoryItem;
     if (existingIndex >= 0) {
       memories[existingIndex].value = value;
       memories[existingIndex].confidence = confidence;
@@ -206,7 +241,7 @@ export class StudentMemoryService {
       memories[existingIndex].lastUpdated = now;
       memories[existingIndex].updatedAt = now;
       if (expiresAt) memories[existingIndex].expiresAt = expiresAt;
-      return memories[existingIndex];
+      res = memories[existingIndex];
     } else {
       const newItem: StudentMemoryItem = {
         id: `mem-${studentUserId}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -226,39 +261,52 @@ export class StudentMemoryService {
       };
       memories.push(newItem);
       this.memoryStore.set(studentUserId, memories);
-      return newItem;
+      res = newItem;
     }
+
+    this.persistToDisk();
+    return res;
   }
 
   /**
    * Delete a memory item with user consent and authorization
    */
   public static deleteMemory(studentUserId: string, memoryId: string, requestingUserId?: string): boolean {
+    this.ensureLoaded();
     if (requestingUserId && requestingUserId !== studentUserId) {
       throw new Error("403_FORBIDDEN: You do not have permission to delete another student's memory profile.");
     }
 
     const memories = this.getMemories(studentUserId);
     const filtered = memories.filter((m) => m.id !== memoryId);
-    this.memoryStore.set(studentUserId, filtered);
-    return filtered.length !== memories.length;
+
+    if (filtered.length !== memories.length) {
+      this.memoryStore.set(studentUserId, filtered);
+      this.persistToDisk();
+      return true;
+    }
+    return false;
   }
 
   /**
-   * Confirm an inferred memory item as student-verified
+   * Confirm an inferred fact
    */
   public static confirmMemory(studentUserId: string, memoryId: string, requestingUserId?: string): boolean {
+    this.ensureLoaded();
     if (requestingUserId && requestingUserId !== studentUserId) {
-      throw new Error("403_FORBIDDEN: You do not have permission to confirm another student's memory.");
+      throw new Error("403_FORBIDDEN: You do not have permission to confirm another student's memory profile.");
     }
 
     const memories = this.getMemories(studentUserId);
     const target = memories.find((m) => m.id === memoryId);
-    if (!target) return false;
-
-    target.studentConfirmed = true;
-    target.lastUpdated = new Date().toISOString();
-    target.updatedAt = target.lastUpdated;
-    return true;
+    if (target) {
+      target.studentConfirmed = true;
+      target.confidence = 1.0;
+      target.lastUpdated = new Date().toISOString();
+      target.updatedAt = target.lastUpdated;
+      this.persistToDisk();
+      return true;
+    }
+    return false;
   }
 }

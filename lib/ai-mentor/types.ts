@@ -112,6 +112,7 @@ export interface StructuredTurnResponse {
     options: string[];
     correctOptionIndex: number;
     explanation: string;
+    expectedKeyPoints?: string[];
   };
 }
 

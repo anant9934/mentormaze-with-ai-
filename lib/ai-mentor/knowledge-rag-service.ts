@@ -321,12 +321,20 @@ export class KnowledgeRAGService {
         }
       }
 
-      if (matchCount > 0) {
-        const normalizedScore = Math.min(1.0, matchCount / 5);
+      if (matchCount > 0 && rawTerms.length > 0) {
+        const uniqueMatches = new Set(matchedKeywords).size;
+        const termCoverage = uniqueMatches / rawTerms.length;
+
+        // Discard spurious 1-word accidental matches on long queries
+        if (rawTerms.length >= 3 && uniqueMatches < 2 && termCoverage < 0.3) {
+          continue;
+        }
+
+        const normalizedScore = Math.min(1.0, (matchCount / 5) * (0.5 + 0.5 * termCoverage));
         if (normalizedScore >= minThreshold) {
           scored.push({
             doc,
-            score: normalizedScore,
+            score: Number(normalizedScore.toFixed(2)),
             matchedKeywords: Array.from(new Set(matchedKeywords)),
             citation: {
               sourceTitle: doc.title,

@@ -69,3 +69,4 @@ Through the **Memory & Privacy** tab in `/ai-mentor`, students exercise complete
 - **No Third-Party Model Training:** Prompts sent to external provider APIs (Google Gemini, OpenAI, Anthropic) utilize enterprise API endpoints governed by zero-retention data agreements. Student chats are never used to train public foundational models.
 - **PII Scrubbing:** The safety layer automatically scrubs Indian phone numbers, Aadhaar numbers, and email addresses before prompt assembly.
 - **No Secret Exposure:** API credentials remain strictly confined to the server environment.
+
