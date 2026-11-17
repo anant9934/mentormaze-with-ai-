@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIMentorOrchestrator } from "@/lib/ai-mentor/orchestrator";
+import { ModelProviderRouter } from "@/lib/ai-mentor/model-provider-router";
 import { TeachingMode, LanguageCode } from "@/lib/ai-mentor/types";
 import { getServerSession } from "@/lib/auth/server-auth";
 
@@ -149,5 +150,24 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const providers = ModelProviderRouter.getProviderStatus();
+    const activeProvider = Object.keys(providers).find((k) => providers[k].isAvailable) || "gemini";
+    return NextResponse.json({
+      success: true,
+      activeProvider,
+      providers,
+      hybridPolicy: {
+        description: "Adaptive hybrid routing between local fine-tuned 2B model, Gemini 2.0 Flash, and deterministic pedagogical fallback.",
+        local2BModel: "MentorMaze-2B (Qwen 3.5 2B base + SFT LoRA)",
+        cloudModel: "Google Gemini 2.0 Flash",
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

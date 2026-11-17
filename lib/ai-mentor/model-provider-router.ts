@@ -518,7 +518,7 @@ export class ModelProviderRouter {
           requestId,
           timestamp: new Date().toISOString(),
           provider: "gemini",
-          model: "gemini-2.5-flash",
+          model: "gemini-2.0-flash",
           inferenceMode: "deterministic",
           latencyMs: Number((performance.now() - t0).toFixed(2)),
           tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
@@ -704,77 +704,97 @@ export class ModelProviderRouter {
     ].filter(Boolean) as string[];
 
     const apiKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)] || process.env.GEMINI_API_KEY!;
-    const model = payload.taskCategory === "coding" ? "gemini-2.5-pro" : "gemini-2.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const candidateModels = payload.taskCategory === "coding"
+      ? ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
+      : ["gemini-2.0-flash", "gemini-1.5-flash"];
 
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
-    );
+    let lastError: Error | null = null;
+    for (const model of candidateModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    // If caller provided an abort signal, chain it
-    if (payload.signal) {
-      payload.signal.addEventListener("abort", () => controller.abort());
-    }
+      const controller = new AbortController();
+      const timeout = setTimeout(
+        () => controller.abort(),
+        payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
+      );
 
-    try {
-      const contents = payload.messages.map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: payload.systemPrompt }] },
-          contents,
-          generationConfig: {
-            temperature: payload.temperature ?? 0.3,
-            maxOutputTokens: payload.maxTokens ?? 2048,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        let errorType: ProviderErrorType = "UNKNOWN";
-        if (response.status === 401 || response.status === 403) errorType = "AUTH_ERROR";
-        else if (response.status === 429) errorType = "RATE_LIMIT";
-        else if (response.status >= 500) errorType = "MODEL_UNAVAILABLE";
-
-        throw new Error(`Gemini API Error [${response.status} ${errorType}]: ${errText}`);
+      // If caller provided an abort signal, chain it
+      if (payload.signal) {
+        payload.signal.addEventListener("abort", () => controller.abort());
       }
 
-      const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const elapsed = Number((performance.now() - t0).toFixed(2));
-      
-      const promptTokens = data?.usageMetadata?.promptTokenCount || Math.round(payload.systemPrompt.length / 4);
-      const completionTokens = data?.usageMetadata?.candidatesTokenCount || Math.round(text.length / 4);
-      const totalTokens = data?.usageMetadata?.totalTokenCount || (promptTokens + completionTokens);
+      try {
+        const contents = payload.messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
 
-      const tokenUsage: TokenUsage = { promptTokens, completionTokens, totalTokens };
-      const cost = this.calculateCost("gemini", promptTokens, completionTokens);
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: payload.systemPrompt }] },
+            contents,
+            generationConfig: {
+              temperature: payload.temperature ?? 0.3,
+              maxOutputTokens: payload.maxTokens ?? 2048,
+            },
+          }),
+        });
 
-      return {
-        requestId,
-        content: text,
-        provider: "gemini",
-        model,
-        inferenceMode: "generative",
-        latencyMs: elapsed,
-        tokenUsage,
-        tokensEstimate: totalTokens,
-        estimatedCostUsd: cost,
-        isFallback: false,
-        rawResponse: data,
-      };
-    } finally {
-      clearTimeout(timeout);
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          const errText = await response.text();
+          let errorType: ProviderErrorType = "UNKNOWN";
+          if (response.status === 401 || response.status === 403) errorType = "AUTH_ERROR";
+          else if (response.status === 429) errorType = "RATE_LIMIT";
+          else if (response.status >= 500) errorType = "MODEL_UNAVAILABLE";
+
+          // If 404, try next candidate model
+          if (response.status === 404) {
+            lastError = new Error(`Gemini API Error [${response.status} ${errorType}]: ${errText}`);
+            continue;
+          }
+
+          throw new Error(`Gemini API Error [${response.status} ${errorType}]: ${errText}`);
+        }
+
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const elapsed = Number((performance.now() - t0).toFixed(2));
+        
+        const promptTokens = data?.usageMetadata?.promptTokenCount || Math.round(payload.systemPrompt.length / 4);
+        const completionTokens = data?.usageMetadata?.candidatesTokenCount || Math.round(text.length / 4);
+        const totalTokens = data?.usageMetadata?.totalTokenCount || (promptTokens + completionTokens);
+
+        const tokenUsage: TokenUsage = { promptTokens, completionTokens, totalTokens };
+        const cost = this.calculateCost("gemini", promptTokens, completionTokens);
+
+        return {
+          requestId,
+          content: text,
+          provider: "gemini",
+          model,
+          inferenceMode: "generative",
+          latencyMs: elapsed,
+          tokenUsage,
+          tokensEstimate: totalTokens,
+          estimatedCostUsd: cost,
+          isFallback: false,
+          rawResponse: data,
+        };
+      } catch (err: any) {
+        clearTimeout(timeout);
+        lastError = err;
+        if (!err.message?.includes("404")) {
+          throw err;
+        }
+      }
     }
+
+    throw lastError || new Error("Gemini invocation failed across all candidate models.");
   }
 
   /**
