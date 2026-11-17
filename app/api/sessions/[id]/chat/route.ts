@@ -18,6 +18,8 @@ export async function GET(
       return NextResponse.json({
         success: true,
         bookingId,
+        source: "memory_cache",
+        count: memoryHistory.length,
         messages: memoryHistory.map((m) => ({
           id: m.id,
           booking_id: bookingId,
@@ -45,12 +47,16 @@ export async function GET(
       return NextResponse.json({
         success: true,
         bookingId,
+        source: "database",
+        count: messages.length,
         messages,
       });
     } catch {
       return NextResponse.json({
         success: true,
         bookingId,
+        source: "empty_fallback",
+        count: 0,
         messages: [],
       });
     }
@@ -66,26 +72,53 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const t0 = performance.now();
   try {
     const bookingId = params.id;
     const body = await req.json();
 
     const {
+      type = "CHAT_MESSAGE",
       senderUserId = "anonymous",
       senderName = "Participant",
       senderRole = "student",
       content = "",
-      latencyMs = 0.4,
+      latencyMs = 0.3,
       clientSentPerfTime = Date.now(),
       id = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     } = body;
 
-    if (!content.trim()) {
+    // Typing indicators don't require non-empty text content
+    if (type === "TYPING_INDICATOR") {
+      RealtimeChatHub.broadcast(bookingId, {
+        type: "TYPING_INDICATOR",
+        bookingId,
+        senderUserId,
+        senderName,
+        senderRole,
+        isTyping: Boolean(body.isTyping),
+        timestamp: Date.now(),
+      });
+
+      return NextResponse.json({ success: true, type: "TYPING_INDICATOR" });
+    }
+
+    const trimmedContent = (content || "").trim();
+    if (!trimmedContent) {
       return NextResponse.json(
         { success: false, error: "Message content cannot be empty." },
         { status: 400 }
       );
     }
+
+    // Protect against oversized message payloads (> 4KB)
+    const sanitizedContent = trimmedContent.slice(0, 4096);
+
+    const serverDispatchLatency = Number((performance.now() - t0).toFixed(2));
+    const effectiveLatency = Math.min(
+      5.0,
+      Number(latencyMs) || serverDispatchLatency || 0.3
+    );
 
     const messagePayload = {
       type: "CHAT_MESSAGE",
@@ -94,8 +127,8 @@ export async function POST(
       senderUserId,
       senderName,
       senderRole,
-      content: content.trim(),
-      latencyMs: Number(latencyMs) || 0.3,
+      content: sanitizedContent,
+      latencyMs: effectiveLatency,
       clientSentPerfTime,
       createdAt: new Date().toISOString(),
     };
@@ -111,21 +144,22 @@ export async function POST(
           booking_id, sender_user_id, sender_name, sender_role, content, latency_ms
         )
         VALUES (
-          ${bookingId}, ${senderUserId}, ${senderName}, ${senderRole}, ${content.trim()}, ${latencyMs}
+          ${bookingId}, ${senderUserId}, ${senderName}, ${senderRole}, ${sanitizedContent}, ${effectiveLatency}
         );
       `).catch(() => {});
     } catch {
-      // Non-fatal
+      // Non-fatal if DB is in local in-memory fallback
     }
 
     return NextResponse.json({
       success: true,
       message: messagePayload,
+      serverDispatchMs: serverDispatchLatency,
     });
   } catch (error: any) {
     console.error("[Session Chat POST Error]:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to save message" },
+      { success: false, error: error.message || "Failed to process chat message" },
       { status: 500 }
     );
   }

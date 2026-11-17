@@ -97,3 +97,4 @@ describe("MentorMaze 100-Factor Matchmaking Intelligence Engine", () => {
     expect(budgetRankings[0].dimensions.economic_value.weight).toBeCloseTo(0.25, 2);
   });
 });
+

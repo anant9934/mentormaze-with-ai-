@@ -48,11 +48,43 @@ export default function MatchingManagementPage() {
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [activeCatalogTab, setActiveCatalogTab] = useState<FactorDimensionId>("technical_skills");
+  const [factorSearch, setFactorSearch] = useState("");
 
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
 
+  const normalizeWeights = () => {
+    const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+    if (sum === 0) return;
+    const normalized: Record<FactorDimensionId, number> = {} as any;
+    let running = 0;
+    const keys = Object.keys(weights) as FactorDimensionId[];
+    keys.forEach((k, idx) => {
+      if (idx === keys.length - 1) {
+        normalized[k] = Math.max(0, 100 - running);
+      } else {
+        const val = Math.round((weights[k] / sum) * 100);
+        normalized[k] = val;
+        running += val;
+      }
+    });
+    setWeights(normalized);
+  };
+
   const student = store.getStudentProfile("user-student-1");
   const approvedMentors = store.getMentors(true);
+
+  const filteredFactors = useMemo(() => {
+    if (factorSearch.trim()) {
+      const q = factorSearch.toLowerCase();
+      return HUNDRED_MATCH_FACTORS.filter(
+        (f) =>
+          f.name.toLowerCase().includes(q) ||
+          f.code.toLowerCase().includes(q) ||
+          f.description.toLowerCase().includes(q)
+      );
+    }
+    return HUNDRED_MATCH_FACTORS.filter((f) => f.dimension === activeCatalogTab);
+  }, [activeCatalogTab, factorSearch]);
 
   // Live simulation results based on current weights
   const { simulatedRankings, executionMs } = useMemo(() => {
@@ -176,15 +208,26 @@ export default function MatchingManagementPage() {
             <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wider block">
               Weight Allocation
             </span>
-            <span
-              className={`text-2xl font-bold font-mono mt-1 block ${
-                totalWeight === 100 ? "text-emerald-700" : "text-amber-600"
-              }`}
-            >
-              {totalWeight}%
-            </span>
-            <span className="text-[10px] text-ink-500">
-              {totalWeight === 100 ? "Fully Normalized (100%)" : `Adjust to 100% (currently ${totalWeight}%)`}
+            <div className="flex items-center justify-between mt-1">
+              <span
+                className={`text-2xl font-bold font-mono ${
+                  totalWeight === 100 ? "text-emerald-700" : "text-amber-600"
+                }`}
+              >
+                {totalWeight}%
+              </span>
+              {totalWeight !== 100 && (
+                <button
+                  onClick={normalizeWeights}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-[10px] transition-all shadow-xs"
+                  title="Scale all weights proportionally to equal exactly 100%"
+                >
+                  Normalize to 100%
+                </button>
+              )}
+            </div>
+            <span className="text-[10px] text-ink-500 block mt-0.5">
+              {totalWeight === 100 ? "Fully Normalized (100%)" : `Total is ${totalWeight}% (Click normalize)`}
             </span>
           </div>
 
@@ -357,65 +400,94 @@ export default function MatchingManagementPage() {
         {/* 100-FACTOR CATALOG EXPLORER (FULL AUDIT TABLE)           */}
         {/* ======================================================== */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-border shadow-sm space-y-6">
-          <div>
-            <h3 className="font-serif text-xl font-bold text-ink-950">
-              100-Factor Intelligence Taxonomy Explorer
-            </h3>
-            <p className="text-xs text-ink-600 mt-0.5">
-              Browse every single codified factor across the 7 platform intelligence dimensions.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-serif text-xl font-bold text-ink-950">
+                100-Factor Intelligence Taxonomy Explorer
+              </h3>
+              <p className="text-xs text-ink-600 mt-0.5">
+                Browse every single codified factor across the 7 platform intelligence dimensions.
+              </p>
+            </div>
+
+            {/* Factor Search Box */}
+            <div className="relative w-full sm:w-72">
+              <input
+                type="text"
+                value={factorSearch}
+                onChange={(e) => setFactorSearch(e.target.value)}
+                placeholder="Search all 100 factors..."
+                className="w-full px-3 py-2 rounded-xl bg-cream-50/70 border border-border text-xs focus:outline-none focus:ring-1 focus:ring-forest-800"
+              />
+              {factorSearch && (
+                <button
+                  onClick={() => setFactorSearch("")}
+                  className="absolute right-2.5 top-2.5 text-xs text-ink-400 hover:text-ink-700 font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Dimension Selector Tabs */}
-          <div className="flex overflow-x-auto border-b border-border bg-cream-50 p-2 rounded-2xl gap-1.5 scrollbar-thin">
-            {Object.values(MATCH_DIMENSIONS).map((dim) => {
-              const active = activeCatalogTab === dim.id;
-              const Icon = dimensionIcons[dim.id] || Sparkles;
-              const count = HUNDRED_MATCH_FACTORS.filter((f) => f.dimension === dim.id).length;
-              return (
-                <button
-                  key={dim.id}
-                  onClick={() => setActiveCatalogTab(dim.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                    active
-                      ? "bg-forest-900 text-white shadow-sm"
-                      : "bg-white hover:bg-cream-100 text-ink-700 border border-border/80"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{dim.name}</span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
-                      active ? "bg-emerald-500 text-forest-950 font-bold" : "bg-cream-200 text-ink-800"
+          {/* Dimension Selector Tabs (Hidden when global search active) */}
+          {!factorSearch && (
+            <div className="flex overflow-x-auto border-b border-border bg-cream-50 p-2 rounded-2xl gap-1.5 scrollbar-thin">
+              {Object.values(MATCH_DIMENSIONS).map((dim) => {
+                const active = activeCatalogTab === dim.id;
+                const Icon = dimensionIcons[dim.id] || Sparkles;
+                const count = HUNDRED_MATCH_FACTORS.filter((f) => f.dimension === dim.id).length;
+                return (
+                  <button
+                    key={dim.id}
+                    onClick={() => setActiveCatalogTab(dim.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                      active
+                        ? "bg-forest-900 text-white shadow-sm"
+                        : "bg-white hover:bg-cream-100 text-ink-700 border border-border/80"
                     }`}
                   >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{dim.name}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+                        active ? "bg-emerald-500 text-forest-950 font-bold" : "bg-cream-200 text-ink-800"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Factors Table */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {HUNDRED_MATCH_FACTORS.filter((f) => f.dimension === activeCatalogTab).map((factor) => (
-              <div
-                key={factor.id}
-                className="p-3.5 rounded-2xl border border-border bg-cream-50/40 hover:bg-white transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] font-bold text-forest-800 bg-forest-50 px-2 py-0.5 rounded-md border border-forest-200">
-                      {factor.code}
-                    </span>
-                    <span className="text-[10px] text-ink-500 font-mono">Weight: {factor.weight}</span>
+          {filteredFactors.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-500">
+              No factors matched &quot;{factorSearch}&quot;.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredFactors.map((factor) => (
+                <div
+                  key={factor.id}
+                  className="p-3.5 rounded-2xl border border-border bg-cream-50/40 hover:bg-white transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-[10px] font-bold text-forest-800 bg-forest-50 px-2 py-0.5 rounded-md border border-forest-200">
+                        {factor.code}
+                      </span>
+                      <span className="text-[10px] text-ink-500 font-mono">Weight: {factor.weight}</span>
+                    </div>
+                    <h5 className="font-bold text-xs text-ink-950 mt-1">{factor.name}</h5>
+                    <p className="text-[11px] text-ink-600 mt-1">{factor.description}</p>
                   </div>
-                  <h5 className="font-bold text-xs text-ink-950 mt-1">{factor.name}</h5>
-                  <p className="text-[11px] text-ink-600 mt-1">{factor.description}</p>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
 

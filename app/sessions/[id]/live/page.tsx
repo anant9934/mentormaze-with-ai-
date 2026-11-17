@@ -36,6 +36,9 @@ import {
   Share2,
   Plus,
   Globe,
+  Maximize2,
+  Minimize2,
+  Trash2,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -268,6 +271,67 @@ export default function LiveSessionRoomPage() {
   const [copiedType, setCopiedType] = useState<string>("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showConcludeModal, setShowConcludeModal] = useState(false);
+
+  // Fullscreen & Synthesized Audio State
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (typeof document === "undefined") return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  const playSoundEffect = (type: "message" | "click" | "connect") => {
+    try {
+      if (typeof window === "undefined") return;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const now = ctx.currentTime;
+      if (type === "message") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      } else if (type === "click") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(440, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      } else if (type === "connect") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.16);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+    } catch {
+      // Audio policy suppression handled
+    }
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(codeContent);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
   // Available Devices
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
@@ -986,6 +1050,7 @@ export default function LiveSessionRoomPage() {
     setChatMessages((prev) => [...prev, outgoingMessage]);
     setInputMessage("");
     setLiveLatency(localDispatchLatency);
+    playSoundEffect("message");
 
     // 2. Direct WebRTC P2P DataChannel (< 0.5ms)
     if (isDataChannelOpen) {
@@ -1148,6 +1213,7 @@ export default function LiveSessionRoomPage() {
   const toggleMic = () => {
     const nextState = !isMicOn;
     setIsMicOn(nextState);
+    playSoundEffect("click");
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach((track) => {
         track.enabled = nextState;
@@ -1158,6 +1224,7 @@ export default function LiveSessionRoomPage() {
   const toggleVideo = () => {
     const nextState = !isVideoOn;
     setIsVideoOn(nextState);
+    playSoundEffect("click");
     if (localStreamRef.current) {
       localStreamRef.current.getVideoTracks().forEach((track) => {
         track.enabled = nextState;
@@ -1413,6 +1480,15 @@ export default function LiveSessionRoomPage() {
             <span className="hidden sm:inline">
               {copiedLink ? `Copied ${copiedType} link!` : isMentor ? "Invite Student" : "Invite Mentor"}
             </span>
+          </button>
+
+          {/* Fullscreen Room Toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-2 rounded-lg bg-[#18362B] hover:bg-[#20493A] text-[#DDE6D7] border border-[#234F3F] transition-all"
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Room"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4 text-emerald-400" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
           {/* Device Settings */}
@@ -1903,14 +1979,25 @@ export default function LiveSessionRoomPage() {
                     </select>
                   </div>
 
-                  <button
-                    onClick={runCode}
-                    disabled={isRunningCode}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>{isRunningCode ? "Running..." : "Run Code"}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={copyCode}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#163628] hover:bg-[#1E4836] border border-[#234C3C] text-xs text-[#DDE6D7] transition-all"
+                      title="Copy code to clipboard"
+                    >
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{copiedCode ? "Copied" : "Copy"}</span>
+                    </button>
+
+                    <button
+                      onClick={runCode}
+                      disabled={isRunningCode}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-all"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>{isRunningCode ? "Running..." : "Run Code"}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Code Area */}
@@ -1926,9 +2013,21 @@ export default function LiveSessionRoomPage() {
 
                 {/* Output Console Pane */}
                 <div className="h-32 bg-[#050C09] border-t border-[#1E4334] p-3 overflow-y-auto">
-                  <div className="flex items-center gap-1.5 text-[10px] text-[#A3B899] font-mono mb-1 font-bold">
-                    <Terminal className="w-3 h-3 text-emerald-400" />
-                    <span>TERMINAL CONSOLE OUTPUT</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#A3B899] font-mono font-bold">
+                      <Terminal className="w-3 h-3 text-emerald-400" />
+                      <span>TERMINAL CONSOLE OUTPUT</span>
+                    </div>
+                    {codeOutput && (
+                      <button
+                        onClick={() => setCodeOutput("")}
+                        className="text-[10px] text-gray-400 hover:text-red-400 flex items-center gap-1 transition-colors"
+                        title="Clear console output"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Clear</span>
+                      </button>
+                    )}
                   </div>
                   <pre className="text-xs text-[#EDF1E8] font-mono whitespace-pre-wrap">
                     {codeOutput || "Click 'Run Code' to execute in live browser sandbox."}

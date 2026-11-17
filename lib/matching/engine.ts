@@ -956,3 +956,4 @@ function isTier1Company(org: string): boolean {
   const t1 = ["microsoft", "google", "amazon", "adobe", "apple", "meta", "netflix", "uber", "salesforce"];
   return t1.some((c) => clean(org).includes(c));
 }
+
