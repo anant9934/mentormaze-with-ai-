@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Settings,
   ChevronDown,
+  Bot,
+  Volume2,
 } from "lucide-react";
 
 export default function MockInterviewPracticePage() {
@@ -28,14 +30,18 @@ export default function MockInterviewPracticePage() {
   const [selectedTrack, setSelectedTrack] = useState<"Technical" | "HR" | "System Design" | "Behavioral" | "Mixed">("Technical");
   const [targetRole, setTargetRole] = useState("SDE (Software Engineer)");
   const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
-  const [mode, setMode] = useState<"live" | "ai">("live");
+  const [mode, setMode] = useState<"live" | "ai">("ai");
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
 
   const handleStartInterview = () => {
-    // Navigate to live session room for mock interview
-    router.push("/sessions/booking-2/live");
+    // Navigate to live session room for mock interview with selected settings
+    if (mode === "ai") {
+      router.push(`/sessions/bk-test-123/live?role=ai_interviewer&track=${selectedTrack.toLowerCase()}&diff=${difficulty}`);
+    } else {
+      router.push("/sessions/booking-2/live");
+    }
   };
 
   return (
@@ -88,18 +94,63 @@ export default function MockInterviewPracticePage() {
           {/* VIDEO INTERACTION PREVIEW (8 COLS) */}
           <div className="lg:col-span-8 card-warm bg-forest-950 rounded-3xl p-4 text-white shadow-elevated">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-forest-900 flex items-center justify-center">
-              <Image
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=80"
-                alt="Interviewer Video"
-                fill
-                className="object-cover opacity-90"
-              />
+              {mode === "ai" ? (
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-8 bg-radial from-[#1A1A38] via-[#0F1426] to-[#0A0D18]">
+                  <div className="absolute w-64 h-64 rounded-full bg-violet-600/20 blur-3xl pointer-events-none animate-pulse" />
+
+                  <div className="relative mb-4">
+                    <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-violet-500 shadow-2xl ring-8 ring-violet-500/20">
+                      <Image
+                        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
+                        alt="Tathastu AI Bar Raiser"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-violet-600 text-[10px] font-bold text-white shadow-md flex items-center gap-1">
+                      <Volume2 className="w-3 h-3" />
+                      <span>Voice Ready</span>
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-bold text-white mb-1 tracking-tight flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-violet-400" />
+                    <span>Tathastu AI Bar Raiser</span>
+                  </h3>
+                  <p className="text-xs text-violet-300/90 mb-4 text-center max-w-md">
+                    Full Voice & Chat Mock Round · Speech-to-Text Answers · Live Code Analysis · Real-time Rubric
+                  </p>
+
+                  {/* Audio Wave Visualizer Simulation */}
+                  <div className="flex items-center gap-1.5 h-6 mb-2">
+                    {[0.3, 0.7, 0.5, 1.0, 0.8, 0.9, 0.4].map((v, i) => (
+                      <span
+                        key={i}
+                        className="w-1.5 bg-gradient-to-t from-violet-500 to-indigo-300 rounded-full animate-pulse"
+                        style={{
+                          height: `${Math.max(6, v * 24)}px`,
+                          animationDelay: `${i * 120}ms`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <Image
+                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=80"
+                  alt="Interviewer Video"
+                  fill
+                  className="object-cover opacity-90"
+                />
+              )}
 
               {/* Live Badge */}
               <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-forest-950/80 backdrop-blur-md border border-forest-800 text-xs font-semibold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span>Technical Interview - SDE</span>
-                <span className="text-[10px] text-forest-300 font-mono">Live · 24:16</span>
+                <span className={`w-2 h-2 rounded-full ${mode === "ai" ? "bg-violet-400" : "bg-red-500"} animate-pulse`}></span>
+                <span>{mode === "ai" ? "AI Bar Raiser Simulation" : "Technical Interview - SDE"}</span>
+                <span className="text-[10px] text-forest-300 font-mono">
+                  {mode === "ai" ? "Voice + Chat Mode" : "Live · 24:16"}
+                </span>
               </div>
 
               {/* Student PIP */}
@@ -116,19 +167,22 @@ export default function MockInterviewPracticePage() {
               <div className="absolute bottom-4 left-4 flex items-center gap-2">
                 <button
                   onClick={() => setIsMicOn(!isMicOn)}
-                  className="p-2.5 rounded-full bg-forest-900/80 hover:bg-forest-800 text-white"
+                  className={`p-2.5 rounded-full ${isMicOn ? "bg-forest-900/80 text-white" : "bg-red-600 text-white"} hover:bg-forest-800`}
+                  title={isMicOn ? "Microphone ON" : "Microphone Muted"}
                 >
                   <Mic className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setIsVideoOn(!isVideoOn)}
-                  className="p-2.5 rounded-full bg-forest-900/80 hover:bg-forest-800 text-white"
+                  className={`p-2.5 rounded-full ${isVideoOn ? "bg-forest-900/80 text-white" : "bg-red-600 text-white"} hover:bg-forest-800`}
+                  title={isVideoOn ? "Camera ON" : "Camera Off"}
                 >
                   <Video className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => alert("Screen share toggled.")}
+                  onClick={() => alert("Screen share preview ready.")}
                   className="p-2.5 rounded-full bg-forest-900/80 hover:bg-forest-800 text-white"
+                  title="Screen Sharing"
                 >
                   <Monitor className="w-4 h-4" />
                 </button>
@@ -179,35 +233,70 @@ export default function MockInterviewPracticePage() {
                 Interview Delivery Mode
               </label>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 p-3 rounded-xl border border-forest-900 bg-sage-50 text-xs font-semibold text-forest-950 cursor-pointer">
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  mode === "ai"
+                    ? "border-violet-600 bg-violet-50/70 text-violet-950 ring-1 ring-violet-500/30"
+                    : "border-border bg-white text-ink-800 hover:bg-cream-100"
+                }`}>
+                  <input
+                    type="radio"
+                    name="mode"
+                    checked={mode === "ai"}
+                    onChange={() => setMode("ai")}
+                    className="text-violet-600 focus:ring-violet-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs flex items-center gap-1.5">
+                        <Bot className="w-3.5 h-3.5 text-violet-600" />
+                        <span>Tathastu AI Bar Raiser</span>
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-600 text-white shadow-sm">
+                        Voice + Chat Active
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-ink-600 mt-0.5">
+                      Instant simulation, speech recognition, live code analysis & FAANG rubric
+                    </p>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                  mode === "live"
+                    ? "border-forest-900 bg-sage-50 text-forest-950 ring-1 ring-forest-800/30"
+                    : "border-border bg-white text-ink-800 hover:bg-cream-100"
+                }`}>
                   <input
                     type="radio"
                     name="mode"
                     checked={mode === "live"}
                     onChange={() => setMode("live")}
-                    className="text-forest-900"
+                    className="text-forest-900 focus:ring-forest-800"
                   />
-                  <span>Live with Verified Mentor</span>
-                </label>
-                <label className="flex items-center gap-2 p-3 rounded-xl border border-border bg-cream-50 text-xs font-medium text-ink-500 cursor-not-allowed opacity-60">
-                  <input
-                    type="radio"
-                    name="mode"
-                    disabled
-                    checked={mode === "ai"}
-                    onChange={() => setMode("ai")}
-                    className="text-forest-900"
-                  />
-                  <span>AI Interviewer (Phase 2 Beta)</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs">Live with Verified Mentor</span>
+                      <span className="text-[10px] font-medium text-forest-700 bg-forest-100 px-2 py-0.5 rounded-full">
+                        1-on-1 Session
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-ink-600 mt-0.5">
+                      Pair with senior engineers from Microsoft, Google, Amazon
+                    </p>
+                  </div>
                 </label>
               </div>
             </div>
 
             <button
               onClick={handleStartInterview}
-              className="btn-primary w-full py-3 text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
+              className={`w-full py-3 text-xs font-bold flex items-center justify-center gap-2 shadow-sm rounded-xl text-white transition-all ${
+                mode === "ai"
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-md shadow-violet-600/30"
+                  : "btn-primary"
+              }`}
             >
-              <span>Start Interview</span>
+              <span>{mode === "ai" ? "Launch AI Voice & Chat Interview" : "Start Live Interview"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

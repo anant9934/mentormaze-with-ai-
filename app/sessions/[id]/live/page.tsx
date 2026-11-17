@@ -39,6 +39,10 @@ import {
   Maximize2,
   Minimize2,
   Trash2,
+  Bot,
+  VolumeX,
+  Sparkles,
+  HelpCircle,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -218,15 +222,15 @@ export default function LiveSessionRoomPage() {
     return `cli_${Math.random().toString(36).substring(2, 8)}`;
   });
 
-  // Role detection: URL query param overrides default user auth for testing 2-way call
-  const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | null>(null);
+  // Role detection: URL query param overrides default user auth for testing 2-way call or AI interviewer
+  const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | "ai_interviewer" | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const r = urlParams.get("role");
-      if (r === "mentor" || r === "student") {
-        setActiveRoleOverride(r);
+      if (r === "mentor" || r === "student" || r === "ai_interviewer") {
+        setActiveRoleOverride(r as any);
       }
       const eng = urlParams.get("engine");
       if (eng === "livekit" || eng === "p2p") {
@@ -235,20 +239,29 @@ export default function LiveSessionRoomPage() {
     }
   }, []);
 
-  const effectiveRole: "student" | "mentor" =
-    activeRoleOverride ||
-    (user?.role === "mentor" || user?.id === mentor?.userId ? "mentor" : "student");
-
-  const isMentor = effectiveRole === "mentor";
-  const currentRole: "student" | "mentor" = effectiveRole;
+  const isAIInterviewer = activeRoleOverride === "ai_interviewer";
+  const isMentor = !isAIInterviewer && (activeRoleOverride === "mentor" || (!activeRoleOverride && (user?.role === "mentor" || user?.id === mentor?.userId)));
+  const currentRole: "student" | "mentor" = isMentor ? "mentor" : "student";
   const currentName = isMentor ? "Priya Sharma" : (user?.displayName || "Anant Kumar");
   const currentUserId = isMentor ? "user-mentor-priya" : (user?.id || "user-student-1");
-  const remoteName = isMentor ? "Anant Kumar" : "Priya Sharma";
-  const remoteHeadline = isMentor
+
+  const remoteName = isAIInterviewer
+    ? "Tathastu AI Bar Raiser"
+    : isMentor
+    ? "Anant Kumar"
+    : "Priya Sharma";
+
+  const remoteHeadline = isAIInterviewer
+    ? "Staff AI Evaluator @ AI Tathastu · Voice & Chat Enabled"
+    : isMentor
     ? "Computer Science Student · Candidate"
     : "Senior Software Engineer @ Microsoft · 5.0 ★";
-  const remoteCompany = isMentor ? "Student" : "Microsoft";
-  const remoteAvatar = isMentor
+
+  const remoteCompany = isAIInterviewer ? "AI Tathastu" : isMentor ? "Student" : "Microsoft";
+
+  const remoteAvatar = isAIInterviewer
+    ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
+    : isMentor
     ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80"
     : "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80";
 
@@ -331,6 +344,214 @@ export default function LiveSessionRoomPage() {
     navigator.clipboard.writeText(codeContent);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  // AI Mock Interviewer Voice & Chat State
+  const [isAIVoiceEnabled, setIsAIVoiceEnabled] = useState(true);
+  const [isAISpeaking, setIsAISpeaking] = useState(false);
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [aiInterviewStage, setAiInterviewStage] = useState<string>("intro");
+  const [aiQuickReplies, setAiQuickReplies] = useState<string[]>([
+    "Can you clarify the scale and input constraints?",
+    "I'll use a HashMap paired with a Doubly Linked List.",
+    "Please review my code in the Code Lab.",
+  ]);
+  const [aiRubricScores, setAiRubricScores] = useState<Record<string, number>>({
+    technical: 7.5,
+    problem_solving: 8.0,
+    code_quality: 7.5,
+    communication: 8.5,
+  });
+
+  const speechRecognitionRef = useRef<any>(null);
+  const inputMessageRef = useRef("");
+
+  const speakAIText = (text: string) => {
+    if (!isAIVoiceEnabled || typeof window === "undefined") return;
+    if (!window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+    const cleanSpeech = text
+      .replace(/[*#_`~\[\]]/g, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleanSpeech) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanSpeech);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.02;
+
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find(
+      (v) =>
+        v.lang.startsWith("en") &&
+        (v.name.includes("Natural") ||
+          v.name.includes("Google") ||
+          v.name.includes("Samantha") ||
+          v.name.includes("Alex") ||
+          v.name.includes("Daniel"))
+    );
+    if (naturalVoice) utterance.voice = naturalVoice;
+
+    utterance.onstart = () => setIsAISpeaking(true);
+    utterance.onend = () => setIsAISpeaking(false);
+    utterance.onerror = () => setIsAISpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleVoiceRecognition = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Voice speech recognition is not supported in this browser. Please type your answer.");
+      return;
+    }
+
+    if (isListeningVoice) {
+      speechRecognitionRef.current?.stop();
+      setIsListeningVoice(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListeningVoice(true);
+        playSoundEffect("click");
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((res: any) => res[0].transcript)
+          .join("");
+        setInputMessage(transcript);
+        inputMessageRef.current = transcript;
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech recognition error:", event.error);
+        setIsListeningVoice(false);
+      };
+
+      recognition.onend = () => {
+        setIsListeningVoice(false);
+        const currentText = inputMessageRef.current.trim();
+        if (currentText) {
+          handleSendMessage(undefined, currentText);
+        }
+      };
+
+      speechRecognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.warn("Speech recognition error:", err);
+      setIsListeningVoice(false);
+    }
+  };
+
+  const sendTurnToAI = async (text: string, code?: string) => {
+    try {
+      const historyPayload = chatMessages.slice(-6).map((m) => ({
+        role: m.senderRole === "mentor" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+        timestamp: m.createdAt,
+      }));
+
+      const res = await fetch("/api/ai-interviewer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionTrack: "sde_backend",
+          targetRole: "Software Engineer (SDE-2)",
+          difficulty: "Medium",
+          userMessage: text,
+          codeSnippet: code || codeContent,
+          history: historyPayload,
+          candidateName: currentName,
+          currentStage: aiInterviewStage,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAiInterviewStage(data.nextStage);
+        if (data.suggestedQuickReplies) {
+          setAiQuickReplies(data.suggestedQuickReplies);
+        }
+        if (data.rubricScores) {
+          setAiRubricScores(data.rubricScores);
+        }
+
+        const aiMsg: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          senderUserId: "ai-interviewer",
+          senderName: "Tathastu AI Bar Raiser",
+          senderRole: "mentor",
+          content: data.aiResponse,
+          latencyMs: data.latencyMs || 120,
+          channelType: "broadcast_bus",
+          createdAt: new Date().toISOString(),
+        };
+
+        setChatMessages((prev) => [...prev, aiMsg]);
+        playSoundEffect("message");
+
+        if (data.voiceText) {
+          speakAIText(data.voiceText);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to contact AI interviewer:", err);
+    }
+  };
+
+  const initAIInterviewer = async () => {
+    try {
+      const res = await fetch("/api/ai-interviewer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionTrack: "sde_backend",
+          targetRole: "Software Engineer (SDE-2)",
+          difficulty: "Medium",
+          userMessage: "",
+          history: [],
+          candidateName: currentName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiInterviewStage(data.nextStage);
+        if (data.suggestedQuickReplies) {
+          setAiQuickReplies(data.suggestedQuickReplies);
+        }
+        const aiGreeting: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          senderUserId: "ai-interviewer",
+          senderName: "Tathastu AI Bar Raiser",
+          senderRole: "mentor",
+          content: data.aiResponse,
+          latencyMs: data.latencyMs || 95,
+          channelType: "broadcast_bus",
+          createdAt: new Date().toISOString(),
+        };
+        setChatMessages((prev) => [...prev, aiGreeting]);
+        if (data.voiceText) {
+          speakAIText(data.voiceText);
+        }
+      }
+    } catch (err) {
+      console.warn("initAIInterviewer failed:", err);
+    }
   };
 
   // Available Devices
@@ -1001,7 +1222,7 @@ export default function LiveSessionRoomPage() {
         peerConnectionRef.current.close();
       }
     };
-  }, [bookingId, effectiveRole, isMentor, currentUserId, currentRole, currentName, clientId]);
+  }, [bookingId, activeRoleOverride, isMentor, currentUserId, currentRole, currentName, clientId]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -1049,8 +1270,14 @@ export default function LiveSessionRoomPage() {
     // 1. Immediate local state update (0ms dispatch)
     setChatMessages((prev) => [...prev, outgoingMessage]);
     setInputMessage("");
+    inputMessageRef.current = "";
     setLiveLatency(localDispatchLatency);
     playSoundEffect("message");
+
+    if (isAIInterviewer) {
+      sendTurnToAI(trimmed);
+      return;
+    }
 
     // 2. Direct WebRTC P2P DataChannel (< 0.5ms)
     if (isDataChannelOpen) {
@@ -1400,11 +1627,11 @@ export default function LiveSessionRoomPage() {
           </div>
 
           {/* One-Click Role Switcher */}
-          <div className="hidden sm:flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
+          <div className="flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
             <button
               onClick={() => setActiveRoleOverride("student")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                !isMentor
+                !isMentor && !isAIInterviewer
                   ? "bg-emerald-700/80 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
@@ -1424,6 +1651,23 @@ export default function LiveSessionRoomPage() {
             >
               <span>💼</span>
               <span className="hidden md:inline">Mentor</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveRoleOverride("ai_interviewer");
+                if (chatMessages.length === 0 || !chatMessages.some(m => m.senderUserId === "ai-interviewer")) {
+                  initAIInterviewer();
+                }
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                isAIInterviewer
+                  ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-700/30"
+                  : "text-[#A3B899] hover:text-white hover:bg-violet-950/40"
+              }`}
+              title="Switch to AI Interviewer Mode (Voice + Chat FAANG Bar Raiser)"
+            >
+              <span>🤖</span>
+              <span className="font-bold">AI Interviewer</span>
             </button>
           </div>
 
@@ -1544,9 +1788,73 @@ export default function LiveSessionRoomPage() {
             {/* VIEW MODE 1: GRID VIEW (50 / 50 SIDE BY SIDE) */}
             {viewMode === "grid" ? (
               <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
-                {/* Frame A: Remote Peer Video */}
+                {/* Frame A: Remote Peer Video or AI Interviewer */}
                 <div className="relative rounded-xl overflow-hidden bg-[#10241B] border border-[#1E4334] flex items-center justify-center">
-                  {peerHasVideo && remoteStream ? (
+                  {isAIInterviewer ? (
+                    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center bg-radial from-[#1A1A38] via-[#0F1426] to-[#0A0D18]">
+                      {/* Neural glowing rings */}
+                      <div className={`absolute w-44 h-44 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none ${isAISpeaking ? "animate-pulse" : ""}`} />
+
+                      <div className="relative mb-3">
+                        <div className={`relative w-24 h-24 rounded-full overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
+                          isAISpeaking ? "border-violet-400 ring-4 ring-violet-500/30 scale-105" : "border-indigo-500/50"
+                        }`}>
+                          <Image src={remoteAvatar} alt={remoteName} fill className="object-cover" />
+                        </div>
+                        {isAISpeaking && (
+                          <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-violet-600 text-[9px] font-bold text-white shadow-md animate-bounce flex items-center gap-0.5">
+                            <Volume2 className="w-2.5 h-2.5" />
+                            <span>Speaking</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-white text-sm flex items-center gap-1.5">
+                        <Bot className="w-4 h-4 text-violet-400" />
+                        <span>{remoteName}</span>
+                      </h4>
+                      <p className="text-[11px] text-violet-300/80 mb-3">{remoteHeadline}</p>
+
+                      {/* Soundwave Visualizer */}
+                      <div className="flex items-center gap-1 h-6 mb-3">
+                        {[0.4, 0.9, 0.6, 1.0, 0.7, 0.9, 0.5].map((scale, i) => (
+                          <span
+                            key={i}
+                            className={`w-1 rounded-full transition-all duration-150 ${
+                              isAISpeaking
+                                ? "bg-gradient-to-t from-violet-500 to-indigo-300 animate-pulse"
+                                : "bg-white/20 h-2"
+                            }`}
+                            style={{
+                              height: isAISpeaking ? `${Math.max(6, scale * 24)}px` : "6px",
+                            }}
+                          />
+                        ))}
+                      </div>
+
+                      {/* AI Toolbar in Frame */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setIsAIVoiceEnabled(!isAIVoiceEnabled)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
+                            isAIVoiceEnabled
+                              ? "bg-violet-950/80 border-violet-600 text-violet-200"
+                              : "bg-gray-900 border-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {isAIVoiceEnabled ? <Volume2 className="w-3 h-3 text-violet-400" /> : <VolumeX className="w-3 h-3 text-gray-400" />}
+                          <span>{isAIVoiceEnabled ? "Voice ON" : "Muted"}</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAI("Can you give me a subtle hint or edge case to consider?")}
+                          className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 flex items-center gap-1 transition-all"
+                        >
+                          <HelpCircle className="w-3 h-3 text-amber-400" />
+                          <span>Hint</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : peerHasVideo && remoteStream ? (
                     <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-6">
@@ -1563,9 +1871,9 @@ export default function LiveSessionRoomPage() {
                     </div>
                   )}
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className={`w-2 h-2 rounded-full ${isAIInterviewer ? "bg-violet-400" : "bg-emerald-400"}`} />
                     <span>
-                      {remoteName} ({isMentor ? "Student" : "Mentor"})
+                      {isAIInterviewer ? "Tathastu AI Bar Raiser" : `${remoteName} (${isMentor ? "Student" : "Mentor"})`}
                     </span>
                   </div>
                 </div>
@@ -1599,7 +1907,137 @@ export default function LiveSessionRoomPage() {
             ) : (
               /* VIEW MODE 2: SPEAKER VIEW (LARGE REMOTE + DOCKED PIP) */
               <>
-                {peerHasVideo && remoteStream ? (
+                {isAIInterviewer ? (
+                  <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#1A1A3A] via-[#0E1324] to-[#070A14]">
+                    {/* Background glow orb */}
+                    <div className={`absolute w-96 h-96 rounded-full bg-violet-600/15 blur-3xl pointer-events-none transition-all duration-700 ${
+                      isAISpeaking ? "scale-125 opacity-80" : "scale-100 opacity-40"
+                    }`} />
+
+                    {/* AI Avatar with Soundwave Ripple */}
+                    <div className="relative mb-5">
+                      <div className={`relative w-36 h-36 rounded-full overflow-hidden border-4 shadow-2xl transition-all duration-300 ring-8 ${
+                        isAISpeaking
+                          ? "border-violet-400 ring-violet-500/30 scale-105 shadow-violet-600/40"
+                          : "border-indigo-500/50 ring-indigo-500/10"
+                      }`}>
+                        <Image
+                          src={remoteAvatar}
+                          alt="AI Bar Raiser"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Status indicator bubble */}
+                      <div className="absolute -bottom-2 inset-x-0 flex justify-center">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 border ${
+                          isAISpeaking
+                            ? "bg-violet-600 border-violet-400 text-white animate-pulse"
+                            : isListeningVoice
+                            ? "bg-red-600 border-red-400 text-white animate-bounce"
+                            : "bg-[#10162B] border-indigo-700/60 text-indigo-200"
+                        }`}>
+                          {isAISpeaking ? (
+                            <>
+                              <Volume2 className="w-3.5 h-3.5 text-white" />
+                              <span>Speaking...</span>
+                            </>
+                          ) : isListeningVoice ? (
+                            <>
+                              <Mic className="w-3.5 h-3.5 text-white animate-pulse" />
+                              <span>Listening...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>AI Bar Raiser</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-white mb-1 tracking-tight flex items-center justify-center gap-2">
+                      <span>{remoteName}</span>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-violet-950/80 text-violet-300 border border-violet-700/60 font-medium">
+                        Staff AI Evaluator
+                      </span>
+                    </h3>
+                    <p className="text-xs text-violet-300/80 font-medium mb-5 max-w-md">
+                      Live Voice & Real-Time Technical Simulation. Speaks aloud via Web Speech API and listens to your spoken answers.
+                    </p>
+
+                    {/* Soundwave Visualizer Bars */}
+                    <div className="flex items-center gap-1.5 h-8 mb-6">
+                      {[0.3, 0.6, 0.9, 0.4, 1.0, 0.7, 0.85, 0.5, 0.3].map((val, i) => (
+                        <span
+                          key={i}
+                          className={`w-1.5 rounded-full transition-all duration-150 ${
+                            isAISpeaking
+                              ? "bg-gradient-to-t from-violet-500 via-indigo-400 to-pink-300"
+                              : "bg-white/20 h-2"
+                          }`}
+                          style={{
+                            height: isAISpeaking ? `${Math.max(6, val * 32)}px` : "6px",
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* AI Scorecard & Controls Card */}
+                    <div className="bg-[#10172C]/90 border border-[#212E57] rounded-2xl p-4 max-w-lg w-full shadow-2xl backdrop-blur-md">
+                      {/* Rubric Scorecard Row */}
+                      <div className="grid grid-cols-4 gap-2 pb-3 mb-3 border-b border-[#1E2B52] text-center">
+                        <div className="bg-[#0B1021] p-2 rounded-xl border border-indigo-900/40">
+                          <span className="text-[10px] text-indigo-300 font-semibold block uppercase">Technical</span>
+                          <span className="text-sm font-bold font-mono text-emerald-400">{aiRubricScores.technical || 8.0}</span>
+                        </div>
+                        <div className="bg-[#0B1021] p-2 rounded-xl border border-indigo-900/40">
+                          <span className="text-[10px] text-indigo-300 font-semibold block uppercase">Problem</span>
+                          <span className="text-sm font-bold font-mono text-cyan-400">{aiRubricScores.problem_solving || 8.0}</span>
+                        </div>
+                        <div className="bg-[#0B1021] p-2 rounded-xl border border-indigo-900/40">
+                          <span className="text-[10px] text-indigo-300 font-semibold block uppercase">Code</span>
+                          <span className="text-sm font-bold font-mono text-amber-400">{aiRubricScores.code_quality || 7.5}</span>
+                        </div>
+                        <div className="bg-[#0B1021] p-2 rounded-xl border border-indigo-900/40">
+                          <span className="text-[10px] text-indigo-300 font-semibold block uppercase">Comms</span>
+                          <span className="text-sm font-bold font-mono text-violet-400">{aiRubricScores.communication || 8.5}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions Strip */}
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setIsAIVoiceEnabled(!isAIVoiceEnabled)}
+                          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                            isAIVoiceEnabled
+                              ? "bg-violet-950/80 border-violet-600 text-violet-200 hover:bg-violet-900"
+                              : "bg-gray-900 border-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {isAIVoiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-violet-400" /> : <VolumeX className="w-3.5 h-3.5 text-gray-400" />}
+                          <span>{isAIVoiceEnabled ? "Voice: ON" : "Voice: MUTED"}</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAI("Can you give me a subtle hint or edge case to consider?")}
+                          className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-all"
+                        >
+                          <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Request Hint</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAI("Let's transition to the next technical challenge.")}
+                          className="py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md transition-all"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Next Question</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : peerHasVideo && remoteStream ? (
                   <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                 ) : (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
@@ -1652,9 +2090,9 @@ export default function LiveSessionRoomPage() {
 
                 {/* Remote Participant Tag Badge */}
                 <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white flex items-center gap-2 shadow-lg">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className={`w-2 h-2 rounded-full ${isAIInterviewer ? "bg-violet-400" : "bg-emerald-400"}`} />
                   <span>
-                    {remoteName} ({isMentor ? "Student" : "Mentor"})
+                    {isAIInterviewer ? "Tathastu AI Bar Raiser (AI Interviewer)" : `${remoteName} (${isMentor ? "Student" : "Mentor"})`}
                   </span>
                 </div>
 
@@ -1923,28 +2361,65 @@ export default function LiveSessionRoomPage() {
                   <div ref={chatBottomRef} />
                 </div>
 
-                {/* Quick Reaction Pills */}
+                {/* Quick Reaction Pills / AI Quick Replies */}
                 <div className="flex items-center gap-1.5 py-2 overflow-x-auto scrollbar-none">
-                  {["👍 Understood", "💡 Great point!", "📝 Noted down", "🚀 Ready for mock", "❓ Clarification"].map(
-                    (phrase) => (
+                  {isAIInterviewer ? (
+                    aiQuickReplies.map((phrase) => (
                       <button
                         key={phrase}
                         onClick={() => handleSendMessage(undefined, phrase)}
-                        className="text-[11px] whitespace-nowrap bg-[#122A1E] hover:bg-[#1A3C2B] text-[#DDE6D7] px-2.5 py-1 rounded-lg transition-all border border-[#1E4334] active:scale-95"
+                        className="text-[11px] whitespace-nowrap bg-violet-950/70 hover:bg-violet-900/90 text-violet-200 px-2.5 py-1 rounded-lg transition-all border border-violet-700/50 active:scale-95 flex items-center gap-1 shadow-sm"
                       >
-                        {phrase}
+                        <Sparkles className="w-3 h-3 text-violet-400" />
+                        <span>{phrase}</span>
                       </button>
+                    ))
+                  ) : (
+                    ["👍 Understood", "💡 Great point!", "📝 Noted down", "🚀 Ready for mock", "❓ Clarification"].map(
+                      (phrase) => (
+                        <button
+                          key={phrase}
+                          onClick={() => handleSendMessage(undefined, phrase)}
+                          className="text-[11px] whitespace-nowrap bg-[#122A1E] hover:bg-[#1A3C2B] text-[#DDE6D7] px-2.5 py-1 rounded-lg transition-all border border-[#1E4334] active:scale-95"
+                        >
+                          {phrase}
+                        </button>
+                      )
                     )
                   )}
                 </div>
 
-                {/* Input Field Form */}
+                {/* Input Field Form with Speech-to-Text Voice Input */}
                 <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-2 pt-2 border-t border-[#1E3F31]">
+                  <button
+                    type="button"
+                    onClick={toggleVoiceRecognition}
+                    className={`px-3 py-2.5 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-semibold ${
+                      isListeningVoice
+                        ? "bg-red-600 text-white border-red-500 animate-pulse shadow-lg shadow-red-600/30"
+                        : "bg-[#142C21] hover:bg-[#1C3B2D] text-emerald-400 border-[#234F3A]"
+                    }`}
+                    title={
+                      isListeningVoice
+                        ? "Listening... speak now (click to stop)"
+                        : "Speak answer with your microphone (Web Speech-to-Text)"
+                    }
+                  >
+                    <Mic className={`w-4 h-4 ${isListeningVoice ? "animate-bounce text-white" : ""}`} />
+                    <span className="hidden sm:inline">{isListeningVoice ? "Listening..." : "Speak"}</span>
+                  </button>
+
                   <input
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Type message (< 5ms real-time)..."
+                    placeholder={
+                      isListeningVoice
+                        ? "Listening to your voice..."
+                        : isAIInterviewer
+                        ? "Answer the AI interviewer (or click Speak)..."
+                        : "Type message (< 5ms real-time)..."
+                    }
                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-[#09150F] border border-[#1E4334] text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-inner"
                   />
                   <button
@@ -1980,6 +2455,20 @@ export default function LiveSessionRoomPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {isAIInterviewer && (
+                      <button
+                        onClick={() => {
+                          sendTurnToAI("Please review my code implementation in the Code Lab.", codeContent);
+                          setActiveTab("chat");
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md transition-all animate-pulse"
+                        title="Submit current code snippet to AI Interviewer for live review & feedback"
+                      >
+                        <Bot className="w-3.5 h-3.5" />
+                        <span>Submit to AI</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={copyCode}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#163628] hover:bg-[#1E4836] border border-[#234C3C] text-xs text-[#DDE6D7] transition-all"
