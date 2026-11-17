@@ -331,48 +331,76 @@ function VideoPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const attachMedia = (node: HTMLVideoElement | null) => {
-    videoRef.current = node;
-    if (!node) return;
-    node.muted = muted;
-    node.defaultMuted = muted;
-    if (stream && node.srcObject !== stream) {
-      node.srcObject = stream;
-      node.play().catch(() => {});
-    }
-  };
-
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !stream) return;
+    if (!video) return;
 
     video.muted = muted;
     video.defaultMuted = muted;
+    video.playsInline = true;
+
+    if (!stream) {
+      video.srcObject = null;
+      return;
+    }
+
     if (video.srcObject !== stream) {
       video.srcObject = stream;
     }
-    video.play().catch(() => {});
 
-    const onPlayReady = () => {
-      video.play().catch(() => {});
+    const safePlay = () => {
+      if (video && video.srcObject && video.paused) {
+        video.play().catch(() => {});
+      }
     };
-    video.addEventListener("loadedmetadata", onPlayReady);
-    video.addEventListener("canplay", onPlayReady);
+
+    safePlay();
+
+    // Listen to video track lifecycle events to handle tab switching, mirroring, or renegotiations
+    const videoTracks = stream.getVideoTracks();
+    videoTracks.forEach((t) => {
+      t.addEventListener("unmute", safePlay);
+      t.addEventListener("ended", safePlay);
+    });
+
+    video.addEventListener("loadedmetadata", safePlay);
+    video.addEventListener("canplay", safePlay);
+    video.addEventListener("loadeddata", safePlay);
+    video.addEventListener("playing", safePlay);
+
+    // Watchdog to guarantee video never freezes or turns black on view switches
+    const watchdog = setInterval(() => {
+      if (video && video.srcObject && video.paused) {
+        safePlay();
+      }
+    }, 800);
 
     return () => {
-      video.removeEventListener("loadedmetadata", onPlayReady);
-      video.removeEventListener("canplay", onPlayReady);
+      clearInterval(watchdog);
+      videoTracks.forEach((t) => {
+        t.removeEventListener("unmute", safePlay);
+        t.removeEventListener("ended", safePlay);
+      });
+      video.removeEventListener("loadedmetadata", safePlay);
+      video.removeEventListener("canplay", safePlay);
+      video.removeEventListener("loadeddata", safePlay);
+      video.removeEventListener("playing", safePlay);
     };
   }, [stream, muted]);
 
   return (
     <video
-      ref={attachMedia}
+      ref={videoRef}
       autoPlay
       playsInline
       muted={muted}
-      onCanPlay={(e) => (e.currentTarget as HTMLVideoElement).play().catch(() => {})}
-      className={`w-full h-full object-cover ${mirrored ? "transform -scale-x-100" : ""} ${className}`}
+      onCanPlay={(e) => {
+        const v = e.currentTarget;
+        if (v.paused) v.play().catch(() => {});
+      }}
+      className={`w-full h-full object-cover select-none pointer-events-none ${
+        mirrored ? "scale-x-[-1]" : ""
+      } ${className}`}
     />
   );
 }
@@ -405,8 +433,8 @@ export default function LiveSessionRoomPage() {
     return `cli_${Math.random().toString(36).substring(2, 8)}`;
   });
 
-  // Role detection: URL query param overrides default user auth for testing 2-way call or AI interviewer
-  const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | "ai_interviewer" | null>(null);
+  // Role detection: URL query param overrides default user auth for testing 2-way call or AI interviewer/mentor
+  const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | "ai_interviewer" | "ai_mentor" | null>(null);
   const [aiTrack, setAiTrack] = useState<string>("sde_backend");
   const [aiDifficulty, setAiDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
 
@@ -414,7 +442,7 @@ export default function LiveSessionRoomPage() {
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const r = urlParams.get("role");
-      if (r === "mentor" || r === "student" || r === "ai_interviewer") {
+      if (r === "mentor" || r === "student" || r === "ai_interviewer" || r === "ai_mentor") {
         setActiveRoleOverride(r as any);
       }
       const eng = urlParams.get("engine");
@@ -438,27 +466,35 @@ export default function LiveSessionRoomPage() {
   }, []);
 
   const isAIInterviewer = activeRoleOverride === "ai_interviewer";
-  const isMentor = !isAIInterviewer && (activeRoleOverride === "mentor" || (!activeRoleOverride && (user?.role === "mentor" || user?.id === mentor?.userId)));
+  const isAIMentor = activeRoleOverride === "ai_mentor";
+  const isAI = isAIInterviewer || isAIMentor;
+  const isMentor = !isAI && (activeRoleOverride === "mentor" || (!activeRoleOverride && (user?.role === "mentor" || user?.id === mentor?.userId)));
   const currentRole: "student" | "mentor" = isMentor ? "mentor" : "student";
   const currentName = isMentor ? "Priya Sharma" : (user?.displayName || "Anant Kumar");
   const currentUserId = isMentor ? "user-mentor-priya" : (user?.id || "user-student-1");
 
   const remoteName = isAIInterviewer
     ? "Tathastu AI Bar Raiser"
+    : isAIMentor
+    ? "Tathastu AI Career Mentor"
     : isMentor
     ? "Anant Kumar"
     : "Priya Sharma";
 
   const remoteHeadline = isAIInterviewer
     ? "Staff AI Evaluator @ AI Tathastu · Voice & Chat Enabled"
+    : isAIMentor
+    ? "Principal Architect @ AI Tathastu · 24/7 Career & Tech Coaching"
     : isMentor
     ? "Computer Science Student · Candidate"
     : "Senior Software Engineer @ Microsoft · 5.0 ★";
 
-  const remoteCompany = isAIInterviewer ? "AI Tathastu" : isMentor ? "Student" : "Microsoft";
+  const remoteCompany = isAI ? "AI Tathastu" : isMentor ? "Student" : "Microsoft";
 
   const remoteAvatar = isAIInterviewer
     ? "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
+    : isAIMentor
+    ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
     : isMentor
     ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80"
     : "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80";
@@ -754,6 +790,90 @@ export default function LiveSessionRoomPage() {
     }
   };
 
+  const sendTurnToAIMentor = async (text: string, code?: string) => {
+    try {
+      const historyPayload = chatMessages.slice(-6).map((m) => ({
+        role: m.senderRole === "mentor" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+        timestamp: m.createdAt,
+      }));
+
+      const res = await fetch("/api/ai-mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: "career_roadmap",
+          userMessage: text,
+          codeSnippet: code || codeContent,
+          history: historyPayload,
+          studentName: currentName,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        if (data.suggestedQuestions) {
+          setAiQuickReplies(data.suggestedQuestions);
+        }
+
+        const mentorMsg: ChatMessage = {
+          id: `ai_mentor_${Date.now()}`,
+          senderUserId: "ai-mentor",
+          senderName: "Tathastu AI Mentor",
+          senderRole: "mentor",
+          content: data.aiResponse,
+          latencyMs: data.latencyMs || 80,
+          channelType: "broadcast_bus",
+          createdAt: new Date().toISOString(),
+        };
+
+        setChatMessages((prev) => [...prev, mentorMsg]);
+        playSoundEffect("message");
+
+        if (data.voiceText) {
+          speakAIText(data.voiceText);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to contact AI mentor:", err);
+    }
+  };
+
+  const initAIMentor = async () => {
+    try {
+      const res = await fetch("/api/ai-mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: "career_roadmap",
+          studentName: currentName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.suggestedQuestions) {
+          setAiQuickReplies(data.suggestedQuestions);
+        }
+        const aiGreeting: ChatMessage = {
+          id: `ai_mentor_${Date.now()}`,
+          senderUserId: "ai-mentor",
+          senderName: "Tathastu AI Mentor",
+          senderRole: "mentor",
+          content: data.aiResponse,
+          latencyMs: data.latencyMs || 85,
+          channelType: "broadcast_bus",
+          createdAt: new Date().toISOString(),
+        };
+        setChatMessages((prev) => [...prev, aiGreeting]);
+        if (data.voiceText) {
+          speakAIText(data.voiceText);
+        }
+      }
+    } catch (err) {
+      console.warn("initAIMentor failed:", err);
+    }
+  };
+
   // Available Devices
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
@@ -897,17 +1017,29 @@ export default function LiveSessionRoomPage() {
         localStreamRef.current = stream;
         setLocalStream(stream);
 
-        // If RTCPeerConnection already exists, attach local tracks immediately
+        // If RTCPeerConnection already exists, attach or replace local tracks immediately
         if (peerConnectionRef.current) {
           const pc = peerConnectionRef.current;
           const senders = pc.getSenders();
           stream.getTracks().forEach((track) => {
-            if (!senders.some((s) => s.track === track)) {
+            const existingSender = senders.find((s) => s.track && s.track.kind === track.kind);
+            if (existingSender) {
+              existingSender.replaceTrack(track).catch(() => {});
+            } else {
               try {
                 pc.addTrack(track, stream);
               } catch {}
             }
           });
+        }
+
+        // If LiveKit room is already connected, publish tracks
+        if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
+          const room = livekitRoomRef.current;
+          const vTrack = stream.getVideoTracks()[0];
+          const aTrack = stream.getAudioTracks()[0];
+          if (vTrack) room.localParticipant.publishTrack(vTrack).catch(() => {});
+          if (aTrack) room.localParticipant.publishTrack(aTrack).catch(() => {});
         }
 
         // Setup Web Audio API to detect real microphone speaking activity
@@ -1136,6 +1268,41 @@ export default function LiveSessionRoomPage() {
       console.warn("BroadcastChannel not supported:", e);
     }
 
+    // DataChannel handler setup
+    const attachDataChannelHandlers = (channel: RTCDataChannel) => {
+      channel.onopen = () => {
+        setPeerConnected(true);
+        setLiveLatency(0.3);
+      };
+
+      channel.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "CHAT_MESSAGE") {
+            const receiveTime = performance.now();
+            const latency = Math.max(0.1, Number((receiveTime - payload.sentPerfTime).toFixed(2)));
+            setLiveLatency(latency);
+
+            receiveIncomingChatMessage({
+              id: payload.id,
+              senderUserId: payload.senderUserId,
+              senderName: payload.senderName,
+              senderRole: payload.senderRole,
+              content: payload.content,
+              latencyMs: latency,
+              channelType: "webrtc_datachannel",
+              createdAt: payload.createdAt,
+            });
+          } else if (payload.type === "CODE_SYNC") {
+            setCodeContent(payload.code);
+            setSelectedLanguage(payload.language);
+          }
+        } catch (e) {
+          console.warn("Failed to parse DataChannel payload:", e);
+        }
+      };
+    };
+
     // B. Native WebRTC RTCPeerConnection with Free Google Public STUN
     let pc: RTCPeerConnection | null = null;
     try {
@@ -1160,11 +1327,35 @@ export default function LiveSessionRoomPage() {
 
       // Handle Remote Video/Audio Track
       pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          const incomingStream = event.streams[0];
-          setRemoteStream(incomingStream);
+        const incomingTrack = event.track;
+        setRemoteStream((prevStream) => {
+          if (prevStream) {
+            const existing = prevStream.getTracks();
+            if (!existing.some((t) => t.id === incomingTrack.id)) {
+              prevStream.addTrack(incomingTrack);
+            }
+            return new MediaStream(prevStream.getTracks());
+          }
+          if (event.streams && event.streams[0]) {
+            return event.streams[0];
+          }
+          return new MediaStream([incomingTrack]);
+        });
+        if (incomingTrack.kind === "video") {
           setPeerHasVideo(true);
-          setPeerConnected(true);
+        }
+        setPeerConnected(true);
+      };
+
+      // Handle renegotiation needed (tracks added/replaced)
+      pc.onnegotiationneeded = async () => {
+        if (isCleanedUp) return;
+        try {
+          if (pc?.signalingState === "stable") {
+            await initiateSdpOffer();
+          }
+        } catch (err) {
+          console.warn("Negotiation notice:", err);
         }
       };
 
@@ -1172,41 +1363,6 @@ export default function LiveSessionRoomPage() {
         if (pc?.connectionState === "connected") {
           setPeerConnected(true);
         }
-      };
-
-      // Setup DataChannel
-      const attachDataChannelHandlers = (channel: RTCDataChannel) => {
-        channel.onopen = () => {
-          setPeerConnected(true);
-          setLiveLatency(0.3);
-        };
-
-        channel.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data);
-            if (payload.type === "CHAT_MESSAGE") {
-              const receiveTime = performance.now();
-              const latency = Math.max(0.1, Number((receiveTime - payload.sentPerfTime).toFixed(2)));
-              setLiveLatency(latency);
-
-              receiveIncomingChatMessage({
-                id: payload.id,
-                senderUserId: payload.senderUserId,
-                senderName: payload.senderName,
-                senderRole: payload.senderRole,
-                content: payload.content,
-                latencyMs: latency,
-                channelType: "webrtc_datachannel",
-                createdAt: payload.createdAt,
-              });
-            } else if (payload.type === "CODE_SYNC") {
-              setCodeContent(payload.code);
-              setSelectedLanguage(payload.language);
-            }
-          } catch (e) {
-            console.warn("Failed to parse DataChannel payload:", e);
-          }
-        };
       };
 
       pc.ondatachannel = (event) => {
@@ -1253,6 +1409,22 @@ export default function LiveSessionRoomPage() {
         if (!dataChannelRef.current || dataChannelRef.current.readyState === "closed") {
           const dc = pc.createDataChannel("session-chat", { ordered: true });
           dataChannelRef.current = dc;
+          attachDataChannelHandlers(dc);
+        }
+
+        // Always sync any local tracks into pc before offer
+        if (localStreamRef.current) {
+          const senders = pc.getSenders();
+          localStreamRef.current.getTracks().forEach((track) => {
+            const existing = senders.find((s) => s.track && s.track.kind === track.kind);
+            if (existing) {
+              existing.replaceTrack(track).catch(() => {});
+            } else {
+              try {
+                pc.addTrack(track, localStreamRef.current!);
+              } catch {}
+            }
+          });
         }
 
         const offer = await pc.createOffer({
@@ -1291,9 +1463,26 @@ export default function LiveSessionRoomPage() {
     }).catch(() => {});
 
     // Role-Agnostic Signaling Loop (Works with Mentor+Student, or Student+Student across tabs)
+    let tickCount = 0;
     const signalingInterval = setInterval(async () => {
       if (!pc || isCleanedUp) return;
       try {
+        tickCount++;
+        if (tickCount % 8 === 0) {
+          // Heartbeat ping every ~3.2s
+          fetch(`/api/sessions/${bookingId}/signaling`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              senderId: currentUserId,
+              senderClientId: clientId,
+              senderRole: currentRole,
+              type: "presence",
+              payload: { name: currentName, role: currentRole },
+            }),
+          }).catch(() => {});
+        }
+
         const res = await fetch(
           `/api/sessions/${bookingId}/signaling?clientId=${clientId}&since=${lastSignalTimestamp}`
         );
@@ -1302,17 +1491,32 @@ export default function LiveSessionRoomPage() {
           for (const signal of data.signals) {
             lastSignalTimestamp = Math.max(lastSignalTimestamp, signal.timestamp || 0);
 
-            if (signal.type === "join") {
+            if (signal.type === "join" || signal.type === "presence") {
               setPeerConnected(true);
               const isCaller = isMentor || (!isMentor && signal.senderRole === "student" && clientId > signal.senderClientId);
-              if (isCaller) {
+              if (isCaller && pc.signalingState === "stable") {
                 initiateSdpOffer();
               }
             } else if (signal.type === "offer") {
+              // Attach our tracks before answering so remote peer receives our camera/audio
+              if (localStreamRef.current) {
+                const senders = pc.getSenders();
+                localStreamRef.current.getTracks().forEach((track) => {
+                  const existing = senders.find((s) => s.track && s.track.kind === track.kind);
+                  if (existing) {
+                    existing.replaceTrack(track).catch(() => {});
+                  } else {
+                    try {
+                      pc.addTrack(track, localStreamRef.current!);
+                    } catch {}
+                  }
+                });
+              }
+
               await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
-              await drainIceBuffer(pc);
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
+              await drainIceBuffer(pc);
 
               await fetch(`/api/sessions/${bookingId}/signaling`, {
                 method: "POST",
@@ -1344,7 +1548,7 @@ export default function LiveSessionRoomPage() {
           }
         }
       } catch {}
-    }, 750);
+    }, 400);
 
     // C. Server-Sent Events (SSE) Instant Stream (< 1ms In-Memory Loopback Hub)
     let eventSource: EventSource | null = null;
@@ -1476,6 +1680,10 @@ export default function LiveSessionRoomPage() {
 
     if (isAIInterviewer) {
       sendTurnToAI(trimmed);
+      return;
+    }
+    if (isAIMentor) {
+      sendTurnToAIMentor(trimmed);
       return;
     }
 
@@ -1766,6 +1974,11 @@ export default function LiveSessionRoomPage() {
     }
   };
 
+  const hasRemoteVideo = !!(
+    (peerHasVideo || (remoteStream && remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled))) &&
+    remoteStream
+  );
+
   return (
     <div className="h-screen w-screen bg-[#0A1410] text-[#EDF1E8] flex flex-col overflow-hidden font-sans select-none">
       {/* 1. TOP HEADER BAR */}
@@ -1835,7 +2048,7 @@ export default function LiveSessionRoomPage() {
             <button
               onClick={() => setActiveRoleOverride("student")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                !isMentor && !isAIInterviewer
+                !isMentor && !isAI
                   ? "bg-emerald-700/80 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
@@ -1859,7 +2072,7 @@ export default function LiveSessionRoomPage() {
             <button
               onClick={() => {
                 setActiveRoleOverride("ai_interviewer");
-                if (chatMessages.length === 0 || !chatMessages.some(m => m.senderUserId === "ai-interviewer")) {
+                if (chatMessages.length === 0 || !chatMessages.some((m) => m.senderUserId === "ai-interviewer")) {
                   initAIInterviewer();
                 }
               }}
@@ -1868,10 +2081,27 @@ export default function LiveSessionRoomPage() {
                   ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-700/30"
                   : "text-[#A3B899] hover:text-white hover:bg-violet-950/40"
               }`}
-              title="Switch to AI Interviewer Mode (Voice + Chat FAANG Bar Raiser)"
+              title="Switch to AI Mock Interviewer Mode (Voice + Chat)"
             >
               <span>🤖</span>
-              <span className="font-bold">AI Interviewer</span>
+              <span className="hidden lg:inline">Interviewer</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveRoleOverride("ai_mentor");
+                if (chatMessages.length === 0 || !chatMessages.some((m) => m.senderUserId === "ai-mentor")) {
+                  initAIMentor();
+                }
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                isAIMentor
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-700/30"
+                  : "text-[#A3B899] hover:text-white hover:bg-emerald-950/40"
+              }`}
+              title="Switch to 24/7 AI Career & Architecture Mentor"
+            >
+              <span>🧠</span>
+              <span className="font-bold">AI Mentor</span>
             </button>
           </div>
 
@@ -1992,21 +2222,25 @@ export default function LiveSessionRoomPage() {
             {/* VIEW MODE 1: GRID VIEW (50 / 50 SIDE BY SIDE) */}
             {viewMode === "grid" ? (
               <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
-                {/* Frame A: Remote Peer Video or AI Interviewer */}
+                {/* Frame A: Remote Peer Video or AI Interviewer / AI Mentor */}
                 <div className="relative rounded-xl overflow-hidden bg-[#10241B] border border-[#1E4334] flex items-center justify-center">
-                  {isAIInterviewer ? (
-                    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center bg-radial from-[#1A1A38] via-[#0F1426] to-[#0A0D18]">
+                  {isAI ? (
+                    <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 text-center bg-radial ${
+                      isAIMentor ? "from-[#102B20] via-[#0B1D15] to-[#07130E]" : "from-[#1A1A38] via-[#0F1426] to-[#0A0D18]"
+                    }`}>
                       {/* Neural glowing rings */}
-                      <div className={`absolute w-44 h-44 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none ${isAISpeaking ? "animate-pulse" : ""}`} />
+                      <div className={`absolute w-44 h-44 rounded-full ${isAIMentor ? "bg-emerald-500/15" : "bg-indigo-500/15"} blur-2xl pointer-events-none ${isAISpeaking ? "animate-pulse" : ""}`} />
 
                       <div className="relative mb-3">
                         <div className={`relative w-24 h-24 rounded-full overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
-                          isAISpeaking ? "border-violet-400 ring-4 ring-violet-500/30 scale-105" : "border-indigo-500/50"
+                          isAISpeaking
+                            ? isAIMentor ? "border-emerald-400 ring-4 ring-emerald-500/30 scale-105" : "border-violet-400 ring-4 ring-violet-500/30 scale-105"
+                            : isAIMentor ? "border-emerald-500/50" : "border-indigo-500/50"
                         }`}>
                           <Image src={remoteAvatar} alt={remoteName} fill className="object-cover" />
                         </div>
                         {isAISpeaking && (
-                          <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-violet-600 text-[9px] font-bold text-white shadow-md animate-bounce flex items-center gap-0.5">
+                          <span className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full ${isAIMentor ? "bg-emerald-600" : "bg-violet-600"} text-[9px] font-bold text-white shadow-md animate-bounce flex items-center gap-0.5`}>
                             <Volume2 className="w-2.5 h-2.5" />
                             <span>Speaking</span>
                           </span>
@@ -2014,10 +2248,10 @@ export default function LiveSessionRoomPage() {
                       </div>
 
                       <h4 className="font-bold text-white text-sm flex items-center gap-1.5">
-                        <Bot className="w-4 h-4 text-violet-400" />
+                        <Bot className={`w-4 h-4 ${isAIMentor ? "text-emerald-400" : "text-violet-400"}`} />
                         <span>{remoteName}</span>
                       </h4>
-                      <p className="text-[11px] text-violet-300/80 mb-3">{remoteHeadline}</p>
+                      <p className={`text-[11px] ${isAIMentor ? "text-emerald-300/80" : "text-violet-300/80"} mb-3`}>{remoteHeadline}</p>
 
                       {/* Soundwave Visualizer */}
                       <div className="flex items-center gap-1 h-6 mb-3">
@@ -2026,7 +2260,7 @@ export default function LiveSessionRoomPage() {
                             key={i}
                             className={`w-1 rounded-full transition-all duration-150 ${
                               isAISpeaking
-                                ? "bg-gradient-to-t from-violet-500 to-indigo-300 animate-pulse"
+                                ? isAIMentor ? "bg-gradient-to-t from-emerald-500 to-teal-300 animate-pulse" : "bg-gradient-to-t from-violet-500 to-indigo-300 animate-pulse"
                                 : "bg-white/20 h-2"
                             }`}
                             style={{
@@ -2042,23 +2276,32 @@ export default function LiveSessionRoomPage() {
                           onClick={() => setIsAIVoiceEnabled(!isAIVoiceEnabled)}
                           className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 ${
                             isAIVoiceEnabled
-                              ? "bg-violet-950/80 border-violet-600 text-violet-200"
+                              ? isAIMentor ? "bg-emerald-950/80 border-emerald-600 text-emerald-200" : "bg-violet-950/80 border-violet-600 text-violet-200"
                               : "bg-gray-900 border-gray-700 text-gray-400"
                           }`}
                         >
-                          {isAIVoiceEnabled ? <Volume2 className="w-3 h-3 text-violet-400" /> : <VolumeX className="w-3 h-3 text-gray-400" />}
+                          {isAIVoiceEnabled ? <Volume2 className={`w-3 h-3 ${isAIMentor ? "text-emerald-400" : "text-violet-400"}`} /> : <VolumeX className="w-3 h-3 text-gray-400" />}
                           <span>{isAIVoiceEnabled ? "Voice ON" : "Muted"}</span>
                         </button>
-                        <button
-                          onClick={() => sendTurnToAI("Can you give me a subtle hint or edge case to consider?")}
-                          className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 flex items-center gap-1 transition-all"
-                        >
-                          <HelpCircle className="w-3 h-3 text-amber-400" />
-                          <span>Hint</span>
-                        </button>
+                        {isAIMentor ? (
+                          <button
+                            onClick={() => sendTurnToAIMentor("Can you outline my 6-month placement roadmap?")}
+                            className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 flex items-center gap-1 transition-all"
+                          >
+                            <span>Roadmap</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => sendTurnToAI("Can you give me a subtle hint or edge case to consider?")}
+                            className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 flex items-center gap-1 transition-all"
+                          >
+                            <HelpCircle className="w-3 h-3 text-amber-400" />
+                            <span>Hint</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ) : peerHasVideo && remoteStream ? (
+                  ) : hasRemoteVideo && remoteStream ? (
                     <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-6">
@@ -2074,7 +2317,7 @@ export default function LiveSessionRoomPage() {
                       <p className="text-[11px] text-emerald-400/90">{remoteHeadline}</p>
                     </div>
                   )}
-                  <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10">
+                  <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10 z-10">
                     <span className={`w-2 h-2 rounded-full ${isAIInterviewer ? "bg-violet-400" : "bg-emerald-400"}`} />
                     <span>
                       {isAIInterviewer ? "Tathastu AI Bar Raiser" : `${remoteName} (${isMentor ? "Student" : "Mentor"})`}
@@ -2084,7 +2327,7 @@ export default function LiveSessionRoomPage() {
 
                 {/* Frame B: Local Video */}
                 <div
-                  className={`relative rounded-xl overflow-hidden bg-[#10241B] border transition-all duration-300 flex items-center justify-center ${
+                  className={`relative rounded-xl overflow-hidden bg-[#10241B] border transition-all duration-300 flex items-center justify-center min-h-[260px] w-full h-full ${
                     audioLevel > 15 ? "border-emerald-400 shadow-lg shadow-emerald-500/20" : "border-[#1E4334]"
                   }`}
                 >
@@ -2097,7 +2340,7 @@ export default function LiveSessionRoomPage() {
                     </div>
                   )}
 
-                  <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10">
+                  <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10 z-10">
                     <span
                       className={`w-2 h-2 rounded-full ${
                         audioLevel > 15 ? "bg-emerald-400 animate-ping" : "bg-emerald-400"
@@ -2241,7 +2484,149 @@ export default function LiveSessionRoomPage() {
                       </div>
                     </div>
                   </div>
-                ) : peerHasVideo && remoteStream ? (
+                ) : isAIMentor ? (
+                  <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#123123] via-[#0B1E16] to-[#07130E]">
+                    {/* Background glow orb */}
+                    <div className={`absolute w-96 h-96 rounded-full bg-emerald-600/15 blur-3xl pointer-events-none transition-all duration-700 ${
+                      isAISpeaking ? "scale-125 opacity-80" : "scale-100 opacity-40"
+                    }`} />
+
+                    {/* AI Avatar with Soundwave Ripple */}
+                    <div className="relative mb-5">
+                      <div className={`relative w-36 h-36 rounded-full overflow-hidden border-4 shadow-2xl transition-all duration-300 ring-8 ${
+                        isAISpeaking
+                          ? "border-emerald-400 ring-emerald-500/30 scale-105 shadow-emerald-600/40"
+                          : "border-emerald-500/50 ring-emerald-500/10"
+                      }`}>
+                        <Image
+                          src={remoteAvatar}
+                          alt="AI Career Mentor"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+
+                      {/* Status indicator bubble */}
+                      <div className="absolute -bottom-2 inset-x-0 flex justify-center">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 border ${
+                          isAISpeaking
+                            ? "bg-emerald-600 border-emerald-400 text-white animate-pulse"
+                            : isListeningVoice
+                            ? "bg-red-600 border-red-400 text-white animate-bounce"
+                            : "bg-[#0E261C] border-emerald-700/60 text-emerald-200"
+                        }`}>
+                          {isAISpeaking ? (
+                            <>
+                              <Volume2 className="w-3.5 h-3.5 text-white" />
+                              <span>Speaking...</span>
+                            </>
+                          ) : isListeningVoice ? (
+                            <>
+                              <Mic className="w-3.5 h-3.5 text-white animate-pulse" />
+                              <span>Listening...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>24/7 AI Mentor</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-white mb-1 tracking-tight flex items-center justify-center gap-2">
+                      <span>{remoteName}</span>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-medium">
+                        Principal Architect & Coach
+                      </span>
+                    </h3>
+                    <p className="text-xs text-emerald-300/80 font-medium mb-5 max-w-md">
+                      24/7 Career Roadmaps, Resume ATS Optimization, Distributed System Design, and Idiomatic Code Review.
+                    </p>
+
+                    {/* Soundwave Visualizer Bars */}
+                    <div className="flex items-center gap-1.5 h-8 mb-6">
+                      {[0.3, 0.7, 0.5, 1.0, 0.8, 0.6, 0.9, 0.4, 0.2].map((val, i) => (
+                        <span
+                          key={i}
+                          className={`w-1.5 rounded-full transition-all duration-150 ${
+                            isAISpeaking
+                              ? "bg-gradient-to-t from-emerald-500 via-teal-400 to-lime-300"
+                              : "bg-white/20 h-2"
+                          }`}
+                          style={{
+                            height: isAISpeaking ? `${Math.max(6, val * 32)}px` : "6px",
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Mentorship Pillars & Controls Card */}
+                    <div className="bg-[#0F281D]/90 border border-[#1E4D38] rounded-2xl p-4 max-w-lg w-full shadow-2xl backdrop-blur-md">
+                      {/* 4 Pillars Quick Buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3 mb-3 border-b border-[#1A4230] text-center">
+                        <button
+                          onClick={() => sendTurnToAIMentor("Can you generate my tailored 6-month placement roadmap?")}
+                          className="bg-[#0B1E16] hover:bg-[#133326] p-2 rounded-xl border border-emerald-900/40 text-left transition-all"
+                        >
+                          <span className="text-[10px] text-emerald-400 font-semibold block uppercase">🗺️ Roadmap</span>
+                          <span className="text-[11px] text-white font-medium block truncate">6-Mo Strategy</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAIMentor("Can you review my resume bullet points using the Google XYZ formula?")}
+                          className="bg-[#0B1E16] hover:bg-[#133326] p-2 rounded-xl border border-emerald-900/40 text-left transition-all"
+                        >
+                          <span className="text-[10px] text-emerald-400 font-semibold block uppercase">📄 Resume</span>
+                          <span className="text-[11px] text-white font-medium block truncate">Google XYZ</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAIMentor("How do I design a high-throughput distributed rate limiter with Redis?")}
+                          className="bg-[#0B1E16] hover:bg-[#133326] p-2 rounded-xl border border-emerald-900/40 text-left transition-all"
+                        >
+                          <span className="text-[10px] text-emerald-400 font-semibold block uppercase">🏛️ Systems</span>
+                          <span className="text-[11px] text-white font-medium block truncate">Architecture</span>
+                        </button>
+                        <button
+                          onClick={() => sendTurnToAIMentor("Can you review the code in my Code Lab and check for edge cases or race conditions?")}
+                          className="bg-[#0B1E16] hover:bg-[#133326] p-2 rounded-xl border border-emerald-900/40 text-left transition-all"
+                        >
+                          <span className="text-[10px] text-emerald-400 font-semibold block uppercase">💻 Code</span>
+                          <span className="text-[11px] text-white font-medium block truncate">Pair Review</span>
+                        </button>
+                      </div>
+
+                      {/* Actions Strip */}
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => setIsAIVoiceEnabled(!isAIVoiceEnabled)}
+                          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                            isAIVoiceEnabled
+                              ? "bg-emerald-950/80 border-emerald-600 text-emerald-200 hover:bg-emerald-900"
+                              : "bg-gray-900 border-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {isAIVoiceEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-gray-400" />}
+                          <span>{isAIVoiceEnabled ? "Voice: ON" : "Voice: MUTED"}</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("plan")}
+                          className="py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-all"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Action Plan</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("code")}
+                          className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md transition-all"
+                        >
+                          <Code2 className="w-3.5 h-3.5" />
+                          <span>Code Lab</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : hasRemoteVideo && remoteStream ? (
                   <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                 ) : (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
@@ -2257,7 +2642,7 @@ export default function LiveSessionRoomPage() {
                     </div>
 
                     <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{remoteName}</h3>
-                    <p className="text-xs text-emerald-400/90 font-medium mb-6">{remoteHeadline}</p>
+                    <p className="text-xs text-emerald-400/90 font-medium mb-5">{remoteHeadline}</p>
 
                     {/* Waiting helper card with Dual Engine Info */}
                     <div className="bg-[#122B20]/90 border border-[#214F3A] rounded-2xl p-4 max-w-md shadow-xl backdrop-blur-md">
@@ -2275,7 +2660,7 @@ export default function LiveSessionRoomPage() {
                         )}
                       </div>
                       <p className="text-[11px] text-[#C2D6BA] leading-relaxed mb-3">
-                        Your camera and microphone are live. To test 2-way video and instant chat, copy the invite link below and open it in an Incognito tab:
+                        Your camera and microphone are live. To test 2-way video and instant chat, copy the link below and open it in an Incognito tab:
                       </p>
                       <button
                         onClick={() => copyMeetingLink(true)}
@@ -2288,6 +2673,21 @@ export default function LiveSessionRoomPage() {
                             : `Copy ${isMentor ? "Student" : "Mentor"} Link to Test in Tab 2 (Incognito)`}
                         </span>
                       </button>
+
+                      {/* Smart Role-Switcher helper for 2-tab local testing */}
+                      <div className="mt-3 p-2.5 rounded-xl bg-[#091510]/80 border border-emerald-900/40 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">
+                        <span className="text-[#A3B899] text-left">
+                          {isMentor
+                            ? "Joined as Mentor (Priya Sharma). Waiting for Student."
+                            : "Testing in 2 tabs? One tab should be Student, one Mentor."}
+                        </span>
+                        <button
+                          onClick={() => setActiveRoleOverride(isMentor ? "student" : "mentor")}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-white font-semibold text-[10px] whitespace-nowrap transition-all shadow"
+                        >
+                          {isMentor ? "Switch to Student" : "Switch to Mentor"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

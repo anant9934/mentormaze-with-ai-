@@ -45,7 +45,7 @@ export async function GET(
   // Filter messages: newer than 'since', not sent by this client instance, matching target if targeted
   const pending = roomMessages.filter((m) => {
     if (m.timestamp <= since) return false;
-    if (clientId && (m.senderClientId === clientId || m.senderId === clientId)) return false;
+    if (clientId && (m.senderClientId ? m.senderClientId === clientId : m.senderId === clientId)) return false;
     if (m.targetClientId && clientId && m.targetClientId !== clientId) return false;
     return true;
   });

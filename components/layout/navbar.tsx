@@ -16,12 +16,13 @@ export function Navbar() {
   const leftNavLinks = [
     { label: "Programs", href: "/programs" },
     { label: "Mentors", href: "/mentors" },
-    { label: "Resources", href: "/how-it-works" },
+    { label: "AI Mentor", href: "/ai-mentor", isAi: true },
+    { label: "Mock Practice", href: "/mock-interviews/practice" },
   ];
 
   const rightNavLinks = [
+    { label: "Resources", href: "/how-it-works" },
     { label: "About", href: "/how-it-works" },
-    { label: "Contact", href: "#contact" },
   ];
 
   const getDashboardHref = () => {
@@ -38,18 +39,23 @@ export function Navbar() {
 
         {/* Center: Navigation Links */}
         <nav className="hidden md:flex items-center gap-9 text-sm font-semibold text-[#1F2937]">
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-7">
             {leftNavLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className={`transition-colors hover:text-[#123B2E] ${
+                  className={`transition-colors hover:text-[#123B2E] flex items-center gap-1.5 ${
                     isActive ? "text-[#123B2E] font-bold" : "text-[#1F2937]"
                   }`}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {link.isAi && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm animate-pulse">
+                      24/7
+                    </span>
+                  )}
                 </Link>
               );
             })}
