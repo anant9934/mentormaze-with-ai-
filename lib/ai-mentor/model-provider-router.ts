@@ -1186,7 +1186,12 @@ export class ModelProviderRouter {
   public static async callMentorMaze2B(payload: PromptPayload, requestId: string): Promise<ProviderCompletionResult> {
     const t0 = performance.now();
     const model = "mentormaze/mentormaze-2b-sft-v1";
-    const localApiUrl = process.env.MENTORMAZE_LOCAL_API_URL || "http://127.0.0.1:8000";
+    const localApiUrl = process.env.MENTORMAZE_LOCAL_API_URL || (process.env.NODE_ENV === "test" ? undefined : "http://127.0.0.1:8000");
+    if (!localApiUrl) {
+      throw new Error(
+        `MentorMaze-2B local inference server unavailable at http://127.0.0.1:8000. Start inference daemon via 'python training/scripts/serve_model.py' or MLX.`
+      );
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(
@@ -1198,52 +1203,48 @@ export class ModelProviderRouter {
       payload.signal.addEventListener("abort", () => controller.abort());
     }
 
-    // 1. If local HTTP inference service is configured or reachable, query it
-    if (process.env.MENTORMAZE_LOCAL_API_URL) {
-      try {
-        const response = await fetch(`${localApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: payload.systemPrompt },
-              ...payload.messages,
-            ],
-            temperature: payload.temperature ?? 0.3,
-            max_tokens: payload.maxTokens ?? 2048,
-          }),
-        });
+    // 1. Query local HTTP inference daemon (http://127.0.0.1:8000 by default or MENTORMAZE_LOCAL_API_URL)
+    try {
+      const response = await fetch(`${localApiUrl.replace(/\/$/, "")}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: payload.systemPrompt },
+            ...payload.messages,
+          ],
+          temperature: payload.temperature ?? 0.3,
+          max_tokens: payload.maxTokens ?? 2048,
+        }),
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          const text = data?.choices?.[0]?.message?.content || "";
-          const elapsed = Number((performance.now() - t0).toFixed(2));
-          const promptTokens = data?.usage?.prompt_tokens || Math.round(payload.systemPrompt.length / 4);
-          const completionTokens = data?.usage?.completion_tokens || Math.round(text.length / 4);
-          const totalTokens = promptTokens + completionTokens;
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content || "";
+        const elapsed = Number((performance.now() - t0).toFixed(2));
+        const promptTokens = data?.usage?.prompt_tokens || Math.round(payload.systemPrompt.length / 4);
+        const completionTokens = data?.usage?.completion_tokens || Math.round(text.length / 4);
+        const totalTokens = promptTokens + completionTokens;
 
-          return {
-            requestId,
-            content: text,
-            provider: "mentormaze_2b",
-            model,
-            inferenceMode: "fine-tuned-2b",
-            latencyMs: elapsed,
-            tokenUsage: { promptTokens, completionTokens, totalTokens },
-            tokensEstimate: totalTokens,
-            estimatedCostUsd: 0.0,
-            isFallback: false,
-            rawResponse: data,
-          };
-        }
-      } catch (err: any) {
-        console.warn("[ModelRouter] Local 2B HTTP endpoint connection failed:", err.message);
-      } finally {
-        clearTimeout(timeout);
+        return {
+          requestId,
+          content: text,
+          provider: "mentormaze_2b",
+          model,
+          inferenceMode: "fine-tuned-2b",
+          latencyMs: elapsed,
+          tokenUsage: { promptTokens, completionTokens, totalTokens },
+          tokensEstimate: totalTokens,
+          estimatedCostUsd: 0.0,
+          isFallback: false,
+          rawResponse: data,
+        };
       }
-    } else {
+    } catch (err: any) {
+      console.warn("[ModelRouter] Local 2B HTTP endpoint connection failed:", err.message);
+    } finally {
       clearTimeout(timeout);
     }
 

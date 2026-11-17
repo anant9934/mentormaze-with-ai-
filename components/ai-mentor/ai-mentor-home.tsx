@@ -123,20 +123,17 @@ export function AIMentorHome({
         {/* Subdued Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E7F2DA] border border-[#DCE5D5] text-[#174B39] text-xs font-semibold tracking-wide">
           <Sparkles className="w-3.5 h-3.5 text-[#27875E]" />
-          <span>AI TATHASTU · PERSONAL AI MENTOR</span>
+          <span>YOUR PERSONAL AI MENTOR</span>
         </div>
 
         {/* Serif Editorial Heading */}
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-[#17211E] tracking-tight leading-tight">
-          {greeting}, {studentName}.
-          <span className="block text-2xl sm:text-3xl md:text-4xl text-[#174B39] font-normal mt-1">
-            What should we work on today?
-          </span>
+          What should we build or learn today?
         </h1>
 
-        {/* Subtitle / Context */}
+        {/* Supporting text */}
         <p className="text-sm sm:text-base text-[#69756B] max-w-xl mx-auto font-sans leading-relaxed">
-          Dr. Aarav Mehta is ready with 9 integrated specialist capabilities — from first-principles conceptual pedagogy to distributed systems, code audits, and placement strategies.
+          One clear ask is enough to begin.
         </p>
       </div>
 

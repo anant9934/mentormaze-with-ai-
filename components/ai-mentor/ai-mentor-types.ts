@@ -22,6 +22,7 @@ export type NavSection =
   | "codework"
   | "discover"
   | "projects"
+  | "agents"
   | "skills"
   | "memory"
   | "progress"
@@ -31,7 +32,8 @@ export type NavSection =
   | "model_info"
   | "notifications"
   | "settings"
-  | "help";
+  | "help"
+  | "report_issue";
 
 export interface PostInteractionCheck {
   question: string;
@@ -101,6 +103,16 @@ export interface FocusAreaDef {
 
 export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   {
+    id: "study_planning",
+    label: "Set a Learning Goal",
+    iconName: "Calendar",
+    specialistTitle: "Study Planner & Roadmap",
+    badge: "Goal Specialist",
+    description: "Milestone roadmaps, target competencies, and structured timelines.",
+    placeholder: "Tell me your target role and timeline to set a tailored learning goal...",
+    suggestionPrompt: "Set a tailored 12-week learning goal to master distributed systems and staff engineer system design.",
+  },
+  {
     id: "learn",
     label: "Learn a Concept",
     iconName: "BookOpen",
@@ -112,13 +124,13 @@ export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   },
   {
     id: "coding_dsa",
-    label: "Solve Coding & DSA",
+    label: "Review Code & DSA",
     iconName: "Code2",
     specialistTitle: "DSA & Code Specialist",
     badge: "Coding Specialist",
     description: "Algorithm walkthroughs, edge cases, space-time complexity analysis.",
     placeholder: "Paste code or ask about an algorithmic pattern (graphs, DP, trees)...",
-    suggestionPrompt: "Walk me through the optimal approach for the Longest Increasing Subsequence with O(N log N) patience sorting.",
+    suggestionPrompt: "Review my Longest Increasing Subsequence patience sorting implementation and prove its O(N log N) complexity.",
   },
   {
     id: "system_design",
@@ -132,7 +144,7 @@ export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   },
   {
     id: "resume",
-    label: "Improve Resume",
+    label: "Improve a Resume",
     iconName: "FileText",
     specialistTitle: "Resume Auditor & Transformer",
     badge: "Resume Specialist",
@@ -142,7 +154,7 @@ export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   },
   {
     id: "interview",
-    label: "Prepare for Interview",
+    label: "Prepare for an Interview",
     iconName: "Target",
     specialistTitle: "Interview Coach & Calibration",
     badge: "Interview Coach",
@@ -152,7 +164,7 @@ export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   },
   {
     id: "career",
-    label: "Explore Career",
+    label: "Explore Career Options",
     iconName: "Compass",
     specialistTitle: "Career & Market Intelligence",
     badge: "Career Strategist",
@@ -169,16 +181,6 @@ export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
     description: "Production readiness audits, architectural critique, standout portfolio features.",
     placeholder: "Share your project architecture or repository structure for expert review...",
     suggestionPrompt: "Review my portfolio project architecture: a real-time collaborative code editor using WebSockets and CRDTs.",
-  },
-  {
-    id: "study_planning",
-    label: "Create a Study Plan",
-    iconName: "Calendar",
-    specialistTitle: "Study Planner & Roadmap",
-    badge: "Study Planner",
-    description: "Personalized milestone calendars, spaced retrieval, weekly focus goals.",
-    placeholder: "Tell me your target role and timeline to generate an evidence-based roadmap...",
-    suggestionPrompt: "Build me an 8-week intensive study roadmap to prepare for staff engineer system design rounds.",
   },
 ];
 

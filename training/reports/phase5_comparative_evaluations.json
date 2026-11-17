@@ -1,0 +1,102 @@
+{
+  "evaluated_at": "2026-11-18T03:51:46Z",
+  "benchmarks": {
+    "base_qwen3_5_2b": {
+      "eval-1-conceptual": {
+        "prompt": "Explain how React virtual DOM diffing works from first principles.",
+        "category": "conceptual",
+        "output": "# React Virtual DOM Diffing: From First Principles\n\n## Core Concept\n\nReact's virtual DOM diffing algorithm works by:\n1. **Creating a virtual DOM** - A lightweight representation of the actual DOM\n2. **Comparing** - Identifying differences between the virtual DOM and the actual DOM\n3. **Updating** - Applying minimal changes to the actual DOM to reflect the differences\n\n## Step-by-Step Process\n\n### 1. Virtual DOM Creation\nWhen a component renders, React creates a **virtual DOM tree** (VDT) instead of the actual DOM tree. This VDT is:\n- **Immutable",
+        "latency_sec": 9.076
+      },
+      "eval-2-coding": {
+        "prompt": "How should I solve the Two Sum problem in O(N) time and O(N) auxiliary space?",
+        "category": "coding",
+        "output": "# Solving Two Sum in O(N) Time and O(N) Auxiliary Space\n\n## Problem Statement\nGiven an array of integers `nums` and an integer `target`, find two numbers such that they add up to `target`. Return their indices.\n\n## Approach\n\n### 1. Brute Force (O(N\u00b2) Time, O(1) Space)\n```python\ndef twoSum_brute_force(nums, target):\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            if nums[i] + nums[j] == target:\n                return",
+        "latency_sec": 6.025
+      },
+      "eval-3-system-design": {
+        "prompt": "How can an API gateway implement distributed rate limiting with Redis Lua scripts?",
+        "category": "system_design",
+        "output": "To implement distributed rate limiting with Redis Lua scripts at an API gateway, you can follow these steps:\n\n### 1. **Understand the Problem**\n   - **Rate Limiting**: Prevents abuse by limiting requests per user/IP/endpoint.\n   - **Distributed**: Multiple instances of the API gateway need to coordinate.\n   - **Redis Lua**: Lua scripts are serverless, atomic, and efficient for complex logic.\n\n### 2. **Design the Rate Limiting Logic**\n   - **Key Structure**: Use a unique key for each user/IP/endpoint.\n   - **Sliding Window**:",
+        "latency_sec": 5.882
+      },
+      "eval-4-resume": {
+        "prompt": "Rewrite this resume bullet using the Google XYZ formula: 'Worked on backend API to speed up search response time.'",
+        "category": "resume",
+        "output": "Here are a few options rewritten using the Google XYZ formula (Action Verb + Context + Quantifiable Result):\n\n**Option 1 (Focus on Speed):**\n*   **Optimized** backend API architecture, **reducing** search response time by **40%** through improved caching and query optimization.\n\n**Option 2 (Focus on Efficiency):**\n*   **Enhanced** backend API performance by **implementing** a new caching layer, **resulting in** a **30% faster** average search response time.\n\n**Option 3 (Focus on Improvement):**\n*   **Improved** backend API efficiency",
+        "latency_sec": 5.989
+      },
+      "eval-5-hinglish": {
+        "prompt": "Recursion kya hota hai aur call stack kaise kaam karta hai? Socratic hint do.",
+        "category": "hinglish",
+        "output": "**Recursion** ek programming concept hai jismein function ek hi function ko call karte hain, jismein wo apni same function ko call karta hai.\n\n**Call Stack** ek data structure hai jo recursion ke liye zaroori hai. Ismein ek stack (LIFO - Last In First Out) hai jismein ek ek function call rakha jaata hai.\n\n**Socratic Hint:**  \nRecursion kaise kaam karta hai?  \n1. Function ek hi function ko call karta hai.  \n2. Call stack mein ek ek function call rakha jaata hai.",
+        "latency_sec": 5.897
+      }
+    },
+    "mentormaze_2b_sft_adapter": {
+      "eval-1-conceptual": {
+        "prompt": "Explain how React virtual DOM diffing works from first principles.",
+        "category": "conceptual",
+        "output": "# React Virtual DOM Diffing Explained from First Principles\n\n## Core Concept: What is Virtual DOM?\n\nThe Virtual DOM is a lightweight, in-memory representation of the actual DOM. React uses it to efficiently update the real DOM without recreating it from scratch.\n\n## Step-by-Step Diffing Process\n\n### 1. State Update\nWhen state changes, React updates the virtual DOM tree:\n```javascript\n// Before update\nconst oldElement = <div className=\"old\">content</div>;\n\n// After update\nconst newElement = <div className=\"new\">content</div>;\n```\n\n### 2",
+        "latency_sec": 6.621
+      },
+      "eval-2-coding": {
+        "prompt": "How should I solve the Two Sum problem in O(N) time and O(N) auxiliary space?",
+        "category": "coding",
+        "output": "# Two Sum Problem: O(N) Time and O(N) Auxiliary Space\n\n## Problem Statement\nGiven an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\n## Solution Approach\n\n### Brute Force Approach (O(N\u00b2) Time)\n```python\ndef twoSum(nums, target):\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            if nums[i",
+        "latency_sec": 6.409
+      },
+      "eval-3-system-design": {
+        "prompt": "How can an API gateway implement distributed rate limiting with Redis Lua scripts?",
+        "category": "system_design",
+        "output": "To implement distributed rate limiting with Redis Lua scripts in an API gateway, you can use the following approach:\n\n### 1. **Define Rate Limit Rules**\n   - Specify the rate limit for each endpoint or resource.\n   - Example: `requests_per_minute = 100`.\n\n### 2. **Use Redis Lua Scripts**\n   - Write Lua scripts to handle rate limiting logic.\n   - These scripts run on Redis and can be called by the API gateway.\n\n### 3. **Example Lua Script for Rate Limiting**\n   ```lua\n   local rate_limit = 100",
+        "latency_sec": 6.27
+      },
+      "eval-4-resume": {
+        "prompt": "Rewrite this resume bullet using the Google XYZ formula: 'Worked on backend API to speed up search response time.'",
+        "category": "resume",
+        "output": "Built a backend API that reduced search response time by 30% through optimized database queries.",
+        "latency_sec": 1.365
+      },
+      "eval-5-hinglish": {
+        "prompt": "Recursion kya hota hai aur call stack kaise kaam karta hai? Socratic hint do.",
+        "category": "hinglish",
+        "output": "**Recursion** ek programming technique hai jismein ek function apni same function ko call karta hai, aur iske andar ek base case (simplest case) hota hai.\n\n**Call Stack** ek data structure hai jo recursion ke liye zaroori hai. Ismein ek function call aur uske arguments (parameters) ek stack mein rakhte hain, aur jab function return hoti hai, toh us call ko stack se remove karte hain.\n\n**Socratic hint:**\n1. Ek simple recursion example dhoondhna.\n2. Usme call stack ki role",
+        "latency_sec": 6.325
+      }
+    },
+    "mentormaze_2b_sft_plus_rag": {
+      "eval-1-conceptual": {
+        "prompt": "Explain how React virtual DOM diffing works from first principles.",
+        "category": "conceptual",
+        "output": "### React Virtual DOM Diffing: First Principles Breakdown\n\n**Core Principle**: React's virtual DOM diffing algorithm operates through a two-phase comparison mechanism that minimizes reconciliation overhead by calculating the minimal set of updates required to transform one virtual DOM tree into another.\n\n#### Phase 1: Boundary Detection\n- React traverses the current virtual DOM tree and identifies all nodes that have changed state since the previous render cycle\n- This boundary is determined by comparing each node's current state with its previous state\n\n#### Phase 2: Minimal Update Calculation\n- For each changed node, React calculates the exact transformation required to update its children\n-",
+        "latency_sec": 6.458
+      },
+      "eval-2-coding": {
+        "prompt": "How should I solve the Two Sum problem in O(N) time and O(N) auxiliary space?",
+        "category": "coding",
+        "output": "### \ud83c\udfaf Two Sum: O(N) Time, O(N) Space\n\n**Core Insight**: Use a hash map to store each element's index as you iterate through the array.\n\n**Step-by-Step**:\n1. Initialize an empty hash map `map`.\n2. Iterate through the array with index `i`:\n   - Calculate `target = nums[i] - nums[j]`.\n   - Check if `target` exists in `map`.\n   - If yes, return `[map[target], i]`.\n   - Otherwise, store `{nums[i], i}` in `map`.\n\n**",
+        "latency_sec": 6.404
+      },
+      "eval-3-system-design": {
+        "prompt": "How can an API gateway implement distributed rate limiting with Redis Lua scripts?",
+        "category": "system_design",
+        "output": "### \ud83c\udfaf Verified Knowledge: Distributed Rate Limiters with Redis Lua\n\n**Core Principle**: Redis Lua scripts execute atomically within Redis transactions, preventing race conditions across cluster nodes.\n\n**Implementation Steps**:\n1. Define Lua script with atomic operations\n2. Use Redis transaction commands (EXEC/EXEC)\n3. Validate edge cases (empty input, single request)\n4. Test with edge cases: empty input, single request, boundary values\n\n**Example**:\n```lua\n-- Rate limiter script\nlocal function rate_limit(request_id, limit)\n    local key = \"rate_limit:\" .. request_id\n    local",
+        "latency_sec": 6.407
+      },
+      "eval-4-resume": {
+        "prompt": "Rewrite this resume bullet using the Google XYZ formula: 'Worked on backend API to speed up search response time.'",
+        "category": "resume",
+        "output": "- Backend API: Optimized search response time by reducing latency through caching and async processing.",
+        "latency_sec": 1.239
+      },
+      "eval-5-hinglish": {
+        "prompt": "Recursion kya hota hai aur call stack kaise kaam karta hai? Socratic hint do.",
+        "category": "hinglish",
+        "output": "### \ud83c\udfaf Socratic Hint (Step-by-Step Breakdown)\n1. **What is the core mechanism of recursion?**  \n   (Hint: Think about how a function \"calls itself\" and how state is preserved between calls.)\n\n2. **What is the role of the call stack in recursion?**  \n   (Hint: How does the stack manage the function's state and control flow during each recursive call?)\n\n3. **What happens when the base case is reached?**  \n   (Hint: How does the stack \"pop\" the function from memory and return the result?)\n\n---\n\n### \u2705 Verified Knowledge (",
+        "latency_sec": 6.367
+      }
+    },
+    "groq_cloud_reference": {}
+  }
+}

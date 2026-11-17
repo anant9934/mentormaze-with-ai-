@@ -189,6 +189,36 @@
       "languagePreference": "en",
       "createdAt": "2026-11-17T21:44:30.898Z",
       "updatedAt": "2026-11-17T21:44:30.899Z"
+    },
+    "conv-usr-phase2-persist-test-1794953494184-kpm9": {
+      "id": "conv-usr-phase2-persist-test-1794953494184-kpm9",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T22:11:34.184Z",
+      "updatedAt": "2026-11-17T22:11:34.184Z"
+    },
+    "conv-usr-phase2-persist-test-1794953922955-kq0e": {
+      "id": "conv-usr-phase2-persist-test-1794953922955-kq0e",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T22:18:42.955Z",
+      "updatedAt": "2026-11-17T22:18:42.955Z"
+    },
+    "conv-usr-phase2-persist-test-1794954424880-j509": {
+      "id": "conv-usr-phase2-persist-test-1794954424880-j509",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T22:27:04.880Z",
+      "updatedAt": "2026-11-17T22:27:04.880Z"
     }
   },
   "messages": {
@@ -589,6 +619,69 @@
         "modelProvider": "tathastu-pedagogy-v1",
         "inferenceMode": "deterministic",
         "createdAt": "2026-11-17T21:44:30.899Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794953494184-kpm9": [
+      {
+        "id": "msg-1794953494184-ehhnc",
+        "conversationId": "conv-usr-phase2-persist-test-1794953494184-kpm9",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T22:11:34.184Z"
+      },
+      {
+        "id": "msg-1794953494184-n3zo0",
+        "conversationId": "conv-usr-phase2-persist-test-1794953494184-kpm9",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T22:11:34.184Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794953922955-kq0e": [
+      {
+        "id": "msg-1794953922955-zrl96",
+        "conversationId": "conv-usr-phase2-persist-test-1794953922955-kq0e",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T22:18:42.955Z"
+      },
+      {
+        "id": "msg-1794953922955-q6mc0",
+        "conversationId": "conv-usr-phase2-persist-test-1794953922955-kq0e",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T22:18:42.955Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794954424880-j509": [
+      {
+        "id": "msg-1794954424880-ihhq7",
+        "conversationId": "conv-usr-phase2-persist-test-1794954424880-j509",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T22:27:04.880Z"
+      },
+      {
+        "id": "msg-1794954424880-bhni4",
+        "conversationId": "conv-usr-phase2-persist-test-1794954424880-j509",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T22:27:04.880Z"
       }
     ]
   }

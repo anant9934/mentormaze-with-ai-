@@ -25,6 +25,7 @@ import {
   Shield,
   Activity,
   X,
+  Bot,
 } from "lucide-react";
 import { NavSection, ModelProviderInfo } from "./ai-mentor-types";
 import { UNIFIED_MENTOR_IDENTITY } from "@/lib/ai-mentor/types";
@@ -56,8 +57,9 @@ export function AIMentorSidebar({
     { id: "codework" as NavSection, label: "Codework", icon: Code2 },
     { id: "discover" as NavSection, label: "Discover", icon: Compass },
     { id: "projects" as NavSection, label: "Projects", icon: Layers },
-    { id: "skills" as NavSection, label: "Skills", icon: Award },
+    { id: "agents" as NavSection, label: "Agents", icon: Bot },
     { id: "memory" as NavSection, label: "Memory", icon: Database },
+    { id: "skills" as NavSection, label: "Skills", icon: Award },
     { id: "progress" as NavSection, label: "Progress", icon: TrendingUp },
   ];
 
@@ -68,15 +70,23 @@ export function AIMentorSidebar({
   ];
 
   const toolsNavItems = [
-    { id: "model_info" as NavSection, label: "Model Information", icon: Cpu },
     { id: "notifications" as NavSection, label: "Notifications", icon: Bell },
     { id: "settings" as NavSection, label: "Settings", icon: Settings },
-    { id: "help" as NavSection, label: "Help / Report Issue", icon: HelpCircle },
+    { id: "model_info" as NavSection, label: "Model Information", icon: Cpu },
+    { id: "report_issue" as NavSection, label: "Report Issue", icon: HelpCircle },
   ];
 
   const isConnected = providerInfo?.isAvailable ?? true;
-  const activeModelDisplay = providerInfo?.modelName || "groq/qwen3.8-27b";
+  const activeModelDisplay = providerInfo?.modelName || "Hybrid Qwen/Gemini";
   const activeProviderDisplay = providerInfo?.provider || "Hybrid Cloud / Local";
+  const modelMode: "Local" | "API" | "Hybrid" =
+    providerInfo?.provider === "mentormaze_2b" && providerInfo?.isAvailable
+      ? "Local"
+      : providerInfo?.provider === "local_pedagogical"
+      ? "Local"
+      : providerInfo?.provider === "gemini" || providerInfo?.provider === "groq" || providerInfo?.provider === "openrouter"
+      ? "API"
+      : "Hybrid";
 
   return (
     <>
@@ -309,7 +319,7 @@ export function AIMentorSidebar({
                     <span>Model Engine</span>
                   </span>
                   <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-[#E7F2DA] text-[#123B2E] border border-[#DCE5D5]">
-                    Hybrid
+                    {modelMode}
                   </span>
                 </div>
                 <p className="text-xs font-bold text-[#123B2E] truncate font-mono">

@@ -32,6 +32,7 @@ import { AIMentorProjects } from "./ai-mentor-projects";
 import { AIMentorSkills } from "./ai-mentor-skills";
 import { AIMentorMemory } from "./ai-mentor-memory";
 import { AIMentorProgress } from "./ai-mentor-progress";
+import { AIMentorAgents } from "./ai-mentor-agents";
 import { AIMentorPersonalization } from "./ai-mentor-personalization";
 import { AIMentorModelPanel } from "./ai-mentor-model-panel";
 import { AIMentorSettings } from "./ai-mentor-settings";
@@ -542,6 +543,15 @@ export function AIMentorShell({
             />
           )}
 
+          {activeSection === "agents" && (
+            <AIMentorAgents
+              onSelectCapability={(prompt, focusArea) => {
+                setActiveSection("chat");
+                handleStartSession(prompt, focusArea);
+              }}
+            />
+          )}
+
           {activeSection === "skills" && (
             <AIMentorSkills
               userId={initialUserId}
@@ -575,7 +585,7 @@ export function AIMentorShell({
             <AIMentorSettings />
           )}
 
-          {activeSection === "help" && <AIMentorHelp />}
+          {(activeSection === "help" || activeSection === "report_issue") && <AIMentorHelp />}
         </div>
       </main>
 
