@@ -1,15 +1,18 @@
 {
   "mixture_name": "MentorMaze-2B-Pilot-10K",
   "total_examples": 9987,
+  "exact_denominator": 9987,
   "target_total": 10000,
   "is_exact_distribution_achieved": false,
+  "shortfall_explanation": "Available high-quality technical pool deduplicated to 3,487 records (target: 3,500; delta: -13). Exact total is 9,987 records.",
   "domains": {
     "technical": {
       "target_count": 3500,
       "actual_count": 3487,
       "available_pool": 3487,
       "target_pct": 35.0,
-      "actual_pct": 34.87,
+      "actual_pct_exact": 34.915,
+      "actual_pct_10k_basis": 34.87,
       "shortfall": 13
     },
     "career": {
@@ -17,7 +20,8 @@
       "actual_count": 2500,
       "available_pool": 2500,
       "target_pct": 25.0,
-      "actual_pct": 25.0,
+      "actual_pct_exact": 25.033,
+      "actual_pct_10k_basis": 25.0,
       "shortfall": 0
     },
     "socratic": {
@@ -25,7 +29,8 @@
       "actual_count": 2000,
       "available_pool": 2000,
       "target_pct": 20.0,
-      "actual_pct": 20.0,
+      "actual_pct_exact": 20.026,
+      "actual_pct_10k_basis": 20.0,
       "shortfall": 0
     },
     "behavioral": {
@@ -33,7 +38,8 @@
       "actual_count": 1000,
       "available_pool": 1000,
       "target_pct": 10.0,
-      "actual_pct": 10.0,
+      "actual_pct_exact": 10.013,
+      "actual_pct_10k_basis": 10.0,
       "shortfall": 0
     },
     "leveling": {
@@ -41,8 +47,23 @@
       "actual_count": 1000,
       "available_pool": 1000,
       "target_pct": 10.0,
-      "actual_pct": 10.0,
+      "actual_pct_exact": 10.013,
+      "actual_pct_10k_basis": 10.0,
       "shortfall": 0
+    }
+  },
+  "splits": {
+    "train": {
+      "count": 8488,
+      "pct": 84.991
+    },
+    "validation": {
+      "count": 998,
+      "pct": 9.993
+    },
+    "test": {
+      "count": 501,
+      "pct": 5.017
     }
   },
   "output_path": "training/datasets/processed/mentormaze_pilot_10k_mixture.jsonl"

@@ -30,5 +30,8 @@
     "ds-resume-corpus",
     "ds-counsel-chat",
     "ds-unconsented-transcripts"
+  ],
+  "needs_review_dataset_ids": [
+    "ds-bigcode-commitpackft"
   ]
 }

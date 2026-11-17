@@ -12,6 +12,15 @@ export type ProviderErrorType =
   | "MODEL_UNAVAILABLE"
   | "UNKNOWN";
 
+export type ModelLifecycleState =
+  | "NOT_TRAINED"      // No model or adapter exists
+  | "SMOKE_TESTED"     // Passed functional smoke test only (cannot be deployed)
+  | "TRAINING"         // Training in progress
+  | "TRAINED"          // Training complete, checkpoint saved, not yet evaluated
+  | "EVALUATED"        // Benchmark complete, scores recorded
+  | "DEPLOYABLE"       // Passed all quality gates, ready for production use
+  | "DEPLOYED";        // Actively serving requests
+
 export interface ProviderHealth {
   provider: "local_pedagogical" | "gemini" | "groq" | "openrouter" | "openai" | "anthropic" | "ollama" | "mentormaze_2b";
   modelName: string;
@@ -21,6 +30,17 @@ export interface ProviderHealth {
   lastChecked: string;
   status: "ready" | "unconfigured" | "degraded" | "error";
   message: string;
+  lifecycleState?: ModelLifecycleState;
+  adapterPath?: string;
+  benchmarkScores?: {
+    accuracy?: number;
+    socraticCompliance?: number;
+    testPerplexity?: number;
+  };
+  deploymentEligibility?: {
+    eligible: boolean;
+    reason: string;
+  };
 }
 
 export interface PromptPayload {
@@ -187,6 +207,93 @@ export class ModelProviderRouter {
   }
 
   /**
+   * Determine the authentic lifecycle state of the MentorMaze-2B model
+   */
+  public static getModelLifecycleState(): {
+    state: ModelLifecycleState;
+    adapterPath?: string;
+    benchmarkScores?: { accuracy?: number; socraticCompliance?: number; testPerplexity?: number };
+    eligibility: { eligible: boolean; reason: string };
+  } {
+    if (typeof process === "undefined" || typeof process.cwd !== "function") {
+      return {
+        state: "NOT_TRAINED",
+        eligibility: { eligible: false, reason: "Non-Node environment" },
+      };
+    }
+
+    try {
+      const fs = require("fs");
+      const path = require("path");
+
+      const sftAdapterPath = path.resolve(process.cwd(), "training/adapters/mentormaze-2b-sft-v1/adapter_model.safetensors");
+      const smokeAdapterPath = path.resolve(process.cwd(), "training/adapters/mentormaze-2b-smoke-test-only/adapter_model.safetensors");
+      const evalPath = path.resolve(process.cwd(), "training/reports/evaluation_results.json");
+
+      if (fs.existsSync(sftAdapterPath)) {
+        let scores: any = undefined;
+        let evaluated = false;
+        if (fs.existsSync(evalPath)) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(evalPath, "utf-8"));
+            if (raw?.sft_model?.is_evaluated) {
+              evaluated = true;
+              scores = {
+                accuracy: raw.sft_model.domain_scores?.technical?.mean_compliance_score,
+                socraticCompliance: raw.sft_model.domain_scores?.socratic?.mean_compliance_score,
+                testPerplexity: raw.sft_model.test_perplexity,
+              };
+            }
+          } catch {}
+        }
+
+        if (evaluated) {
+          const isEligible = (scores?.socraticCompliance ?? 0) >= 60.0;
+          const isDeployed = process.env.MENTORMAZE_DEPLOY_2B === "true" && isEligible;
+          return {
+            state: isDeployed ? "DEPLOYED" : (isEligible ? "DEPLOYABLE" : "EVALUATED"),
+            adapterPath: "training/adapters/mentormaze-2b-sft-v1",
+            benchmarkScores: scores,
+            eligibility: {
+              eligible: isEligible,
+              reason: isEligible
+                ? "Adapter verified with empirical benchmark compliance."
+                : "Adapter evaluated but compliance did not meet threshold.",
+            },
+          };
+        }
+
+        return {
+          state: "TRAINED",
+          adapterPath: "training/adapters/mentormaze-2b-sft-v1",
+          eligibility: { eligible: false, reason: "Training complete, pending empirical evaluation benchmark." },
+        };
+      }
+
+      if (fs.existsSync(smokeAdapterPath)) {
+        return {
+          state: "SMOKE_TESTED",
+          adapterPath: "training/adapters/mentormaze-2b-smoke-test-only",
+          eligibility: {
+            eligible: false,
+            reason: "Passed functional smoke test on mock architecture only; cannot be deployed in production.",
+          },
+        };
+      }
+
+      return {
+        state: "NOT_TRAINED",
+        eligibility: { eligible: false, reason: "No fine-tuned weights or adapters exist." },
+      };
+    } catch {
+      return {
+        state: "NOT_TRAINED",
+        eligibility: { eligible: false, reason: "Filesystem check failed." },
+      };
+    }
+  }
+
+  /**
    * Returns current provider health & availability for the Admin Control Center
    * Never exposes raw secret values.
    */
@@ -198,32 +305,24 @@ export class ModelProviderRouter {
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const ollamaUrl = process.env.OLLAMA_BASE_URL;
 
-    // Check MentorMaze-2B local adapter or custom inference URL
-    let hasLocalAdapter = false;
-    try {
-      if (typeof process !== "undefined" && typeof process.cwd === "function") {
-        const fs = require("fs");
-        const path = require("path");
-        const fullAdapterPath = path.resolve(process.cwd(), "training/adapters/mentormaze-2b-smoke-adapter/adapter_model.safetensors");
-        hasLocalAdapter = fs.existsSync(fullAdapterPath);
-      }
-    } catch {
-      hasLocalAdapter = false;
-    }
-    const local2bUrl = process.env.MENTORMAZE_LOCAL_API_URL;
-    const local2bConfigured = hasLocalAdapter || !!local2bUrl || !!process.env.MENTORMAZE_MODEL_PATH;
+    const lifecycle = this.getModelLifecycleState();
+    const isDeployable = lifecycle.state === "DEPLOYABLE" || lifecycle.state === "DEPLOYED";
 
     return {
       mentormaze_2b: {
         provider: "mentormaze_2b",
         modelName: "mentormaze/mentormaze-2b-sft-v1",
-        isAvailable: local2bConfigured,
-        isConfigured: local2bConfigured,
+        isAvailable: isDeployable,
+        isConfigured: lifecycle.state !== "NOT_TRAINED",
         lastChecked: new Date().toISOString(),
-        status: local2bConfigured ? "ready" : "unconfigured",
-        message: local2bConfigured
-          ? "MentorMaze-2B fine-tuned model ready (Apple Silicon MPS / PEFT LoRA r=32 adapter, $0.00/token inference)."
-          : "MentorMaze-2B model weights not loaded. Run training/scripts/train_sft.py to generate adapter or set MENTORMAZE_LOCAL_API_URL.",
+        status: isDeployable ? "ready" : (lifecycle.state === "NOT_TRAINED" ? "unconfigured" : "degraded"),
+        lifecycleState: lifecycle.state,
+        adapterPath: lifecycle.adapterPath,
+        benchmarkScores: lifecycle.benchmarkScores,
+        deploymentEligibility: lifecycle.eligibility,
+        message: isDeployable
+          ? `MentorMaze-2B fine-tuned model ready (${lifecycle.state}, $0.00/token inference).`
+          : `MentorMaze-2B status: ${lifecycle.state}. ${lifecycle.eligibility.reason}`,
       },
       local_pedagogical: {
         provider: "local_pedagogical",
@@ -319,23 +418,39 @@ export class ModelProviderRouter {
 
     // 0. Check MentorMaze-2B Specialized Fine-Tuned Model (If requested or preferred)
     if (payload.preferredProvider === "mentormaze_2b" || process.env.MENTORMAZE_PREFER_LOCAL === "true") {
-      try {
-        const result = await this.callMentorMaze2B(payload, requestId);
-        this.logTelemetry({
-          requestId,
-          timestamp: new Date().toISOString(),
-          provider: "mentormaze_2b",
-          model: result.model,
-          inferenceMode: result.inferenceMode,
-          latencyMs: result.latencyMs,
-          tokenUsage: result.tokenUsage,
-          estimatedCostUsd: 0,
-          isSuccess: true,
-        });
-        return result;
-      } catch (err: any) {
-        fallbackReason = `MENTORMAZE_2B_FAILED: ${err.message}`;
-        console.warn("[ModelRouter] MentorMaze-2B invocation failed:", err.message);
+      const lifecycle = this.getModelLifecycleState();
+      const fallbackProvider = process.env.GEMINI_API_KEY
+        ? "gemini"
+        : process.env.GROQ_API_KEY
+        ? "groq"
+        : "local_pedagogical";
+
+      if (lifecycle.state !== "DEPLOYABLE" && lifecycle.state !== "DEPLOYED") {
+        const warnMsg =
+          lifecycle.state === "NOT_TRAINED"
+            ? `[ModelRouter] MentorMaze-2B has not been trained. Falling back to ${fallbackProvider}.`
+            : `[ModelRouter] MentorMaze-2B adapter exists but is not deployable (status: ${lifecycle.state}). Falling back to ${fallbackProvider}.`;
+        console.warn(warnMsg);
+        fallbackReason = `MENTORMAZE_2B_${lifecycle.state}`;
+      } else {
+        try {
+          const result = await this.callMentorMaze2B(payload, requestId);
+          this.logTelemetry({
+            requestId,
+            timestamp: new Date().toISOString(),
+            provider: "mentormaze_2b",
+            model: result.model,
+            inferenceMode: result.inferenceMode,
+            latencyMs: result.latencyMs,
+            tokenUsage: result.tokenUsage,
+            estimatedCostUsd: 0,
+            isSuccess: true,
+          });
+          return result;
+        } catch (err: any) {
+          fallbackReason = `MENTORMAZE_2B_FAILED: ${err.message}`;
+          console.warn("[ModelRouter] MentorMaze-2B invocation failed:", err.message);
+        }
       }
     }
 
@@ -1112,29 +1227,11 @@ export class ModelProviderRouter {
       clearTimeout(timeout);
     }
 
-    // 2. Specialized On-Device Fine-Tuned Model Inference
-    // Generates domain-specialized responses reflecting the SFT training mixture
-    // (Socratic pedagogy, zero-fabrication career intelligence, verified DSA scaffolding)
-    const elapsed = Math.max(Number((performance.now() - t0).toFixed(2)), 18.2); // Calibrated MPS execution latency (~18ms)
-    const promptTokens = Math.round(payload.systemPrompt.length / 4);
-
-    const userMessage = [...payload.messages].reverse().find((m) => m.role === "user")?.content || "";
-    const content = this.generateSpecialized2BOutput(userMessage, payload.taskCategory);
-    const completionTokens = Math.round(content.length / 4);
-    const totalTokens = promptTokens + completionTokens;
-
-    return {
-      requestId,
-      content,
-      provider: "mentormaze_2b",
-      model,
-      inferenceMode: "fine-tuned-2b",
-      latencyMs: elapsed,
-      tokenUsage: { promptTokens, completionTokens, totalTokens },
-      tokensEstimate: totalTokens,
-      estimatedCostUsd: 0.0,
-      isFallback: false,
-    };
+    // Under the Zero-Fabrication standard, if local HTTP inference server is unavailable,
+    // throw an explicit error so the router cleanly falls back with full audit logging.
+    throw new Error(
+      `MentorMaze-2B local inference server unavailable at ${localApiUrl}. Start inference daemon via 'python -m mlx_lm.server --model training/adapters/mentormaze-2b-sft-v1' or vLLM.`
+    );
   }
 
   /**

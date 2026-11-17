@@ -1,13 +1,13 @@
 {
-  "smoke_test_status": "PASSED",
-  "model_tested": "Qwen/Qwen3.5-2B-Base",
+  "smoke_test_status": "SMOKE_TEST_ONLY_MOCK_ARCH",
+  "model_tested": "Qwen/Qwen3.5-2B-Base (Mock Topology 512-dim)",
   "device": "mps",
   "execution_time_seconds": 6.19,
   "steps_executed": 5,
   "initial_loss": 10.8232,
   "final_loss": 10.8232,
   "loss_reduction": 0.0,
-  "is_loss_decreasing": true,
+  "is_loss_decreasing": false,
   "lora_rank": 32,
   "lora_alpha": 64,
   "target_modules": [
@@ -19,5 +19,6 @@
     "up_proj",
     "down_proj"
   ],
-  "adapter_saved_path": "training/adapters/mentormaze-2b-smoke-adapter"
+  "adapter_saved_path": "training/adapters/mentormaze-2b-smoke-test-only",
+  "notes": "Verified mock architecture execution for backward-pass sanity check on Apple Silicon MPS. Renamed from mentormaze-2b-smoke-adapter to mentormaze-2b-smoke-test-only. Not a real trained model adapter."
 }

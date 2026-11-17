@@ -1,6 +1,7 @@
 # MentorMaze-2B Supervised Fine-Tuning (SFT) Configuration
-# Primary Model Candidate: Qwen/Qwen3.5-2B-Base
-# Alternative Baseline: Qwen/Qwen3-1.7B-Base
+# Foundation Model: Qwen/Qwen3.5-2B-Base (Text Backbone: Qwen3_5ForCausalLM, 1.882B)
+# Hardware Target: Apple Silicon M4, 16 GB Unified Memory (MPS / MLX-LM)
+# Zero-Fabrication & Socratic Adaptive Pedagogy
 # Brand: AI Tathastu / MentorMaze (https://mentormaze.aitathastu.com)
 
 model:
@@ -9,22 +10,30 @@ model:
   torch_dtype: "bfloat16" # or float16 on Apple Silicon MPS
   trust_remote_code: true
   use_fast_tokenizer: true
+  text_config_class: "Qwen3_5TextConfig"
+  architecture: "Qwen3_5ForCausalLM"
 
 dataset:
   train_file: "training/datasets/manifests/train.jsonl"
   validation_file: "training/datasets/manifests/valid.jsonl"
   test_file: "training/datasets/manifests/test.jsonl"
-  max_seq_length: 2048
+  max_seq_length: 1024 # Memory-calibrated for 16 GB Apple Silicon M4
   dataset_text_field: "messages"
   packing: false # False preserves discrete dialogue boundaries
 
 lora:
-  r: 32
-  lora_alpha: 64
+  r: 16
+  lora_alpha: 32
   lora_dropout: 0.05
   bias: "none"
   task_type: "CAUSAL_LM"
+  # Target both Gated DeltaNet (linear_attn) and full attention projections
   target_modules:
+    - "in_proj_qkv"
+    - "in_proj_z"
+    - "in_proj_b"
+    - "in_proj_a"
+    - "out_proj"
     - "q_proj"
     - "k_proj"
     - "v_proj"
@@ -34,12 +43,13 @@ lora:
     - "down_proj"
 
 training_arguments:
-  output_dir: "training/checkpoints/mentormaze-2b-sft"
+  output_dir: "training/checkpoints/mentormaze-2b-sft-v1"
+  adapter_dir: "training/adapters/mentormaze-2b-sft-v1"
   num_train_epochs: 1
-  per_device_train_batch_size: 2
-  per_device_eval_batch_size: 2
-  gradient_accumulation_steps: 8
-  learning_rate: 0.0002 # 2e-4
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16 # Effective batch size 16
+  learning_rate: 0.0001 # 1e-4
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.03
   weight_decay: 0.01
@@ -51,7 +61,7 @@ training_arguments:
   save_total_limit: 3
   gradient_checkpointing: true
   fp16: false
-  bf16: false # MPS handles float32/float16 autocast
+  bf16: false
   dataloader_num_workers: 0
   report_to: "none"
 
@@ -59,4 +69,3 @@ loss_masking:
   assistant_only_loss: true
   response_template: "<|im_start|>assistant\n"
   instruction_template: "<|im_start|>user\n"
-
