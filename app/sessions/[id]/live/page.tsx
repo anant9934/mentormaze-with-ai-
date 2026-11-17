@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -14,7 +14,6 @@ import {
   Monitor,
   PhoneOff,
   CheckCircle2,
-  Download,
   FileText,
   Clock,
   ArrowLeft,
@@ -25,28 +24,16 @@ import {
   MessageSquare,
   Send,
   Zap,
-  Sparkles,
-  Wifi,
-  Users,
-  Camera,
   Radio,
   Code2,
   Play,
   Copy,
   Check,
   LayoutGrid,
-  Maximize2,
-  Minimize2,
   Terminal,
   Volume2,
-  VolumeX,
   Share2,
-  ExternalLink,
-  ChevronRight,
-  AlertCircle,
-  HelpCircle,
   Plus,
-  RefreshCw,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -105,7 +92,6 @@ class LRUCache:
         if key in self.cache:
             self.cache.pop(key)
         elif len(self.cache) >= self.capacity:
-            # Pop oldest item
             oldest_key = next(iter(self.cache))
             del self.cache[oldest_key]
         self.cache[key] = value
@@ -136,6 +122,51 @@ LIMIT 10;
 `,
 };
 
+/**
+ * Bulletproof Video Player Component
+ * Automatically attaches media streams on mount, layout changes, and track updates.
+ */
+function VideoPlayer({
+  stream,
+  muted = false,
+  mirrored = false,
+  className = "",
+}: {
+  stream: MediaStream | null;
+  muted?: boolean;
+  mirrored?: boolean;
+  className?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream) return;
+
+    video.srcObject = stream;
+    video.play().catch(() => {});
+
+    const handleLoadedMetadata = () => {
+      video.play().catch(() => {});
+    };
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
+  }, [stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+      className={`w-full h-full object-cover ${mirrored ? "transform -scale-x-100" : ""} ${className}`}
+    />
+  );
+}
+
 export default function LiveSessionRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -144,20 +175,18 @@ export default function LiveSessionRoomPage() {
   const booking = store.getBookingById(bookingId) || store.getBookingsForUser("user-student-1")[0];
   const mentor = store.getMentorById(booking?.mentorProfileId || "mentor-priya") || store.getMentors(true)[0];
 
-  // Tab-isolated client identifier (stable for this tab lifecycle)
-  const clientIdRef = useRef<string>("");
-  if (!clientIdRef.current) {
+  // Tab-isolated client identifier
+  const [clientId] = useState(() => {
     if (typeof window !== "undefined") {
       let stored = sessionStorage.getItem("mm_tab_client_id");
       if (!stored) {
         stored = `cli_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
         sessionStorage.setItem("mm_tab_client_id", stored);
       }
-      clientIdRef.current = stored;
-    } else {
-      clientIdRef.current = `cli_${Math.random().toString(36).substring(2, 8)}`;
+      return stored;
     }
-  }
+    return `cli_${Math.random().toString(36).substring(2, 8)}`;
+  });
 
   // Role detection: URL query param overrides default user auth for testing 2-way call
   const [activeRoleOverride, setActiveRoleOverride] = useState<"student" | "mentor" | null>(null);
@@ -198,7 +227,8 @@ export default function LiveSessionRoomPage() {
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
 
-  const [cameraPermissionGranted, setCameraPermissionGranted] = useState<boolean | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [peerConnected, setPeerConnected] = useState(false);
   const [peerHasVideo, setPeerHasVideo] = useState(false);
   const [liveLatency, setLiveLatency] = useState<number>(0.3);
@@ -214,11 +244,8 @@ export default function LiveSessionRoomPage() {
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState("");
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState("");
 
-  // Video Stream References
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  // Media & WebRTC Refs
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -273,14 +300,6 @@ export default function LiveSessionRoomPage() {
   const completedChecklistCount = checklist.filter((i) => i.completed).length;
   const checklistProgress = Math.round((completedChecklistCount / (checklist.length || 1)) * 100);
 
-  // Synchronize remote video DOM element whenever remoteStream or viewMode updates
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStreamRef.current) {
-      remoteVideoRef.current.srcObject = remoteStreamRef.current;
-      remoteVideoRef.current.play().catch(() => {});
-    }
-  }, [peerHasVideo, viewMode]);
-
   // -------------------------------------------------------------
   // 1. INITIALIZE LOCAL CAMERA & MICROPHONE + AUDIO ANALYZER
   // -------------------------------------------------------------
@@ -291,24 +310,69 @@ export default function LiveSessionRoomPage() {
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
           console.warn("getUserMedia is not supported.");
-          setCameraPermissionGranted(false);
           return;
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-            deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
-          },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            deviceId: selectedAudioDeviceId ? { exact: selectedAudioDeviceId } : undefined,
-          },
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: "user",
+              deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
+            },
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              deviceId: selectedAudioDeviceId ? { exact: selectedAudioDeviceId } : undefined,
+            },
+          });
+        } catch (firstErr) {
+          // Fallback to basic constraints if strict constraints fail
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: true,
+            });
+          } catch (secondErr: any) {
+            console.warn("Webcam in use or restricted, activating virtual camera fallback:", secondErr);
+            // Graceful virtual stream fallback so WebRTC always connects
+            const canvas = document.createElement("canvas");
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext("2d");
+            let frame = 0;
+            const drawAnim = () => {
+              if (!ctx || isCancelled) return;
+              frame++;
+              const grad = ctx.createRadialGradient(320, 240, 40, 320, 240, 320);
+              grad.addColorStop(0, "#194331");
+              grad.addColorStop(1, "#0A1410");
+              ctx.fillStyle = grad;
+              ctx.fillRect(0, 0, 640, 480);
+
+              ctx.strokeStyle = "rgba(52, 211, 153, 0.4)";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(320, 240, 75 + Math.sin(frame * 0.05) * 12, 0, Math.PI * 2);
+              ctx.stroke();
+
+              ctx.fillStyle = "#ffffff";
+              ctx.font = "bold 24px sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText(currentName, 320, 248);
+
+              ctx.fillStyle = "#34d399";
+              ctx.font = "13px monospace";
+              ctx.fillText("● Live Virtual Video Stream", 320, 340);
+              requestAnimationFrame(drawAnim);
+            };
+            drawAnim();
+            stream = (canvas as any).captureStream(30);
+          }
+        }
 
         if (isCancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -316,11 +380,7 @@ export default function LiveSessionRoomPage() {
         }
 
         localStreamRef.current = stream;
-        setCameraPermissionGranted(true);
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+        setLocalStream(stream);
 
         // If RTCPeerConnection already exists, attach local tracks immediately
         if (peerConnectionRef.current) {
@@ -345,24 +405,28 @@ export default function LiveSessionRoomPage() {
             analyser.fftSize = 256;
             analyserRef.current = analyser;
 
-            const source = audioCtx.createMediaStreamSource(stream);
-            source.connect(analyser);
+            const audioTracks = stream.getAudioTracks();
+            if (audioTracks.length > 0) {
+              const audioStream = new MediaStream([audioTracks[0]]);
+              const source = audioCtx.createMediaStreamSource(audioStream);
+              source.connect(analyser);
 
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+              const bufferLength = analyser.frequencyBinCount;
+              const dataArray = new Uint8Array(bufferLength);
 
-            const checkAudioLevel = () => {
-              if (isCancelled) return;
-              analyser.getByteFrequencyData(dataArray);
-              let sum = 0;
-              for (let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i];
-              }
-              const average = sum / bufferLength;
-              setAudioLevel(Math.min(100, Math.round(average * 1.5)));
+              const checkAudioLevel = () => {
+                if (isCancelled) return;
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                  sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                setAudioLevel(Math.min(100, Math.round(average * 1.5)));
+                requestAnimationFrame(checkAudioLevel);
+              };
               requestAnimationFrame(checkAudioLevel);
-            };
-            requestAnimationFrame(checkAudioLevel);
+            }
           }
         } catch (audioErr) {
           console.warn("Audio meter setup:", audioErr);
@@ -373,8 +437,7 @@ export default function LiveSessionRoomPage() {
         setVideoDevices(devices.filter((d) => d.kind === "videoinput"));
         setAudioDevices(devices.filter((d) => d.kind === "audioinput"));
       } catch (err: any) {
-        console.warn("Local media stream request:", err.name, err.message);
-        setCameraPermissionGranted(false);
+        console.warn("Local media stream request error:", err);
       }
     }
 
@@ -399,11 +462,9 @@ export default function LiveSessionRoomPage() {
   // -------------------------------------------------------------
   useEffect(() => {
     let isCleanedUp = false;
-    const clientId = clientIdRef.current;
     const channelName = `mm-session-p2p-${bookingId}`;
     let lastSignalTimestamp = 0;
 
-    // Helper to post incoming chat message into state & notify
     const receiveIncomingChatMessage = (incoming: ChatMessage) => {
       setChatMessages((prev) => {
         if (prev.some((m) => m.id === incoming.id)) return prev;
@@ -415,7 +476,7 @@ export default function LiveSessionRoomPage() {
       }
     };
 
-    // A. Inter-Tab Zero-Latency High-Speed Bus (0.1ms - 0.5ms on same browser profile)
+    // A. Inter-Tab Zero-Latency High-Speed Bus
     try {
       const bc = new BroadcastChannel(channelName);
       broadcastChannelRef.current = bc;
@@ -477,14 +538,10 @@ export default function LiveSessionRoomPage() {
       // Handle Remote Video/Audio Track
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
-          remoteStreamRef.current = event.streams[0];
+          const incomingStream = event.streams[0];
+          setRemoteStream(incomingStream);
           setPeerHasVideo(true);
           setPeerConnected(true);
-
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-            remoteVideoRef.current.play().catch(() => {});
-          }
         }
       };
 
@@ -494,7 +551,7 @@ export default function LiveSessionRoomPage() {
         }
       };
 
-      // Setup DataChannel (Mentor initiates, Student receives)
+      // Setup DataChannel
       const attachDataChannelHandlers = (channel: RTCDataChannel) => {
         channel.onopen = () => {
           setPeerConnected(true);
@@ -529,16 +586,11 @@ export default function LiveSessionRoomPage() {
         };
       };
 
-      if (isMentor) {
-        const dc = pc.createDataChannel("session-chat", { ordered: true });
-        attachDataChannelHandlers(dc);
-        dataChannelRef.current = dc;
-      } else {
-        pc.ondatachannel = (event) => {
-          attachDataChannelHandlers(event.channel);
-          dataChannelRef.current = event.channel;
-        };
-      }
+      // DataChannel handler
+      pc.ondatachannel = (event) => {
+        attachDataChannelHandlers(event.channel);
+        dataChannelRef.current = event.channel;
+      };
 
       // Handle ICE Candidates
       pc.onicecandidate = (event) => {
@@ -572,12 +624,21 @@ export default function LiveSessionRoomPage() {
       }
     };
 
-    // Helper: Send SDP offer
+    // Helper: Send SDP offer (creates DataChannel as caller)
     const initiateSdpOffer = async () => {
       if (!pc || isCleanedUp) return;
       try {
-        const offer = await pc.createOffer();
+        if (!dataChannelRef.current || dataChannelRef.current.readyState === "closed") {
+          const dc = pc.createDataChannel("session-chat", { ordered: true });
+          dataChannelRef.current = dc;
+        }
+
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
         await pc.setLocalDescription(offer);
+
         await fetch(`/api/sessions/${bookingId}/signaling`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -607,12 +668,7 @@ export default function LiveSessionRoomPage() {
       }),
     }).catch(() => {});
 
-    // Mentor initiates initial offer after 800ms
-    if (isMentor) {
-      setTimeout(initiateSdpOffer, 800);
-    }
-
-    // Signaling Polling Loop (Exchanges Offer, Answer, ICE Candidates, Join)
+    // Role-Agnostic Signaling Loop (Works with Mentor+Student, or Student+Student across tabs)
     const signalingInterval = setInterval(async () => {
       if (!pc || isCleanedUp) return;
       try {
@@ -626,11 +682,12 @@ export default function LiveSessionRoomPage() {
 
             if (signal.type === "join") {
               setPeerConnected(true);
-              // If mentor receives a peer join, generate/refresh SDP offer
-              if (isMentor) {
+              // Deterministic caller selection: Mentor always calls, or higher clientId calls
+              const isCaller = isMentor || (!isMentor && signal.senderRole === "student" && clientId > signal.senderClientId);
+              if (isCaller) {
                 initiateSdpOffer();
               }
-            } else if (signal.type === "offer" && !isMentor) {
+            } else if (signal.type === "offer") {
               await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
               await drainIceBuffer(pc);
               const answer = await pc.createAnswer();
@@ -648,7 +705,7 @@ export default function LiveSessionRoomPage() {
                 }),
               });
               setPeerConnected(true);
-            } else if (signal.type === "answer" && isMentor) {
+            } else if (signal.type === "answer") {
               if (pc.signalingState === "have-local-offer") {
                 await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
                 await drainIceBuffer(pc);
@@ -731,7 +788,6 @@ export default function LiveSessionRoomPage() {
 
     loadChatHistory();
 
-    // Cleanup on unmount or role change
     return () => {
       isCleanedUp = true;
       clearInterval(signalingInterval);
@@ -745,7 +801,7 @@ export default function LiveSessionRoomPage() {
         peerConnectionRef.current.close();
       }
     };
-  }, [bookingId, effectiveRole, isMentor, currentUserId, currentRole, currentName]);
+  }, [bookingId, effectiveRole, isMentor, currentUserId, currentRole, currentName, clientId]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -928,21 +984,23 @@ export default function LiveSessionRoomPage() {
   // 5. MEDIA CONTROLS
   // -------------------------------------------------------------
   const toggleMic = () => {
+    const nextState = !isMicOn;
+    setIsMicOn(nextState);
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = !isMicOn;
+        track.enabled = nextState;
       });
     }
-    setIsMicOn(!isMicOn);
   };
 
   const toggleVideo = () => {
+    const nextState = !isVideoOn;
+    setIsVideoOn(nextState);
     if (localStreamRef.current) {
       localStreamRef.current.getVideoTracks().forEach((track) => {
-        track.enabled = !isVideoOn;
+        track.enabled = nextState;
       });
     }
-    setIsVideoOn(!isVideoOn);
   };
 
   const toggleScreenShare = async () => {
@@ -951,8 +1009,8 @@ export default function LiveSessionRoomPage() {
         screenStreamRef.current.getTracks().forEach((track) => track.stop());
         screenStreamRef.current = null;
       }
-      if (localVideoRef.current && localStreamRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current;
+      if (localStreamRef.current) {
+        setLocalStream(localStreamRef.current);
       }
       setIsScreenSharing(false);
     } else {
@@ -963,15 +1021,13 @@ export default function LiveSessionRoomPage() {
         }
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         screenStreamRef.current = screenStream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = screenStream;
-        }
+        setLocalStream(screenStream);
         setIsScreenSharing(true);
 
         screenStream.getVideoTracks()[0].onended = () => {
           setIsScreenSharing(false);
-          if (localVideoRef.current && localStreamRef.current) {
-            localVideoRef.current.srcObject = localStreamRef.current;
+          if (localStreamRef.current) {
+            setLocalStream(localStreamRef.current);
           }
         };
       } catch (err) {
@@ -1082,7 +1138,7 @@ export default function LiveSessionRoomPage() {
 
         {/* Center: Live Session Timer & Role Switcher */}
         <div className="flex items-center gap-3">
-          {/* Role Perspective Toggle */}
+          {/* One-Click Role Switcher */}
           <div className="flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
             <button
               onClick={() => setActiveRoleOverride("student")}
@@ -1091,7 +1147,7 @@ export default function LiveSessionRoomPage() {
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
-              title="Switch this window to Student View (Anant Kumar)"
+              title="Switch this tab to Student View (Anant Kumar)"
             >
               <span>🎓</span>
               <span className="hidden sm:inline">Student View</span>
@@ -1103,7 +1159,7 @@ export default function LiveSessionRoomPage() {
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
-              title="Switch this window to Mentor View (Priya Sharma)"
+              title="Switch this tab to Mentor View (Priya Sharma)"
             >
               <span>💼</span>
               <span className="hidden sm:inline">Mentor View</span>
@@ -1199,13 +1255,9 @@ export default function LiveSessionRoomPage() {
               <div className="w-full h-full grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
                 {/* Frame A: Remote Peer Video */}
                 <div className="relative rounded-xl overflow-hidden bg-[#10241B] border border-[#1E4334] flex items-center justify-center">
-                  <video
-                    ref={remoteVideoRef}
-                    autoPlay
-                    playsInline
-                    className={`w-full h-full object-cover ${peerHasVideo ? "block" : "hidden"}`}
-                  />
-                  {!peerHasVideo && (
+                  {peerHasVideo && remoteStream ? (
+                    <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                  ) : (
                     <div className="flex flex-col items-center justify-center text-center p-6">
                       <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/50 shadow-xl mb-3">
                         <Image
@@ -1226,15 +1278,13 @@ export default function LiveSessionRoomPage() {
                 </div>
 
                 {/* Frame B: Local Video */}
-                <div className="relative rounded-xl overflow-hidden bg-[#10241B] border border-[#1E4334] flex items-center justify-center">
-                  {isVideoOn ? (
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover transform -scale-x-100"
-                    />
+                <div
+                  className={`relative rounded-xl overflow-hidden bg-[#10241B] border transition-all duration-300 flex items-center justify-center ${
+                    audioLevel > 15 ? "border-emerald-400 shadow-lg shadow-emerald-500/20" : "border-[#1E4334]"
+                  }`}
+                >
+                  {isVideoOn && localStream ? (
+                    <VideoPlayer stream={localStream} muted={true} mirrored={true} className="w-full h-full" />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-center p-6 text-[#A3B899]">
                       <VideoOff className="w-10 h-10 mb-2 text-gray-500" />
@@ -1254,16 +1304,10 @@ export default function LiveSessionRoomPage() {
             ) : (
               /* VIEW MODE 2: SPEAKER VIEW (LARGE REMOTE + DOCKED PIP) */
               <>
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  className={`w-full h-full object-cover ${peerHasVideo ? "block" : "hidden"}`}
-                />
-
-                {!peerHasVideo && (
+                {peerHasVideo && remoteStream ? (
+                  <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                ) : (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
-                    {/* Ambient Aura Background */}
                     <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
                     <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/40 shadow-2xl mb-4 ring-8 ring-emerald-500/10">
@@ -1316,14 +1360,8 @@ export default function LiveSessionRoomPage() {
                     audioLevel > 15 ? "border-emerald-400 shadow-emerald-500/20" : "border-[#25523F]"
                   } bg-[#0A1712]`}
                 >
-                  {isVideoOn ? (
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover transform -scale-x-100"
-                    />
+                  {isVideoOn && localStream ? (
+                    <VideoPlayer stream={localStream} muted={true} mirrored={true} className="w-full h-full" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-[#0D1C15] text-[#A3B899] text-xs">
                       <VideoOff className="w-6 h-6 mb-1 text-gray-500" />
@@ -1354,7 +1392,7 @@ export default function LiveSessionRoomPage() {
           {/* 3. BOTTOM FLOATING CONTROL DOCK (GLASSMORPHISM) */}
           <div className="mt-4 flex items-center justify-center">
             <div className="bg-[#0E2219]/90 border border-[#234C3C] shadow-2xl backdrop-blur-xl rounded-2xl px-5 py-2.5 flex items-center gap-3">
-              {/* Mic Toggle with Audio Pulse Indicator */}
+              {/* Mic Toggle */}
               <button
                 onClick={toggleMic}
                 className={`p-3.5 rounded-xl transition-all shadow-sm ${
