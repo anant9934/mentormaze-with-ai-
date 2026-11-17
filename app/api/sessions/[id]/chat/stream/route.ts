@@ -15,6 +15,12 @@ export async function GET(
   // Send initial connection packet
   writer.write(encoder.encode(`data: ${JSON.stringify({ type: "CONNECTED", timestamp: Date.now() })}\n\n`)).catch(() => {});
 
+  // Immediately send cached recent messages so new tab catches up in < 1ms
+  const history = RealtimeChatHub.getHistory(bookingId);
+  for (const msg of history) {
+    writer.write(encoder.encode(`data: ${JSON.stringify(msg)}\n\n`)).catch(() => {});
+  }
+
   // Subscribe to instant message broadcasts (< 1ms)
   const unsubscribe = RealtimeChatHub.subscribe(bookingId, (message) => {
     try {

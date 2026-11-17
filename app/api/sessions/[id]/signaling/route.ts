@@ -5,13 +5,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-// In-memory ephemeral signaling message mailbox keyed by bookingId -> participantId
+export const dynamic = "force-dynamic";
+
 type SignalMessage = {
   id: string;
   senderId: string;
+  senderClientId?: string;
   senderRole: string;
-  targetId?: string; // If targeting specific peer, otherwise broadcast to room
-  type: "offer" | "answer" | "candidate" | "join" | "leave";
+  targetId?: string;
+  targetClientId?: string;
+  type: "offer" | "answer" | "candidate" | "join" | "leave" | "presence";
   payload: any;
   timestamp: number;
 };
@@ -34,15 +37,18 @@ export async function GET(
 ) {
   const bookingId = params.id;
   const { searchParams } = new URL(req.url);
-  const participantId = searchParams.get("participantId") || "";
+  const clientId = searchParams.get("clientId") || searchParams.get("participantId") || "";
   const since = parseInt(searchParams.get("since") || "0", 10);
 
   const roomMessages = rooms.get(bookingId) || [];
-  
-  // Return messages not sent by this participant and newer than 'since'
-  const pending = roomMessages.filter(
-    (m) => m.senderId !== participantId && m.timestamp > since && (!m.targetId || m.targetId === participantId)
-  );
+
+  // Filter messages: newer than 'since', not sent by this client instance, matching target if targeted
+  const pending = roomMessages.filter((m) => {
+    if (m.timestamp <= since) return false;
+    if (clientId && (m.senderClientId === clientId || m.senderId === clientId)) return false;
+    if (m.targetClientId && clientId && m.targetClientId !== clientId) return false;
+    return true;
+  });
 
   return NextResponse.json({
     success: true,
@@ -58,7 +64,7 @@ export async function POST(
   try {
     const bookingId = params.id;
     const body = await req.json();
-    const { senderId, senderRole, targetId, type, payload } = body;
+    const { senderId, senderClientId, senderRole, targetId, targetClientId, type, payload } = body;
 
     if (!senderId || !type) {
       return NextResponse.json(
@@ -76,8 +82,10 @@ export async function POST(
     const signal: SignalMessage = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
       senderId,
+      senderClientId: senderClientId || senderId,
       senderRole: senderRole || "student",
       targetId,
+      targetClientId,
       type,
       payload,
       timestamp: Date.now(),
@@ -85,9 +93,9 @@ export async function POST(
 
     roomMessages.push(signal);
 
-    // Keep only the most recent 100 signaling events to prevent memory leaks
-    if (roomMessages.length > 100) {
-      roomMessages.splice(0, roomMessages.length - 100);
+    // Keep only the most recent 120 signaling events to prevent memory leaks
+    if (roomMessages.length > 120) {
+      roomMessages.splice(0, roomMessages.length - 120);
     }
 
     return NextResponse.json({
@@ -102,4 +110,3 @@ export async function POST(
     );
   }
 }
-
