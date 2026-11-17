@@ -103,3 +103,4 @@ This ensures the overlap query executes in under 2ms even with tens of thousands
 
 1. **Transaction Duration Minimization:** Network I/O (such as Cashfree order creation or LiveKit API calls) must **never** be performed while holding the database transaction lock. In MentorMaze, transactions are strictly scoped to slot validation and record insertion (< 15ms in production).
 2. **Hold Expiration Cleanup:** Unpaid slot holds are automatically expired after 10 minutes via background outbox worker, releasing reserved capacity back to the available calendar.
+

@@ -83,3 +83,4 @@ flowchart TD
 - Verify SMTP: `npx tsx -e 'import { verifySmtpConnection } from "./lib/email/transport"; verifySmtpConnection().then(console.log);'`
 - Verify Database: `npx tsx -e 'import { getDb } from "./lib/db"; getDb().execute(sql`SELECT 1`).then(console.log);'`
 - Verify Concurrency: `npx tsx scripts/verify-distributed-concurrency.ts`
+

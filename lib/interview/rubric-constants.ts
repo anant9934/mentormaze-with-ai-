@@ -86,3 +86,4 @@ export function calculateOverallScore(
   const overall = totalWeight > 0 ? weightedSum / totalWeight : 5.0;
   return Number(overall.toFixed(2));
 }
+

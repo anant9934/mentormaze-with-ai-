@@ -98,3 +98,4 @@ The following decisions require explicit sign-off by AI Tathastu leadership:
 | **Head of Product & Operations** | Product Lead | `APPROVED (BASELINE)` | Nov 2026 | Technical implementation verified in code and test suite. |
 
 *Note: Once approved, administrators can transition policy status to `active_approved` via the Admin Portal (`/admin/settings`).*
+

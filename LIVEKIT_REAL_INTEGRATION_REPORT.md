@@ -108,3 +108,4 @@ To restore live WebRTC video room connectivity:
    USE_LOCAL_DB=true npx tsx scripts/probe-livekit.ts
    ```
    Upon successful key activation, the probe outputs `LiveKit Connection: SUCCESS`.
+
