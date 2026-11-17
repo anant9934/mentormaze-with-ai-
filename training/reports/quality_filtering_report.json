@@ -1,0 +1,51 @@
+[
+  {
+    "file": "norm_codefeedback_technical.jsonl",
+    "input_records": 3500,
+    "passed_records": 3487,
+    "dropped_records": 13,
+    "rejection_reasons": {
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2129 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2234 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2143 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2070 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2123 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2204 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2391 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2086 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2231 > 2048)": 1,
+      "REJECTED_ASSISTANT_ECHOED_USER": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2102 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2202 > 2048)": 1,
+      "REJECTED_EXCEEDS_MAX_TOKENS (approx 2242 > 2048)": 1
+    }
+  },
+  {
+    "file": "norm_mentormaze_socratic_pedagogy.jsonl",
+    "input_records": 2000,
+    "passed_records": 2000,
+    "dropped_records": 0,
+    "rejection_reasons": {}
+  },
+  {
+    "file": "norm_naukri_jds.jsonl",
+    "input_records": 1303,
+    "passed_records": 1303,
+    "dropped_records": 0,
+    "rejection_reasons": {}
+  },
+  {
+    "file": "norm_progression_leveling.jsonl",
+    "input_records": 1000,
+    "passed_records": 1000,
+    "dropped_records": 0,
+    "rejection_reasons": {}
+  },
+  {
+    "file": "norm_star_behavioral_coaching.jsonl",
+    "input_records": 1000,
+    "passed_records": 1000,
+    "dropped_records": 0,
+    "rejection_reasons": {}
+  }
+]

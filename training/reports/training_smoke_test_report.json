@@ -1,0 +1,23 @@
+{
+  "smoke_test_status": "PASSED",
+  "model_tested": "Qwen/Qwen3.5-2B-Base",
+  "device": "mps",
+  "execution_time_seconds": 6.19,
+  "steps_executed": 5,
+  "initial_loss": 10.8232,
+  "final_loss": 10.8232,
+  "loss_reduction": 0.0,
+  "is_loss_decreasing": true,
+  "lora_rank": 32,
+  "lora_alpha": 64,
+  "target_modules": [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj"
+  ],
+  "adapter_saved_path": "training/adapters/mentormaze-2b-smoke-adapter"
+}

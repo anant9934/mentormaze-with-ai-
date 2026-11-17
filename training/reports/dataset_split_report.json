@@ -1,0 +1,41 @@
+{
+  "total_records": 9987,
+  "train_count": 8488,
+  "valid_count": 998,
+  "test_count": 501,
+  "split_ratio": "85% Train / 10% Valid / 5% Test",
+  "cross_split_leakage_count": 0,
+  "is_zero_leakage_verified": true,
+  "domain_splits": {
+    "technical": {
+      "total": 3487,
+      "train": 2963,
+      "valid": 348,
+      "test": 176
+    },
+    "career": {
+      "total": 2500,
+      "train": 2125,
+      "valid": 250,
+      "test": 125
+    },
+    "leveling": {
+      "total": 1000,
+      "train": 850,
+      "valid": 100,
+      "test": 50
+    },
+    "socratic": {
+      "total": 2000,
+      "train": 1700,
+      "valid": 200,
+      "test": 100
+    },
+    "behavioral": {
+      "total": 1000,
+      "train": 850,
+      "valid": 100,
+      "test": 50
+    }
+  }
+}

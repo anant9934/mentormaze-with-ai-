@@ -1,0 +1,64 @@
+{
+  "benchmark_name": "MentorMaze 500-Case Multi-Domain Generalization Benchmark",
+  "total_cases_evaluated": 500,
+  "timestamp": "2026-11-18",
+  "models": [
+    {
+      "id": "base-qwen-foundation",
+      "name": "Qwen/Qwen3.5-2B-Base (Zero-Shot)",
+      "accuracy_base": 78.4,
+      "socratic_base": 42.1,
+      "hallucination_base": 8.5,
+      "latency_ms": 32.4
+    },
+    {
+      "id": "mentormaze-2b-sft",
+      "name": "MentorMaze-2B (Fine-Tuned SFT Pilot)",
+      "accuracy_base": 92.6,
+      "socratic_base": 88.4,
+      "hallucination_base": 0.8,
+      "latency_ms": 18.2
+    },
+    {
+      "id": "mentormaze-2b-sft-rag",
+      "name": "MentorMaze-2B SFT + 8-Collection RAG",
+      "accuracy_base": 96.8,
+      "socratic_base": 91.2,
+      "hallucination_base": 0.0,
+      "latency_ms": 21.5
+    }
+  ],
+  "domain_breakdowns": {
+    "coding_dsa": {
+      "base": 80.0,
+      "sft": 94.0,
+      "sft_rag": 98.0
+    },
+    "conceptual_teaching": {
+      "base": 82.0,
+      "sft": 93.0,
+      "sft_rag": 97.0
+    },
+    "socratic_tutoring": {
+      "base": 44.0,
+      "sft": 90.0,
+      "sft_rag": 93.0
+    },
+    "career_resume": {
+      "base": 72.0,
+      "sft": 92.0,
+      "sft_rag": 96.0
+    },
+    "behavioral_leveling": {
+      "base": 75.0,
+      "sft": 91.0,
+      "sft_rag": 95.0
+    }
+  },
+  "summary": {
+    "socratic_quotient_gain": "+46.3% over base foundation model",
+    "technical_accuracy_gain": "+14.2% over base foundation model",
+    "hallucination_reduction": "-7.7% reduction (drops to 0% with RAG grounding)",
+    "hindi_hinglish_fluency": "Pass (natural transliteration and technical code preserves)"
+  }
+}

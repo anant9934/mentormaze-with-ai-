@@ -95,3 +95,4 @@ Average Turn Latency:        1.4ms (Deterministic Engine)
 1. **No Code Dumps in Practice Mode:** When students engaged in practice mode on algorithmic questions (Two Pointers, Knapsack), the system consistently withheld code solutions and guided them through progressive hints (Hints 1, 2, 3) focusing on state invariants.
 2. **Concept Check Integrity:** Every response generated a targeted multiple-choice post-interaction check with verifiable explanations.
 3. **Zero Fabricated Metrics:** A strict regex scan for hallucinated improvement statistics (`/improved\s+by\s+\d+(\.\d+)?%/i`) yielded **zero** occurrences across all 30 evaluations.
+

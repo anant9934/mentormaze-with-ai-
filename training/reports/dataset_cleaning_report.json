@@ -1,0 +1,37 @@
+[
+  {
+    "file": "codefeedback_technical.jsonl",
+    "input_records": 3500,
+    "output_records": 3500,
+    "dropped_records": 0,
+    "pii_instances_scrubbed": 771
+  },
+  {
+    "file": "mentormaze_socratic_pedagogy.jsonl",
+    "input_records": 2000,
+    "output_records": 2000,
+    "dropped_records": 0,
+    "pii_instances_scrubbed": 256
+  },
+  {
+    "file": "naukri_jds.jsonl",
+    "input_records": 1500,
+    "output_records": 1500,
+    "dropped_records": 0,
+    "pii_instances_scrubbed": 245
+  },
+  {
+    "file": "progression_leveling.jsonl",
+    "input_records": 1000,
+    "output_records": 1000,
+    "dropped_records": 0,
+    "pii_instances_scrubbed": 140
+  },
+  {
+    "file": "star_behavioral_coaching.jsonl",
+    "input_records": 1000,
+    "output_records": 1000,
+    "dropped_records": 0,
+    "pii_instances_scrubbed": 129
+  }
+]

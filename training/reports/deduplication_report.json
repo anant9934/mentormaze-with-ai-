@@ -1,0 +1,68 @@
+[
+  {
+    "file": "clean_codefeedback_technical.jsonl",
+    "input_count": 3500,
+    "retained_unique": 3500,
+    "rejected_duplicates": 0,
+    "sample_rejections": []
+  },
+  {
+    "file": "clean_mentormaze_socratic_pedagogy.jsonl",
+    "input_count": 2000,
+    "retained_unique": 2000,
+    "rejected_duplicates": 0,
+    "sample_rejections": []
+  },
+  {
+    "file": "clean_naukri_jds.jsonl",
+    "input_count": 1500,
+    "retained_unique": 1303,
+    "rejected_duplicates": 197,
+    "sample_rejections": [
+      {
+        "record_index": 7,
+        "reason": "DUPLICATE_EXACT_SHA256",
+        "hash": "73465f29e3296b03ac8afd405cf870e2199c5acb9ba96a9973ee84925190d3d5",
+        "snippet": "job description for cybersecurity associates at rooman"
+      },
+      {
+        "record_index": 29,
+        "reason": "DUPLICATE_EXACT_SHA256",
+        "hash": "f7b934f715097697bd028ab627ed71ead1bbd55a3eed7df0632aa61a3f251c8a",
+        "snippet": "job description for business r&d senior professional at staffing services"
+      },
+      {
+        "record_index": 30,
+        "reason": "DUPLICATE_EXACT_SHA256",
+        "hash": "f7b934f715097697bd028ab627ed71ead1bbd55a3eed7df0632aa61a3f251c8a",
+        "snippet": "job description for business r&d senior professional at staffing services"
+      },
+      {
+        "record_index": 68,
+        "reason": "DUPLICATE_EXACT_SHA256",
+        "hash": "f7b934f715097697bd028ab627ed71ead1bbd55a3eed7df0632aa61a3f251c8a",
+        "snippet": "job description for business r&d senior professional at staffing services"
+      },
+      {
+        "record_index": 69,
+        "reason": "DUPLICATE_EXACT_SHA256",
+        "hash": "f7b934f715097697bd028ab627ed71ead1bbd55a3eed7df0632aa61a3f251c8a",
+        "snippet": "job description for business r&d senior professional at staffing services"
+      }
+    ]
+  },
+  {
+    "file": "clean_progression_leveling.jsonl",
+    "input_count": 1000,
+    "retained_unique": 1000,
+    "rejected_duplicates": 0,
+    "sample_rejections": []
+  },
+  {
+    "file": "clean_star_behavioral_coaching.jsonl",
+    "input_count": 1000,
+    "retained_unique": 1000,
+    "rejected_duplicates": 0,
+    "sample_rejections": []
+  }
+]

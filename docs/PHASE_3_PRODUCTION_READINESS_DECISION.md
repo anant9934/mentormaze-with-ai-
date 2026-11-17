@@ -66,3 +66,4 @@ To transition from **CONDITIONALLY READY** to **READY FOR CONTROLLED BETA**:
 4. **Step 4: Launch Controlled Student Beta**
    - Onboard initial cohort of 50 students on `/ai-mentor`.
    - Monitor streaming latency, token consumption, and Socratic Quotient via `/admin/ai-mentor`.
+

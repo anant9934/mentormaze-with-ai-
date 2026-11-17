@@ -33,3 +33,13 @@ next-env.d.ts
 # local database
 /.mentormaze-pgdata/
 
+# python & training
+__pycache__/
+*.py[cod]
+*$py.class
+training/.venv/
+training/checkpoints/
+training/exports/
+training/datasets/raw/
+training/datasets/processed/
+

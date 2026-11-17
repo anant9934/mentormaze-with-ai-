@@ -115,7 +115,7 @@ export class AIMentorOrchestrator {
     let responseText = "";
     let voiceText = "";
     let activeModelProvider = "tathastu-pedagogical-rules";
-    let inferenceMode: "generative" | "deterministic" = "deterministic";
+    let inferenceMode: "generative" | "deterministic" | "fine-tuned-2b" = "deterministic";
     let lastRequestId = `turn-${Date.now()}`;
     let tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined = undefined;
     let estimatedCostUsd: number | undefined = undefined;
@@ -364,7 +364,7 @@ ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on ve
         // Genuine generative completion succeeded
         responseText = completion.content;
         activeModelProvider = `${completion.provider}/${completion.model}`;
-        inferenceMode = "generative";
+        inferenceMode = completion.inferenceMode;
         voiceText = completion.content.split("\n\n")[0]?.replace(/[*#_`~]/g, "") || "Here is what you need to know about this topic.";
       } else {
         // Local Pedagogical Rule-Engine Fallback

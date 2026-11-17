@@ -126,3 +126,4 @@ To protect the server from memory exhaustion or buffer overflow attacks via huge
 | Admin RBAC Enforcement | Session role or admin key required | Verified on `/api/admin/ai-mentor` | **PASS** |
 | Payload Size Boundary | Max 8k msg / 16k code | Enforced in route validation | **PASS** |
 | Zero Secret Leakage | No keys returned to client | Verified in browser builds | **PASS** |
+

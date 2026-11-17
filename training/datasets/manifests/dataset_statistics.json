@@ -1,0 +1,77 @@
+{
+  "train": {
+    "record_count": 8488,
+    "file_size_bytes": 16849880,
+    "sha256": "5cddceb38797931219732802749451d7e434860c2e87fdf6f02c9f7aff9d8b8f",
+    "total_dialogue_turns": 28864,
+    "avg_characters_per_record": 1613.5,
+    "avg_estimated_tokens_per_record": 403.4,
+    "avg_user_characters": 464.5,
+    "avg_assistant_characters": 915.9,
+    "domains": {
+      "socratic": 1700,
+      "technical": 2963,
+      "career": 2125,
+      "leveling": 850,
+      "behavioral": 850
+    },
+    "subdomains": {
+      "active_tutoring": 1700,
+      "code_review_and_dsa": 2963,
+      "job_description_analysis": 1118,
+      "engineering_progression": 850,
+      "esco_skill_taxonomy": 1007,
+      "star_interview_coaching": 850
+    }
+  },
+  "validation": {
+    "record_count": 998,
+    "file_size_bytes": 1953209,
+    "sha256": "336a8ce6501a5faa1da4841fb646c5fa8da8bb6e89804460b8b49904d207cd25",
+    "total_dialogue_turns": 3394,
+    "avg_characters_per_record": 1586.1,
+    "avg_estimated_tokens_per_record": 396.5,
+    "avg_user_characters": 458.5,
+    "avg_assistant_characters": 896.2,
+    "domains": {
+      "technical": 348,
+      "socratic": 200,
+      "behavioral": 100,
+      "leveling": 100,
+      "career": 250
+    },
+    "subdomains": {
+      "code_review_and_dsa": 348,
+      "active_tutoring": 200,
+      "star_interview_coaching": 100,
+      "engineering_progression": 100,
+      "esco_skill_taxonomy": 132,
+      "job_description_analysis": 118
+    }
+  },
+  "test": {
+    "record_count": 501,
+    "file_size_bytes": 997559,
+    "sha256": "198ad249776d77f34568d7aa29335443b255c96defe345caca91f9043b78ff1b",
+    "total_dialogue_turns": 1703,
+    "avg_characters_per_record": 1619.5,
+    "avg_estimated_tokens_per_record": 404.9,
+    "avg_user_characters": 473.7,
+    "avg_assistant_characters": 912.3,
+    "domains": {
+      "technical": 176,
+      "socratic": 100,
+      "leveling": 50,
+      "behavioral": 50,
+      "career": 125
+    },
+    "subdomains": {
+      "code_review_and_dsa": 176,
+      "active_tutoring": 100,
+      "engineering_progression": 50,
+      "star_interview_coaching": 50,
+      "job_description_analysis": 67,
+      "esco_skill_taxonomy": 58
+    }
+  }
+}

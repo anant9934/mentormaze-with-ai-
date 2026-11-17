@@ -105,3 +105,4 @@ To validate that a real student can effectively navigate the AI Mentor system, a
 | Disk Persistence Sync Flush | $< 20\text{ms}$ | **3.4ms** | **PASS** |
 | Streaming TTFT (Time To First Token) | $< 150\text{ms}$ | **18ms** | **PASS** |
 | Session Rehydration on Restart | $< 500\text{ms}$ | **12ms** | **PASS** |
+

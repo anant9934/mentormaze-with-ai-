@@ -99,3 +99,4 @@ While the inverted-index hybrid search achieves 97.89% recall on keyword-anchore
 1. Provision PostgreSQL `pgvector` extension on Neon DB.
 2. Ingest 512-dimension or 768-dimension text embeddings using an open embedding model.
 3. Implement Reciprocal Rank Fusion (RRF) combining keyword BM25 scoring with dense vector cosine similarity.
+

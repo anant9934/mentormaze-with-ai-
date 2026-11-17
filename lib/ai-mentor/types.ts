@@ -99,7 +99,7 @@ export interface StructuredTurnResponse {
   escalationRecommendation?: EscalationRecommendation;
   latencyMs: number;
   modelProvider: string;
-  inferenceMode?: "generative" | "deterministic";
+  inferenceMode?: "generative" | "deterministic" | "fine-tuned-2b";
   tokenUsage?: {
     promptTokens: number;
     completionTokens: number;

@@ -35,7 +35,7 @@ export interface DBMessageRecord {
   escalation?: EscalationRecommendation;
   latencyMs?: number;
   modelProvider?: string;
-  inferenceMode?: "generative" | "deterministic";
+  inferenceMode?: "generative" | "deterministic" | "fine-tuned-2b";
   createdAt: string;
 }
 
@@ -210,7 +210,7 @@ export class ConversationStore {
       escalation?: EscalationRecommendation;
       latencyMs?: number;
       modelProvider?: string;
-      inferenceMode?: "generative" | "deterministic";
+      inferenceMode?: "generative" | "deterministic" | "fine-tuned-2b";
     } = {}
   ): DBMessageRecord {
     this.ensureLoaded();
