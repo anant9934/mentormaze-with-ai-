@@ -52,9 +52,9 @@ export default function MockInterviewPracticePage() {
   };
 
   const handleStartInterview = () => {
-    // Navigate to live session room for mock interview with selected settings
+    // Navigate to AI Mentor Studio or live 1:1 mentorship room
     if (mode === "ai") {
-      router.push(`/sessions/bk-test-123/live?role=ai_interviewer&track=${selectedTrackId}&diff=${difficulty}`);
+      router.push("/ai-mentor");
     } else {
       router.push("/sessions/booking-2/live");
     }
@@ -113,32 +113,32 @@ export default function MockInterviewPracticePage() {
           <div className="lg:col-span-8 card-warm bg-forest-950 rounded-3xl p-4 text-white shadow-elevated">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-forest-900 flex items-center justify-center">
               {mode === "ai" ? (
-                <div className="relative w-full h-full flex flex-col items-center justify-center p-8 bg-radial from-[#1A1A38] via-[#0F1426] to-[#0A0D18]">
-                  <div className="absolute w-64 h-64 rounded-full bg-violet-600/20 blur-3xl pointer-events-none animate-pulse" />
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-8 bg-radial from-[#102B20] via-[#0B1D15] to-[#07130E]">
+                  <div className="absolute w-64 h-64 rounded-full bg-emerald-600/20 blur-3xl pointer-events-none animate-pulse" />
 
                   <div className="relative mb-4">
-                    <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-violet-500 shadow-2xl ring-8 ring-violet-500/20">
+                    <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-500 shadow-2xl ring-8 ring-emerald-500/20">
                       <Image
-                        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
-                        alt="Tathastu AI Bar Raiser"
+                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                        alt="Tathastu AI Mentor"
                         fill
                         className="object-cover"
                       />
                     </div>
-                    <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-violet-600 text-[10px] font-bold text-white shadow-md flex items-center gap-1">
+                    <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-600 text-[10px] font-bold text-white shadow-md flex items-center gap-1">
                       <Volume2 className="w-3 h-3" />
-                      <span>Voice Ready</span>
+                      <span>24/7 Voice Ready</span>
                     </span>
                   </div>
 
                   <h3 className="text-xl font-bold text-white mb-1 tracking-tight flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-violet-400" />
-                    <span>Tathastu AI Bar Raiser</span>
+                    <Bot className="w-5 h-5 text-emerald-400" />
+                    <span>Tathastu AI Principal Mentor</span>
                   </h3>
-                  <div className="px-3 py-1 rounded-full bg-violet-900/60 border border-violet-500/40 text-[11px] text-violet-200 font-semibold mb-2">
+                  <div className="px-3 py-1 rounded-full bg-emerald-900/60 border border-emerald-500/40 text-[11px] text-emerald-200 font-semibold mb-2">
                     {activeTrackObj.label} · {activeTrackObj.role}
                   </div>
-                  <p className="text-xs text-violet-300/80 mb-3 text-center max-w-md leading-relaxed">
+                  <p className="text-xs text-emerald-300/80 mb-3 text-center max-w-md leading-relaxed">
                     {activeTrackObj.desc}
                   </p>
 
@@ -147,7 +147,7 @@ export default function MockInterviewPracticePage() {
                     {[0.3, 0.7, 0.5, 1.0, 0.8, 0.9, 0.4].map((v, i) => (
                       <span
                         key={i}
-                        className="w-1.5 bg-gradient-to-t from-violet-500 to-indigo-300 rounded-full animate-pulse"
+                        className="w-1.5 bg-gradient-to-t from-emerald-500 to-teal-300 rounded-full animate-pulse"
                         style={{
                           height: `${Math.max(6, v * 24)}px`,
                           animationDelay: `${i * 120}ms`,
@@ -159,7 +159,7 @@ export default function MockInterviewPracticePage() {
               ) : (
                 <Image
                   src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=80"
-                  alt="Interviewer Video"
+                  alt="Mentor Video"
                   fill
                   className="object-cover opacity-90"
                 />
@@ -167,8 +167,8 @@ export default function MockInterviewPracticePage() {
 
               {/* Live Badge */}
               <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-forest-950/80 backdrop-blur-md border border-forest-800 text-xs font-semibold flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${mode === "ai" ? "bg-violet-400" : "bg-red-500"} animate-pulse`}></span>
-                <span>{mode === "ai" ? "AI Bar Raiser Simulation" : "Technical Interview - SDE"}</span>
+                <span className={`w-2 h-2 rounded-full ${mode === "ai" ? "bg-emerald-400" : "bg-red-500"} animate-pulse`}></span>
+                <span>{mode === "ai" ? "24/7 AI Mentor Simulation" : "Technical Interview - SDE"}</span>
                 <span className="text-[10px] text-forest-300 font-mono">
                   {mode === "ai" ? "Voice + Chat Mode" : "Live · 24:16"}
                 </span>
