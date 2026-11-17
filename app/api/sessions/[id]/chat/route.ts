@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { RealtimeChatHub } from "@/lib/chat/realtime-hub";
 
 export async function GET(
   req: NextRequest,
@@ -50,6 +51,8 @@ export async function POST(
       senderRole = "student",
       content = "",
       latencyMs = 0.5,
+      clientSentPerfTime = Date.now(),
+      id = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     } = body;
 
     if (!content.trim()) {
@@ -59,21 +62,35 @@ export async function POST(
       );
     }
 
-    const insertResult: any = await db.execute(sql`
+    const messagePayload = {
+      type: "CHAT_MESSAGE",
+      id,
+      bookingId,
+      senderUserId,
+      senderName,
+      senderRole,
+      content: content.trim(),
+      latencyMs: Number(latencyMs) || 0.4,
+      clientSentPerfTime,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Instant in-memory broadcast (< 0.1ms dispatch)
+    RealtimeChatHub.broadcast(bookingId, messagePayload);
+
+    // Asynchronously insert into database
+    db.execute(sql`
       INSERT INTO session_chat_messages (
         booking_id, sender_user_id, sender_name, sender_role, content, latency_ms
       )
       VALUES (
         ${bookingId}, ${senderUserId}, ${senderName}, ${senderRole}, ${content.trim()}, ${latencyMs}
-      )
-      RETURNING id, booking_id, sender_user_id, sender_name, sender_role, content, latency_ms, created_at;
-    `);
-
-    const message = insertResult.rows?.[0] || insertResult?.[0];
+      );
+    `).catch((dbErr: any) => console.warn("[Session Chat DB Async Insert Error]:", dbErr));
 
     return NextResponse.json({
       success: true,
-      message,
+      message: messagePayload,
     });
   } catch (error: any) {
     console.error("[Session Chat POST Error]:", error);

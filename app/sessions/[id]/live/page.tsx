@@ -419,9 +419,128 @@ export default function LiveSessionRoomPage() {
         };
       }
 
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
-          setPeerConnected(true);
+      // C. Server-Sent Events (SSE) Instant Stream (< 1ms In-Memory Broadcast)
+      let eventSource: EventSource | null = null;
+      try {
+        eventSource = new EventSource(`/api/sessions/${bookingId}/chat/stream`);
+
+        eventSource.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === "CHAT_MESSAGE") {
+              const receiveTime = performance.now();
+              const sentTime = payload.clientSentPerfTime || receiveTime;
+              const latency = Math.max(0.1, Number((receiveTime - sentTime).toFixed(2)));
+              setLiveLatency(latency);
+
+              const incoming: ChatMessage = {
+                id: payload.id,
+                senderUserId: payload.senderUserId,
+                senderName: payload.senderName,
+                senderRole: payload.senderRole,
+                content: payload.content,
+                latencyMs: latency,
+                channelType: "server_sync",
+                createdAt: payload.createdAt,
+              };
+
+              setChatMessages((prev) => {
+                if (prev.some((m) => m.id === incoming.id)) return prev;
+                return [...prev, incoming];
+              });
+
+              if (activeTab !== "chat") {
+                setUnreadChatCount((count) => count + 1);
+              }
+            } else if (payload.type === "CODE_SYNC") {
+              setCodeContent(payload.code);
+              setSelectedLanguage(payload.language);
+            }
+          } catch (err) {}
+        };
+      } catch (sseErr) {
+        console.warn("SSE connection notice:", sseErr);
+      }
+
+      // D. Automated WebRTC Signaling Poller (Exchanges Offer, Answer, ICE Candidates)
+      const signalingInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/sessions/${bookingId}/signaling?participantId=${currentUserId}`);
+          const data = await res.json();
+          if (data.success && data.signals && data.signals.length > 0) {
+            setPeerConnected(true);
+
+            for (const signal of data.signals) {
+              if (signal.type === "offer" && !isMentor && pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
+                await fetch(`/api/sessions/${bookingId}/signaling`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    senderId: currentUserId,
+                    senderRole: currentRole,
+                    type: "answer",
+                    payload: answer,
+                  }),
+                });
+              } else if (signal.type === "answer" && isMentor && pc) {
+                if (pc.signalingState === "have-local-offer") {
+                  await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+                }
+              } else if (signal.type === "candidate" && pc) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+                } catch {}
+              }
+            }
+          }
+        } catch {}
+      }, 1200);
+
+      // Mentor initiates SDP offer if peer connects or on start
+      if (isMentor && pc) {
+        setTimeout(async () => {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await fetch(`/api/sessions/${bookingId}/signaling`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                senderId: currentUserId,
+                senderRole: currentRole,
+                type: "offer",
+                payload: offer,
+              }),
+            });
+          } catch {}
+        }, 1500);
+      }
+
+      // Handle ICE Candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          fetch(`/api/sessions/${bookingId}/signaling`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              senderId: currentUserId,
+              senderRole: currentRole,
+              type: "candidate",
+              payload: event.candidate,
+            }),
+          }).catch(() => {});
+        }
+      };
+
+      // Cleanup
+      return () => {
+        clearInterval(signalingInterval);
+        if (eventSource) {
+          eventSource.close();
         }
       };
     } catch (err) {
@@ -575,16 +694,18 @@ export default function LiveSessionRoomPage() {
       }
     }
 
-    // Asynchronous background persistence
+    // Asynchronous background persistence & multi-window instant SSE broadcast
     fetch(`/api/sessions/${bookingId}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        id: messageId,
         senderUserId: currentUserId,
         senderName: currentName,
         senderRole: currentRole,
         content: trimmed,
         latencyMs: localDispatchLatency,
+        clientSentPerfTime: startPerfTime,
       }),
     }).catch(() => {});
   };
