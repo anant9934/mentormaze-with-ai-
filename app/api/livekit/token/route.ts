@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { LiveKitTokenService } from "@/lib/livekit/token-service";
 import { getServerSession } from "@/lib/auth/server-auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const bookingId = searchParams.get("bookingId");
   let userId = searchParams.get("userId");
   let userName = searchParams.get("userName");
+  const roleParam = searchParams.get("role");
 
   // Validate server session if available
   const session = await getServerSession();
@@ -14,8 +17,13 @@ export async function GET(req: NextRequest) {
     userId = session.id;
     userName = session.displayName;
   } else if (!userId) {
-    userId = "user-student-1";
-    userName = "Anant Kumar";
+    if (roleParam === "mentor") {
+      userId = "user-mentor-priya";
+      userName = "Priya Sharma";
+    } else {
+      userId = "user-student-1";
+      userName = "Anant Kumar";
+    }
   }
 
   if (!bookingId) {
@@ -26,11 +34,15 @@ export async function GET(req: NextRequest) {
     const tokenResponse = await LiveKitTokenService.generateTokenForBooking({
       bookingId,
       userId,
-      userName: userName || "Participant",
-      userRole: session?.role as any,
+      userName: userName || (roleParam === "mentor" ? "Priya Sharma" : "Anant Kumar"),
+      userRole: (roleParam === "mentor" ? "mentor" : session?.role || "student") as any,
+      skipWindowCheck: true, // Allow joining anytime for live rooms
     });
 
-    return NextResponse.json(tokenResponse);
+    return NextResponse.json({
+      success: true,
+      ...tokenResponse,
+    });
   } catch (err: any) {
     switch (err.message) {
       case "BOOKING_NOT_FOUND":
@@ -54,5 +66,37 @@ export async function GET(req: NextRequest) {
           { status: 500 }
         );
     }
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { bookingId, userId, userName, role } = body;
+
+    if (!bookingId) {
+      return NextResponse.json({ error: "Missing bookingId in request body" }, { status: 400 });
+    }
+
+    const effectiveUserId = userId || (role === "mentor" ? "user-mentor-priya" : "user-student-1");
+    const effectiveName = userName || (role === "mentor" ? "Priya Sharma" : "Anant Kumar");
+
+    const tokenResponse = await LiveKitTokenService.generateTokenForBooking({
+      bookingId,
+      userId: effectiveUserId,
+      userName: effectiveName,
+      userRole: (role || "student") as any,
+      skipWindowCheck: true,
+    });
+
+    return NextResponse.json({
+      success: true,
+      ...tokenResponse,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to generate LiveKit token", details: err.message },
+      { status: 500 }
+    );
   }
 }

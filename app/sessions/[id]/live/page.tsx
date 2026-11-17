@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { Room, RoomEvent, Track, RemoteTrack, RemoteParticipant } from "livekit-client";
 import { store } from "@/lib/data/store";
 import { useAuth } from "@/lib/auth/context";
 import {
@@ -34,6 +35,7 @@ import {
   Volume2,
   Share2,
   Plus,
+  Globe,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -43,7 +45,7 @@ interface ChatMessage {
   senderRole: "student" | "mentor" | "system";
   content: string;
   latencyMs: number;
-  channelType: "webrtc_datachannel" | "broadcast_bus" | "server_sync";
+  channelType: "webrtc_datachannel" | "broadcast_bus" | "server_sync" | "livekit_datachannel";
   createdAt: string;
 }
 
@@ -175,6 +177,13 @@ export default function LiveSessionRoomPage() {
   const booking = store.getBookingById(bookingId) || store.getBookingsForUser("user-student-1")[0];
   const mentor = store.getMentorById(booking?.mentorProfileId || "mentor-priya") || store.getMentors(true)[0];
 
+  // Video Engine Mode: "p2p" (Free WebRTC) vs "livekit" (LiveKit Cloud SFU)
+  const [engineMode, setEngineMode] = useState<"p2p" | "livekit">("p2p");
+  const [livekitConnecting, setLivekitConnecting] = useState(false);
+  const [livekitConnected, setLivekitConnected] = useState(false);
+  const [livekitProviderInfo, setLivekitProviderInfo] = useState<string>("");
+  const livekitRoomRef = useRef<Room | null>(null);
+
   // Tab-isolated client identifier
   const [clientId] = useState(() => {
     if (typeof window !== "undefined") {
@@ -197,6 +206,10 @@ export default function LiveSessionRoomPage() {
       const r = urlParams.get("role");
       if (r === "mentor" || r === "student") {
         setActiveRoleOverride(r);
+      }
+      const eng = urlParams.get("engine");
+      if (eng === "livekit" || eng === "p2p") {
+        setEngineMode(eng);
       }
     }
   }, []);
@@ -338,7 +351,6 @@ export default function LiveSessionRoomPage() {
             });
           } catch (secondErr: any) {
             console.warn("Webcam in use or restricted, activating virtual camera fallback:", secondErr);
-            // Graceful virtual stream fallback so WebRTC always connects
             const canvas = document.createElement("canvas");
             canvas.width = 640;
             canvas.height = 480;
@@ -458,7 +470,115 @@ export default function LiveSessionRoomPage() {
   }, [selectedVideoDeviceId, selectedAudioDeviceId]);
 
   // -------------------------------------------------------------
-  // 2. WEBRTC P2P DATACHANNEL & LIVE VIDEO + SSE STREAM (< 5ms)
+  // 2A. LIVEKIT CLOUD SFU CONNECTION ENGINE
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (engineMode !== "livekit") return;
+
+    let isCleanedUp = false;
+    setLivekitConnecting(true);
+
+    async function initLiveKitRoom() {
+      try {
+        // 1. Fetch JWT room token from LiveKit backend token service
+        const res = await fetch(
+          `/api/livekit/token?bookingId=${bookingId}&role=${currentRole}&userId=${currentUserId}&userName=${encodeURIComponent(
+            currentName
+          )}`
+        );
+        const data = await res.json();
+        if (!data.success || !data.token || !data.wsUrl) {
+          throw new Error(data.details || data.error || "Could not retrieve LiveKit room token");
+        }
+
+        if (isCleanedUp) return;
+        setLivekitProviderInfo(`${data.providerName || "Cluster Alpha"} (${data.roomName})`);
+
+        // 2. Instantiate LiveKit Client Room
+        const room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+        livekitRoomRef.current = room;
+
+        room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+          if (track.kind === Track.Kind.Video) {
+            const mediaStream = new MediaStream([track.mediaStreamTrack]);
+            setRemoteStream(mediaStream);
+            setPeerHasVideo(true);
+            setPeerConnected(true);
+          } else if (track.kind === Track.Kind.Audio) {
+            const audioEl = track.attach();
+            document.body.appendChild(audioEl);
+          }
+        });
+
+        room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+          track.detach();
+        });
+
+        room.on(RoomEvent.ParticipantConnected, () => {
+          setPeerConnected(true);
+        });
+
+        room.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
+          try {
+            const text = new TextDecoder().decode(payload);
+            const msg = JSON.parse(text);
+            if (msg.type === "CHAT_MESSAGE") {
+              setChatMessages((prev) => {
+                if (prev.some((m) => m.id === msg.id)) return prev;
+                return [...prev, msg];
+              });
+              if (activeTabRef.current !== "chat") {
+                setUnreadChatCount((count) => count + 1);
+              }
+            }
+          } catch {}
+        });
+
+        // 3. Connect to LiveKit Cloud Server
+        await room.connect(data.wsUrl, data.token);
+        if (isCleanedUp) {
+          room.disconnect();
+          return;
+        }
+
+        setLivekitConnected(true);
+        setPeerConnected(true);
+
+        // 4. Publish local camera and mic
+        if (localStreamRef.current) {
+          const vTrack = localStreamRef.current.getVideoTracks()[0];
+          const aTrack = localStreamRef.current.getAudioTracks()[0];
+          if (vTrack) {
+            await room.localParticipant.publishTrack(vTrack);
+          }
+          if (aTrack) {
+            await room.localParticipant.publishTrack(aTrack);
+          }
+        }
+      } catch (lkErr: any) {
+        console.warn("LiveKit Cloud connect notice:", lkErr.message);
+      } finally {
+        setLivekitConnecting(false);
+      }
+    }
+
+    initLiveKitRoom();
+
+    return () => {
+      isCleanedUp = true;
+      if (livekitRoomRef.current) {
+        livekitRoomRef.current.disconnect();
+        livekitRoomRef.current = null;
+        setLivekitConnected(false);
+      }
+    };
+  }, [engineMode, bookingId, currentRole, currentUserId, currentName]);
+
+  // -------------------------------------------------------------
+  // 2B. 100% FREE P2P WEBRTC DATACHANNEL & SSE STREAM ENGINE (< 5ms)
   // -------------------------------------------------------------
   useEffect(() => {
     let isCleanedUp = false;
@@ -586,7 +706,6 @@ export default function LiveSessionRoomPage() {
         };
       };
 
-      // DataChannel handler
       pc.ondatachannel = (event) => {
         attachDataChannelHandlers(event.channel);
         dataChannelRef.current = event.channel;
@@ -682,7 +801,6 @@ export default function LiveSessionRoomPage() {
 
             if (signal.type === "join") {
               setPeerConnected(true);
-              // Deterministic caller selection: Mentor always calls, or higher clientId calls
               const isCaller = isMentor || (!isMentor && signal.senderRole === "student" && clientId > signal.senderClientId);
               if (isCaller) {
                 initiateSdpOffer();
@@ -815,7 +933,7 @@ export default function LiveSessionRoomPage() {
   }, [activeTab]);
 
   // -------------------------------------------------------------
-  // 3. SEND REAL-TIME CHAT MESSAGE (< 5ms LATENCY)
+  // 3. SEND REAL-TIME CHAT MESSAGE (DUAL P2P + LIVEKIT DISPATCH)
   // -------------------------------------------------------------
   const handleSendMessage = (e?: React.FormEvent, directText?: string) => {
     if (e) e.preventDefault();
@@ -837,7 +955,12 @@ export default function LiveSessionRoomPage() {
       senderRole: currentRole,
       content: trimmed,
       latencyMs: localDispatchLatency,
-      channelType: isDataChannelOpen ? "webrtc_datachannel" : "broadcast_bus",
+      channelType:
+        engineMode === "livekit"
+          ? "livekit_datachannel"
+          : isDataChannelOpen
+          ? "webrtc_datachannel"
+          : "broadcast_bus",
       createdAt: nowIso,
     };
 
@@ -866,7 +989,28 @@ export default function LiveSessionRoomPage() {
       }
     }
 
-    // 3. Same-profile BroadcastChannel (< 0.5ms)
+    // 3. LiveKit Cloud DataChannel Broadcast
+    if (engineMode === "livekit" && livekitRoomRef.current?.state === "connected") {
+      try {
+        const payloadBytes = new TextEncoder().encode(
+          JSON.stringify({
+            type: "CHAT_MESSAGE",
+            id: messageId,
+            senderUserId: currentUserId,
+            senderName: currentName,
+            senderRole: currentRole,
+            content: trimmed,
+            sentPerfTime: startPerfTime,
+            createdAt: nowIso,
+          })
+        );
+        livekitRoomRef.current.localParticipant.publishData(payloadBytes, { reliable: true });
+      } catch (lkSendErr) {
+        console.warn("LiveKit data publish:", lkSendErr);
+      }
+    }
+
+    // 4. Same-profile BroadcastChannel (< 0.5ms)
     if (broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage({
@@ -884,7 +1028,7 @@ export default function LiveSessionRoomPage() {
       }
     }
 
-    // 4. Local SSE Stream Broadcast (< 1ms loopback across tabs & incognito windows)
+    // 5. Local SSE Stream Broadcast (< 1ms loopback across tabs & incognito windows)
     fetch(`/api/sessions/${bookingId}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1040,7 +1184,7 @@ export default function LiveSessionRoomPage() {
   const copyMeetingLink = (forOppositeRole: boolean = true) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
     const targetRole = forOppositeRole ? (isMentor ? "student" : "mentor") : currentRole;
-    const url = `${origin}/sessions/${bookingId}/live?role=${targetRole}`;
+    const url = `${origin}/sessions/${bookingId}/live?role=${targetRole}&engine=${engineMode}`;
 
     navigator.clipboard.writeText(url).then(() => {
       setCopiedLink(true);
@@ -1122,7 +1266,11 @@ export default function LiveSessionRoomPage() {
           <div className="h-4 w-[1px] bg-[#1E3A2F]" />
 
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+            <span
+              className={`w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse ${
+                engineMode === "livekit" ? "bg-blue-400" : "bg-emerald-400"
+              }`}
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm text-white truncate">
@@ -1136,62 +1284,101 @@ export default function LiveSessionRoomPage() {
           </div>
         </div>
 
-        {/* Center: Live Session Timer & Role Switcher */}
-        <div className="flex items-center gap-3">
-          {/* One-Click Role Switcher */}
+        {/* Center: Engine Switcher & Role Switcher */}
+        <div className="flex items-center gap-2.5">
+          {/* Dual Engine Switcher: LiveKit Cloud vs Free P2P */}
           <div className="flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
             <button
-              onClick={() => setActiveRoleOverride("student")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                !isMentor
+              onClick={() => setEngineMode("p2p")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                engineMode === "p2p"
                   ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-[#A3B899] hover:text-white"
+              }`}
+              title="Run on 100% Free Peer-to-Peer Native WebRTC (< 0.5ms DataChannel)"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>Free P2P</span>
+            </button>
+            <button
+              onClick={() => setEngineMode("livekit")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                engineMode === "livekit"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-[#A3B899] hover:text-white"
+              }`}
+              title="Run on LiveKit Cloud Enterprise SFU Cluster"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-200" />
+              <span>LiveKit Cloud</span>
+            </button>
+          </div>
+
+          {/* One-Click Role Switcher */}
+          <div className="hidden sm:flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
+            <button
+              onClick={() => setActiveRoleOverride("student")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                !isMentor
+                  ? "bg-emerald-700/80 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
               title="Switch this tab to Student View (Anant Kumar)"
             >
               <span>🎓</span>
-              <span className="hidden sm:inline">Student View</span>
+              <span className="hidden md:inline">Student</span>
             </button>
             <button
               onClick={() => setActiveRoleOverride("mentor")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 isMentor
-                  ? "bg-emerald-600 text-white shadow-sm"
+                  ? "bg-emerald-700/80 text-white shadow-sm"
                   : "text-[#A3B899] hover:text-white"
               }`}
               title="Switch this tab to Mentor View (Priya Sharma)"
             >
               <span>💼</span>
-              <span className="hidden sm:inline">Mentor View</span>
+              <span className="hidden md:inline">Mentor</span>
             </button>
           </div>
 
           {/* Session Timer & Progress */}
-          <div className="hidden lg:flex items-center gap-2.5 bg-[#122B21] border border-[#1E4334] px-4 py-1.5 rounded-full shadow-inner">
+          <div className="hidden xl:flex items-center gap-2 bg-[#122B21] border border-[#1E4334] px-3.5 py-1.5 rounded-full shadow-inner">
             <Clock className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs font-mono font-bold text-white tracking-wider">
               {formatTimer(secondsElapsed)}
             </span>
             <span className="text-[11px] text-[#A3B899]">/ 30:00</span>
-            <div className="w-16 h-1.5 bg-[#1B382B] rounded-full overflow-hidden ml-1">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000"
-                style={{ width: `${Math.min(100, (secondsElapsed / 1800) * 100)}%` }}
-              />
-            </div>
           </div>
         </div>
 
         {/* Right Tools: Latency Badge & Actions */}
         <div className="flex items-center gap-2.5">
-          {/* Sub-5ms Latency Chip */}
+          {/* Engine Status / Latency Chip */}
           <div
-            className="flex items-center gap-1.5 bg-emerald-950/70 border border-emerald-700/60 px-3 py-1 rounded-full text-xs font-mono text-emerald-300 shadow-sm"
-            title="Real-time measured WebRTC P2P DataChannel & local SSE broadcast latency"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono shadow-sm border ${
+              engineMode === "livekit"
+                ? "bg-blue-950/70 border-blue-700/60 text-blue-300"
+                : "bg-emerald-950/70 border-emerald-700/60 text-emerald-300"
+            }`}
+            title={
+              engineMode === "livekit"
+                ? `LiveKit Cloud Active: ${livekitProviderInfo || "Cluster Alpha"}`
+                : "Real-time measured WebRTC P2P DataChannel latency (< 0.5ms)"
+            }
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse flex-shrink-0" />
-            <strong className="font-bold text-white">{liveLatency}ms</strong>
-            <span className="text-[10px] text-emerald-400/80 hidden sm:inline">P2P Free</span>
+            {engineMode === "livekit" ? (
+              <>
+                <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse flex-shrink-0" />
+                <span className="font-bold text-white">LiveKit SFU</span>
+              </>
+            ) : (
+              <>
+                <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse flex-shrink-0" />
+                <strong className="font-bold text-white">{liveLatency}ms</strong>
+                <span className="text-[10px] text-emerald-400/80 hidden sm:inline">P2P Free</span>
+              </>
+            )}
           </div>
 
           {/* Copy Complementary Invite Link */}
@@ -1241,9 +1428,19 @@ export default function LiveSessionRoomPage() {
             </div>
 
             <div className="flex items-center gap-2 text-xs">
-              <span className={`w-2 h-2 rounded-full ${peerConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  peerConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                }`}
+              />
               <span className="text-[#A3B899] text-[11px]">
-                {peerConnected ? "Peer Connected (P2P Active)" : "Room Open · Awaiting Peer"}
+                {peerConnected
+                  ? engineMode === "livekit"
+                    ? "LiveKit SFU Stream Active"
+                    : "Peer Connected (P2P Active)"
+                  : livekitConnecting
+                  ? "Connecting LiveKit Cloud..."
+                  : "Room Open · Awaiting Peer"}
               </span>
             </div>
           </div>
@@ -1273,7 +1470,9 @@ export default function LiveSessionRoomPage() {
                   )}
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span>{remoteName} ({isMentor ? "Student" : "Mentor"})</span>
+                    <span>
+                      {remoteName} ({isMentor ? "Student" : "Mentor"})
+                    </span>
                   </div>
                 </div>
 
@@ -1294,7 +1493,9 @@ export default function LiveSessionRoomPage() {
 
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10">
                     <span
-                      className={`w-2 h-2 rounded-full ${audioLevel > 15 ? "bg-emerald-400 animate-ping" : "bg-emerald-400"}`}
+                      className={`w-2 h-2 rounded-full ${
+                        audioLevel > 15 ? "bg-emerald-400 animate-ping" : "bg-emerald-400"
+                      }`}
                     />
                     <span>You ({currentName})</span>
                     {!isMicOn && <MicOff className="w-3 h-3 text-red-400 ml-1" />}
@@ -1322,11 +1523,20 @@ export default function LiveSessionRoomPage() {
                     <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{remoteName}</h3>
                     <p className="text-xs text-emerald-400/90 font-medium mb-6">{remoteHeadline}</p>
 
-                    {/* Waiting helper card */}
+                    {/* Waiting helper card with Dual Engine Info */}
                     <div className="bg-[#122B20]/90 border border-[#214F3A] rounded-2xl p-4 max-w-md shadow-xl backdrop-blur-md">
                       <div className="flex items-center gap-2.5 text-xs text-emerald-300 font-semibold mb-2 justify-center">
-                        <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-                        <span>Peer-to-Peer WebRTC Ready</span>
+                        {engineMode === "livekit" ? (
+                          <>
+                            <Globe className="w-4 h-4 text-blue-400 animate-pulse" />
+                            <span>LiveKit Cloud SFU Ready</span>
+                          </>
+                        ) : (
+                          <>
+                            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                            <span>Peer-to-Peer WebRTC Ready</span>
+                          </>
+                        )}
                       </div>
                       <p className="text-[11px] text-[#C2D6BA] leading-relaxed mb-3">
                         Your camera and microphone are live. To test 2-way video and instant chat, copy the invite link below and open it in an Incognito tab:
@@ -1550,9 +1760,15 @@ export default function LiveSessionRoomPage() {
                 {/* Latency & Channel Status Banner */}
                 <div className="bg-[#12281E] border border-[#1E4334] rounded-xl px-3 py-2 mb-3 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span
+                      className={`w-2 h-2 rounded-full animate-pulse ${
+                        engineMode === "livekit" ? "bg-blue-400" : "bg-emerald-400"
+                      }`}
+                    />
                     <span className="text-[#A3B899] text-[11px]">
-                      {dataChannelRef.current?.readyState === "open"
+                      {engineMode === "livekit"
+                        ? "LiveKit SFU Data Channel"
+                        : dataChannelRef.current?.readyState === "open"
                         ? "P2P WebRTC DataChannel (Direct)"
                         : "High-Speed Realtime Loopback Bus"}
                     </span>
@@ -1848,8 +2064,14 @@ export default function LiveSessionRoomPage() {
           {/* Sidebar Footer */}
           <div className="bg-[#0E2018] px-4 py-2.5 border-t border-[#1E3F31] flex items-center justify-between text-[11px] text-[#A3B899]">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              MentorMaze Live Room
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  engineMode === "livekit" ? "bg-blue-400" : "bg-emerald-400"
+                }`}
+              />
+              <span>
+                {engineMode === "livekit" ? "LiveKit SFU Engine" : "MentorMaze P2P Engine"}
+              </span>
             </span>
             <span className="font-mono text-emerald-400 font-bold">⚡ &lt; 5ms Active</span>
           </div>
