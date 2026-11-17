@@ -141,14 +141,14 @@ describe("MentorMaze AI Mentor Intelligence System — Comprehensive Test Suite"
       expect(result.potentialBugs.length).toBeGreaterThan(0);
     });
 
-    it("enforces execution isolation in the sandbox provider interface", async () => {
+    it("enforces execution isolation and offline safety policy in the sandbox provider interface", async () => {
       const exec = await CodeMentorService.executeInSandbox({
         code: "console.log('test');",
         language: "javascript",
       });
-      expect(exec.success).toBe(true);
-      expect(exec.isSandboxed).toBe(true);
-      expect(exec.isolationNotice).toContain("ephemeral container");
+      expect(exec.success).toBe(false);
+      expect(exec.isSandboxed).toBe(false);
+      expect(exec.isolationNotice).toContain("offline on host");
     });
   });
 
@@ -263,6 +263,50 @@ describe("MentorMaze AI Mentor Intelligence System — Comprehensive Test Suite"
       expect(result.sources.length).toBeGreaterThan(0);
       expect(result.recommendedActions.length).toBeGreaterThan(0);
       expect(result.skillUpdates?.length).toBeGreaterThan(0);
+    });
+  });
+
+  // 13. Student Context Personalization & Differentiation (Student A vs Student B)
+  describe("13. Student Personalization & Differentiation (Student A vs Student B)", () => {
+    it("generates demonstrably differentiated pedagogical contexts and roadmaps for identical prompts", async () => {
+      const studentAContext = await StudentContextBuilder.buildContext("usr-student-1");
+      const studentBContext = await StudentContextBuilder.buildContext("usr-student-2");
+
+      // Verify profile divergence
+      expect(studentAContext.displayName).toBe("Anant Kumar");
+      expect(studentBContext.displayName).toBe("Rahul Verma");
+      expect(studentAContext.targetRole).toContain("Software Development Engineer");
+      expect(studentBContext.targetRole).toContain("AI & Machine Learning");
+      expect(studentAContext.weakSkills).toContain("Dynamic Programming");
+      expect(studentBContext.weakSkills).toContain("PyTorch Tensor Operations");
+      expect(studentAContext.preferredLanguage).toBe("en");
+      expect(studentBContext.preferredLanguage).toBe("hinglish");
+
+      // Dispatch identical turn prompt to both students in study_planner mode
+      const identicalPrompt = "How should I plan my preparation for the next 4 weeks?";
+      const turnA = await AIMentorOrchestrator.processTurn({
+        studentUserId: "usr-student-1",
+        userMessage: identicalPrompt,
+        mode: "study_planner",
+      });
+
+      const turnB = await AIMentorOrchestrator.processTurn({
+        studentUserId: "usr-student-2",
+        userMessage: identicalPrompt,
+        mode: "study_planner",
+      });
+
+      // Verify that responses explicitly address distinct target roles and distinct weak skills
+      expect(turnA.message).toContain("Anant Kumar");
+      expect(turnA.message).toContain("Software Development Engineer");
+      expect(turnA.message).toContain("Dynamic Programming");
+
+      expect(turnB.message).toContain("Rahul Verma");
+      expect(turnB.message).toContain("AI & Machine Learning");
+      expect(turnB.message).toContain("PyTorch Tensor Operations");
+
+      // Verify recommended actions are distinct
+      expect(turnA.recommendedActions).not.toEqual(turnB.recommendedActions);
     });
   });
 });

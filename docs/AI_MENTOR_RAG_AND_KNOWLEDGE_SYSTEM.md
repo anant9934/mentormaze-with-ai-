@@ -40,3 +40,4 @@ MentorMaze partitions knowledge into five verified, license-governed collections
 
 - **No Inferred Question Fabrication**: The AI Mentor will never claim an interview question was asked by a specific company unless that fact is established in a dated, verified source record.
 - **Unestablished Knowledge Handling**: If a retrieval query returns zero verified chunks from the curriculum, the AI Mentor states: *"Our verified knowledge collection does not establish this specific data point; here is the standard engineering convention..."*
+

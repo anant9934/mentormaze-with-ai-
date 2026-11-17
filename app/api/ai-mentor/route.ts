@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const codeSnippet = body.codeSnippet;
     const hintLevel = body.hintLevel || 0;
     const activeTopic = body.activeTopic || body.topic;
+    const conversationHistory = body.conversationHistory;
 
     // Check if client requested streaming
     const isStream = req.headers.get("accept")?.includes("text/event-stream") || body.stream === true;
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
       languagePreference,
       hintLevel,
       activeTopic,
+      conversationHistory,
     });
 
     if (isStream) {

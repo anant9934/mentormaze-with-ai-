@@ -179,4 +179,6 @@ export interface ResumeMatchResult {
     rationale: string;
   }[];
   priorityPreparationTasks: string[];
+  unverifiedClaimsRequiringConfirmation?: string[];
 }
+

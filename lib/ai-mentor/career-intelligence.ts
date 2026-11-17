@@ -227,24 +227,31 @@ export class CareerIntelligenceService {
     const totalReqs = jd.mustHaveSkills.length;
     const matchScorePct = Math.round((matchingSkills.length / Math.max(1, totalReqs)) * 100);
 
-    // Generate Google XYZ Rewrites
+    // Generate Evidence-Backed Google XYZ Rewrites (Zero-Fabrication Policy)
+    // Uses structured placeholders for quantitative metrics requiring student confirmation
     const googleXyzSuggestions = [
       {
         originalBullet: "Worked on backend APIs and connected database for order management.",
-        improvedBullet: "Architected 12 RESTful microservices in TypeScript & Node.js, reducing order processing latency by 42% (from 180ms to 105ms) across 15,000 daily transactions.",
-        rationale: "Replaces passive verb 'worked on' with 'architected', specifies production tech stack, and quantifies performance delta with exact latency metrics.",
+        improvedBullet: "Architected RESTful microservices in TypeScript & Node.js, optimizing order processing latency [Metric: insert measured % or ms delta - requires student confirmation] across [Scale: insert verified daily transaction volume].",
+        rationale: "Replaces passive verb 'worked on' with 'architected', specifies production tech stack, and highlights quantitative performance impact without inventing unverified numbers.",
       },
       {
         originalBullet: "Created a full-stack real-time chat application using WebSockets.",
-        improvedBullet: "Engineered a low-latency real-time collaboration engine utilizing WebRTC DataChannels and Redis Pub/Sub, achieving sub-5ms message dispatch for 200+ concurrent peer rooms.",
-        rationale: "Quantifies throughput scale and latency benchmarks while proving architectural mastery of WebRTC peer connections.",
+        improvedBullet: "Engineered real-time collaboration engine utilizing WebRTC DataChannels and Redis Pub/Sub, achieving [Metric: insert measured latency bound - requires student confirmation] for [Scale: insert verified concurrent peer rooms].",
+        rationale: "Highlights architectural mastery of WebRTC peer connections and pub/sub caching while requiring genuine load-testing metrics.",
       },
+    ];
+
+    const unverifiedClaimsRequiringConfirmation = [
+      "Quantitative latency delta (% reduction or ms improvement) must be verified via actual load test or profiling evidence.",
+      "Production transaction throughput or daily active users must reflect actual deployed traffic or Locust/k6 benchmark metrics.",
+      "Number of microservices or endpoints must match actual git repository commit history.",
     ];
 
     const priorityPreparationTasks = [
       `Review algorithmic patterns for ${missingSkills.slice(0, 2).join(" & ") || "Dynamic Programming"}`,
-      `Add production metrics to your top 2 resume bullets using the Google XYZ formula`,
-      `Prepare a 5-minute system design walkthrough of your most complex project`,
+      `Add verified production metrics to your top 2 resume bullets using the Google XYZ formula (never estimate numbers)`,
+      `Prepare a 5-minute system design walkthrough of your most complex project with architectural trade-offs`,
     ];
 
     return {
@@ -256,6 +263,7 @@ export class CareerIntelligenceService {
       missingSkills,
       keywordGaps: keywordGaps.slice(0, 5),
       googleXyzSuggestions,
+      unverifiedClaimsRequiringConfirmation,
       priorityPreparationTasks,
     };
   }

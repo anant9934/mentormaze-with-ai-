@@ -47,3 +47,4 @@ The engine adapts dynamically to student preference across three language codes:
 - **`en` (English)**: Standard professional engineering English.
 - **`hi` (Hindi)**: Clean Devanagari script preserving English technical terms.
 - **`hinglish` (Hinglish)**: Conversational Roman script Hindi popular in Indian tech hubs (e.g. *"Pehle hum base case likhenge..."*).
+

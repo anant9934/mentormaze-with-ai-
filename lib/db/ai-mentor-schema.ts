@@ -240,3 +240,4 @@ export const aiFeedback = pgTable("ai_feedback", {
   comment: text("comment"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+

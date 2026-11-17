@@ -242,3 +242,4 @@ export class StudentSkillGraph {
     return record;
   }
 }
+

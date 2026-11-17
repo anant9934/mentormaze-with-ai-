@@ -39,3 +39,4 @@ MentorMaze AI Mentor is strictly an educational, technical, and career mentorshi
 - **PII Scrubbing**: Automatic regex redaction of email addresses and 10-digit Indian mobile numbers (`[EMAIL_REDACTED]`, `[PHONE_REDACTED]`).
 - **Student Memory Controls**: Students retain full rights to inspect, correct, and permanently delete saved memory items from their profile at any time.
 - **No Third-Party Model Training**: Model provider router settings specify zero data retention for model training across all API integrations.
+

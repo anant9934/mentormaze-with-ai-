@@ -52,3 +52,4 @@ DPO pairs teach the model to prefer productive struggle and progressive hints ov
 ## 4. Train/Test Contamination Defenses
 
 All evaluation cases in `EvaluationBenchmarkSuite` are quarantined from training corpora. No benchmark holdout scenario may ever be converted into an SFT or DPO training token.
+

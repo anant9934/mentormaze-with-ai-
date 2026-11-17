@@ -1,6 +1,6 @@
 /**
  * Central AI Mentor Intelligence Orchestrator
- * Integrates all 13 Subsystems into a Unified, High-Leverage Pedagogy Engine
+ * Integrates all Subsystems into a Unified, High-Leverage Pedagogy Engine
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
  */
 
@@ -32,6 +32,7 @@ export interface OrchestratorTurnInput {
   languagePreference?: LanguageCode;
   hintLevel?: number;
   activeTopic?: string;
+  conversationHistory?: { role: "user" | "assistant"; content: string }[];
 }
 
 export class AIMentorOrchestrator {
@@ -95,6 +96,7 @@ export class AIMentorOrchestrator {
     // 6. Mode-Specific Intelligence Resolution
     let responseText = "";
     let voiceText = "";
+    let activeModelProvider = "tathastu-pedagogical-rules";
     const recommendedActions: RecommendedAction[] = [];
     const skillUpdates: SkillUpdate[] = [];
 
@@ -150,7 +152,7 @@ export class AIMentorOrchestrator {
         responseText += `#### ⚠️ **Missing Core Competencies**:\n- ${analysis.missingSkills.join(", ")}\n\n`;
       }
 
-      responseText += `#### 🚀 **Google XYZ Formula Rewrites**:\n`;
+      responseText += `#### 🚀 **Google XYZ Formula Rewrites (Zero-Fabrication Policy)**:\n`;
       analysis.googleXyzSuggestions.forEach((sug, i) => {
         responseText += `**Example ${i + 1}:**\n`;
         if (sug.originalBullet) responseText += `*Before*: ~"${sug.originalBullet}"~\n\n`;
@@ -158,7 +160,15 @@ export class AIMentorOrchestrator {
         responseText += `*Why this gets interviews*: ${sug.rationale}\n\n`;
       });
 
-      voiceText = `I analyzed your resume bullets against Tier-1 SDE requirements. We transformed passive phrasing into quantifiable impact using the Google XYZ formula: accomplished X measured by Y by doing Z. Would you like me to rewrite another project?`;
+      if (analysis.unverifiedClaimsRequiringConfirmation && analysis.unverifiedClaimsRequiringConfirmation.length > 0) {
+        responseText += `#### 🛡️ **Mandatory Factual Verification Checklist (Self-Audit)**:\n`;
+        analysis.unverifiedClaimsRequiringConfirmation.forEach((item) => {
+          responseText += `- [ ] ${item}\n`;
+        });
+        responseText += `\n*Note: MentorMaze enforces zero-fabrication. Do not submit metrics you cannot mathematically defend in an interview.*\n\n`;
+      }
+
+      voiceText = `I analyzed your resume bullets against Tier-1 requirements using the Google XYZ formula: accomplished X measured by Y by doing Z. Make sure to confirm all quantitative numbers before submitting.`;
 
       recommendedActions.push(
         { id: "act-res-xyz", title: "Rewrite top 3 project bullets using Google XYZ formula", category: "Resume", priority: "high" },
@@ -194,6 +204,7 @@ export class AIMentorOrchestrator {
 
       responseText = `### 🗺️ Dynamic 24-Week Career & Placement Architecture\n\n`;
       responseText += `**Target Profile**: ${studentContext.displayName} $\\rightarrow$ **${roadmap.targetRole}**\n\n`;
+      responseText += `**Current Focus Area**: Addressing weak skills: **${studentContext.weakSkills.slice(0, 2).join(" & ")}**\n\n`;
 
       roadmap.milestones.forEach((m) => {
         responseText += `#### **${m.week}: ${m.title}**\n`;
@@ -202,35 +213,62 @@ export class AIMentorOrchestrator {
         responseText += `- **Verified Deliverable**: *${m.deliverable}*\n\n`;
       });
 
-      voiceText = `Here is your customized 24-week engineering roadmap. We break down algorithmic patterns, distributed portfolio projects, and FAANG mock interviews. Where would you like to start?`;
+      voiceText = `Here is your customized 24-week engineering roadmap tailored to your target role as ${studentContext.targetRole}. Where would you like to start?`;
 
       recommendedActions.push(
-        { id: "act-week1-dsa", title: "Complete Week 1: Two Pointers & Sliding Window milestones", category: "Roadmap", priority: "high" },
-        { id: "act-proj-webrtc", title: "Architect distributed WebRTC portfolio project", category: "Project", priority: "medium" }
+        { id: "act-week1-dsa", title: `Complete Week 1: ${roadmap.milestones[0]?.title}`, category: "Roadmap", priority: "high" },
+        { id: "act-proj-portfolio", title: `Build portfolio milestone: ${studentContext.activeProjects[0]?.title || "Distributed System"}`, category: "Project", priority: "medium" }
       );
     }
 
     // Branch E: Practice Mode (Socratic Scaffolding)
     else if (mode === "practice" || pedagogyDecision.strategy === "socratic_guidance" || pedagogyDecision.strategy === "progressive_hints") {
-      if (pedagogyDecision.hintLevel === 1) {
-        responseText = `### 💡 Progressive Hint 1 of 3: Two Pointers & Monotonicity\n\n`;
-        responseText += `Before writing code, consider the fundamental invariant of this problem:\n\n`;
-        responseText += `> *What property must an array possess so that moving a left pointer inward always increases the sum, and moving a right pointer inward always decreases the sum?*\n\n`;
-        responseText += `Take 30 seconds to reflect on this. If the array is unsorted, what would happen if you greedily moved a pointer?`;
-        voiceText = "Here is Hint 1. What property must an array possess so that moving a pointer gives you a predictable direction? Reflect on whether the array needs to be sorted first.";
-      } else if (pedagogyDecision.hintLevel === 2) {
-        responseText = `### 💡 Progressive Hint 2 of 3: Sorted Invariant & Space Trade-Offs\n\n`;
-        responseText += `Exactly! A sorted array guarantees directional predictability.\n\n`;
-        responseText += `- If \`arr[left] + arr[right] < target\`, the current sum is too small. Which pointer MUST advance?\n`;
-        responseText += `- If \`arr[left] + arr[right] > target\`, the current sum is too large. Which pointer MUST advance?\n\n`;
-        responseText += `What is the time complexity of sorting the array first versus using a Hash Map?`;
-        voiceText = "Hint 2: If the sum is too small, which pointer must advance? And what are the time complexity tradeoffs of sorting versus a Hash Map?";
+      const lower = sanitizedMessage.toLowerCase();
+      const isKnapsack = lower.includes("knapsack") || lower.includes("dp") || lower.includes("dynamic programming");
+
+      if (isKnapsack) {
+        if (pedagogyDecision.hintLevel === 1) {
+          responseText = `### 💡 Progressive Hint 1 of 3: Knapsack Decision Invariant\n\n`;
+          responseText += `Before looking at any table or recurrence, isolate the single decision you have to make for each item:\n\n`;
+          responseText += `> *For item $i$ with weight $w_i$ and value $v_i$, what are the only two choices you can make with respect to your current remaining capacity $W$?*\n\n`;
+          responseText += `Can you state these two choices in plain English without writing any loops yet?`;
+          voiceText = "For item i with weight w and value v, what are the only two choices you can make with your remaining capacity? Answer in plain words.";
+        } else if (pedagogyDecision.hintLevel === 2) {
+          responseText = `### 💡 Progressive Hint 2 of 3: Overlapping Subproblems & State Space\n\n`;
+          responseText += `Spot on! You either **include** the item (if $w_i \\le W$) or **exclude** it.\n\n`;
+          responseText += `- If excluded: Value is $\\text{dp}[i-1][W]$.\n`;
+          responseText += `- If included: Value is $v_i + \\text{dp}[i-1][W - w_i]$.\n\n`;
+          responseText += `What are the dimensions of the memoization table you need, and what is the base case when capacity is zero?`;
+          voiceText = "Hint 2: When included, your value is v plus the optimal subproblem for remaining capacity. What are the dimensions of your memoization table?";
+        } else {
+          responseText = `### 💡 Progressive Hint 3 of 3: Space Optimization from 2D to 1D\n\n`;
+          responseText += `You have the core recurrence! Notice that each row only depends on the previous row $(i-1)$:\n\n`;
+          responseText += `$$\\text{dp}[w] = \\max(\\text{dp}[w], v_i + \\text{dp}[w - w_i])$$\n\n`;
+          responseText += `⚠️ **Crucial Invariant**: In 0/1 Knapsack, you must iterate the weight loop backwards (from $W$ down to $w_i$). Why? (Hint: What would happen if you iterated forward?)`;
+          voiceText = "Hint 3: In 0/1 Knapsack, you can optimize to a single 1D array, but you must iterate the capacity backwards. Why is backward traversal required?";
+        }
       } else {
-        responseText = `### 💡 Progressive Hint 3 of 3: The Hash Map Complement Pattern\n\n`;
-        responseText += `If you want to solve this in strict $O(N)$ linear time without mutating or sorting the original array, use the **Complement Pattern**:\n\n`;
-        responseText += `$$\\text{complement} = \\text{target} - \\text{nums}[i]$$\n\n`;
-        responseText += `For every element, check if \`seen.has(complement)\`. If yes, you found the pair in a single pass! If no, store \`seen.set(nums[i], i)\`. Can you implement this loop?`;
-        voiceText = "Hint 3: Use the complement pattern. For each element, check if target minus current number is already in your Hash Map.";
+        // Two Pointers default practice
+        if (pedagogyDecision.hintLevel === 1) {
+          responseText = `### 💡 Progressive Hint 1 of 3: Two Pointers & Monotonicity\n\n`;
+          responseText += `Before writing code, consider the fundamental invariant of this problem:\n\n`;
+          responseText += `> *What property must an array possess so that moving a left pointer inward always increases the sum, and moving a right pointer inward always decreases the sum?*\n\n`;
+          responseText += `Take 30 seconds to reflect on this. If the array is unsorted, what would happen if you greedily moved a pointer?`;
+          voiceText = "Here is Hint 1. What property must an array possess so that moving a pointer gives you a predictable direction? Reflect on whether the array needs to be sorted first.";
+        } else if (pedagogyDecision.hintLevel === 2) {
+          responseText = `### 💡 Progressive Hint 2 of 3: Sorted Invariant & Space Trade-Offs\n\n`;
+          responseText += `Exactly! A sorted array guarantees directional predictability.\n\n`;
+          responseText += `- If \`arr[left] + arr[right] < target\`, the current sum is too small. Which pointer MUST advance?\n`;
+          responseText += `- If \`arr[left] + arr[right] > target\`, the current sum is too large. Which pointer MUST advance?\n\n`;
+          responseText += `What is the time complexity of sorting the array first versus using a Hash Map?`;
+          voiceText = "Hint 2: If the sum is too small, which pointer must advance? And what are the time complexity tradeoffs of sorting versus a Hash Map?";
+        } else {
+          responseText = `### 💡 Progressive Hint 3 of 3: The Hash Map Complement Pattern\n\n`;
+          responseText += `If you want to solve this in strict $O(N)$ linear time without mutating or sorting the original array, use the **Complement Pattern**:\n\n`;
+          responseText += `$$\\text{complement} = \\text{target} - \\text{nums}[i]$$\n\n`;
+          responseText += `For every element, check if \`seen.has(complement)\`. If yes, you found the pair in a single pass! If no, store \`seen.set(nums[i], i)\`. Can you implement this loop?`;
+          voiceText = "Hint 3: Use the complement pattern. For each element, check if target minus current number is already in your Hash Map.";
+        }
       }
 
       recommendedActions.push(
@@ -238,42 +276,124 @@ export class AIMentorOrchestrator {
       );
     }
 
-    // Branch F: Learn Mode (8-Stage Comprehensive Pedagogical Flow)
+    // Branch F: Learn Mode (Comprehensive Pedagogical Deep-Dive)
     else {
-      responseText = `### 📚 Deep-Dive: Distributed Caching & Cache-Aside Architecture\n\n`;
-      responseText += `#### **1. Intuition (Why This Matters)**\n`;
-      responseText += `Relational databases like PostgreSQL are disk-bound and typically handle 1,000–5,000 queries per second (QPS) before connection pools saturate. In-memory datastores like Redis operate in RAM, effortlessly handling 100,000+ QPS with sub-millisecond latency.\n\n`;
+      // 1. Construct generative LLM prompt payload
+      const systemPrompt = `You are the AI Mentor inside MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com).
+Your mission is to provide personalized, adaptive, evidence-driven technical and career mentoring.
+Brand: AI Tathastu. Platform: MentorMaze.
 
-      responseText += `#### **2. Real-Life Analogy**\n`;
-      responseText += `Think of your database as the university library's deep archives (slow to fetch, holds everything). Redis is the notepad on your desk with the 5 textbooks you are reading right now.\n\n`;
+Teaching Mode: ${mode}
+Teaching Strategy: ${pedagogyDecision.strategy}
+Target Depth: ${pedagogyDecision.targetDepth}
+Language Preference: ${language} (Format your responses in ${
+        language === "hi"
+          ? "pure Hindi"
+          : language === "hinglish"
+          ? "conversational Hinglish (Hindi written in Latin script with standard English technical terms)"
+          : "clear, professional English"
+      }).
 
-      responseText += `#### **3. Formal Architecture: The Cache-Aside Pattern**\n`;
-      responseText += `\`\`\`\n`;
-      responseText += `Client ----> [ Application Server ]\n`;
-      responseText += `                   |         \\\n`;
-      responseText += `           (1) Check Cache   (2) Cache Miss -> DB Query\n`;
-      responseText += `                   v                 v\n`;
-      responseText += `           [ Redis Cluster ]    [ PostgreSQL DB ]\n`;
-      responseText += `\`\`\`\n\n`;
+Student Profile:
+- Name: ${studentContext.displayName}
+- Target Role: ${studentContext.targetRole}
+- Current Weak Skills: ${studentContext.weakSkills.join(", ")}
+- Recent Mistakes: ${studentContext.recentMistakes.join("; ")}
 
-      responseText += `#### **4. Step-by-Step Execution Sequence**\n`;
-      responseText += `1. **Read Request**: Application checks Redis key \`user:101\`.\n`;
-      responseText += `2. **Cache Hit**: Data found. Return immediately ($< 2\\text{ms}$). Database is not touched.\n`;
-      responseText += `3. **Cache Miss**: Key missing. Query PostgreSQL ($~15\\text{ms}$). Write result to Redis with a TTL (e.g. 3600s). Return data to client.\n\n`;
+Pedagogical Core Rules:
+1. Socratic Scaffolding: Never dump full finished code immediately when a student asks for help on an algorithmic problem or homework. Instead, identify their mental model, guide them with progressive hints, and ask a targeted conceptual question.
+2. Zero-Fabrication: Never invent fake metrics or numbers for student resumes.
+3. Groundedness: Reference verified computer science and engineering principles.
 
-      responseText += `#### **5. Non-Obvious Edge Cases & Pitfalls**\n`;
-      responseText += `- **Cache Stampede (Thundering Herd)**: When a popular key expires, 10,000 concurrent requests query the database at the exact same instant, crashing PostgreSQL. *Mitigation*: Mutex locking or probabilistic early expiration.\n`;
-      responseText += `- **Stale Data on Mutation**: When a user updates their profile, update PostgreSQL first, then delete (invalidate) the Redis cache key.\n\n`;
+Retrieved Knowledge Chunks:
+${ragResults.map((r) => `[Collection: ${r.doc.collection}] ${r.doc.title}: ${r.doc.content}`).join("\n\n")}`;
 
-      responseText += `#### **6. Quick Understanding Check**\n`;
-      responseText += `*Why is it better to **delete** the cache key on database updates rather than immediately writing the updated value to Redis?*`;
+      const historyMessages = (input.conversationHistory || []).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
 
-      voiceText = "Welcome to Cache-Aside architecture. When data is requested, we check Redis first. On a cache miss, we query PostgreSQL and populate Redis with a TTL. Why do you think it is safer to delete the cache key rather than write to it on updates?";
+      // 2. Attempt real generative inference via ModelProviderRouter
+      const completion = await ModelProviderRouter.complete({
+        systemPrompt,
+        messages: [...historyMessages, { role: "user", content: sanitizedMessage }],
+        taskCategory: "general",
+        temperature: 0.3,
+      });
 
-      recommendedActions.push(
-        { id: "act-cache-aside-code", title: "Implement Cache-Aside wrapper function in TypeScript", category: "Implementation", priority: "high" },
-        { id: "act-cache-stampede", title: "Read mitigation patterns for Cache Stampede", category: "System Design", priority: "medium" }
-      );
+      if (!completion.isFallback && completion.content && completion.content !== "LOCAL_PEDAGOGICAL_FALLBACK") {
+        // Genuine generative completion succeeded
+        responseText = completion.content;
+        activeModelProvider = `${completion.provider}/${completion.model}`;
+        voiceText = completion.content.split("\n\n")[0]?.replace(/[*#_`~]/g, "") || "Here is what you need to know about this topic.";
+      } else {
+        // Local Pedagogical Rule-Engine Fallback
+        activeModelProvider = "tathastu-pedagogical-rules";
+
+        const fallbackBanner = `> ℹ️ **Notice**: Running on MentorMaze Local Pedagogical Rule-Engine (Deterministic Fallback Mode). Generative LLM provider keys (GEMINI_API_KEY, OPENAI_API_KEY) are not configured in the server environment.\n\n`;
+
+        const lowerMsg = sanitizedMessage.toLowerCase();
+
+        // Dynamic topic detection for local fallback
+        if (lowerMsg.includes("two pointer") || lowerMsg.includes("two-pointer") || lowerMsg.includes("sorted array")) {
+          responseText = fallbackBanner + `### 📚 Deep-Dive: Two Pointers Pattern & Invariant Maintenance\n\n`;
+          responseText += `#### **1. Intuition (Why This Matters)**\n`;
+          responseText += `The Two Pointers pattern replaces brute-force nested loops ($O(N^2)$) with linear-time directional traversal ($O(N)$) and constant auxiliary space ($O(1)$).\n\n`;
+          responseText += `#### **2. The Invariant**\n`;
+          responseText += `On a sorted array, moving the left pointer rightward strictly increases the sum; moving the right pointer leftward strictly decreases the sum. If the array is unsorted, this directional guarantee collapses.\n\n`;
+          responseText += `#### **3. Step-by-Step Traversal**\n`;
+          responseText += `1. \`left = 0\`, \`right = arr.length - 1\`\n2. Compute \`sum = arr[left] + arr[right]\`\n3. If \`sum === target\`, return indices.\n4. If \`sum < target\`, increment \`left++\`.\n5. If \`sum > target\`, decrement \`right--\`.\n\n`;
+          responseText += `#### **4. Understanding Check**\n`;
+          responseText += `*What is the trade-off of sorting an unsorted array first to use Two Pointers ($O(N \\log N)$) versus using a Hash Map with extra memory ($O(N)$ time, $O(N)$ space)?*`;
+          voiceText = "Two pointers requires a sorted array to guarantee directional movement. On an unsorted array, what is the trade-off between sorting first and using a Hash Map?";
+        } else if (lowerMsg.includes("knapsack") || lowerMsg.includes("dynamic programming") || lowerMsg.includes("dp")) {
+          responseText = fallbackBanner + `### 📚 Deep-Dive: 0/1 Knapsack & Optimal Substructure\n\n`;
+          responseText += `#### **1. Intuition (Why This Matters)**\n`;
+          responseText += `Dynamic Programming solves optimization problems by breaking them into overlapping subproblems and memoizing results, avoiding $O(2^N)$ recursion explosion.\n\n`;
+          responseText += `#### **2. The Recurrence Relation**\n`;
+          responseText += `For each item $i$ with weight $w_i$ and value $v_i$:\n`;
+          responseText += `$$\\text{dp}[i][w] = \\max(\\text{dp}[i-1][w], v_i + \\text{dp}[i-1][w - w_i])$$\n\n`;
+          responseText += `#### **3. Understanding Check**\n`;
+          responseText += `*Why is the problem called '0/1' Knapsack rather than fractional or unbounded knapsack?*`;
+          voiceText = "In 0/1 knapsack, each item can either be taken once or left behind. Can you explain why we cannot greedily take the highest value item?";
+        } else {
+          // Default architectural deep-dive
+          responseText = fallbackBanner + `### 📚 Deep-Dive: Distributed Caching & Cache-Aside Architecture\n\n`;
+          responseText += `#### **1. Intuition (Why This Matters)**\n`;
+          responseText += `Relational databases like PostgreSQL are disk-bound and typically handle 1,000–5,000 queries per second (QPS) before connection pools saturate. In-memory datastores like Redis operate in RAM, effortlessly handling 100,000+ QPS with sub-millisecond latency.\n\n`;
+
+          responseText += `#### **2. Real-Life Analogy**\n`;
+          responseText += `Think of your database as the university library's deep archives (slow to fetch, holds everything). Redis is the notepad on your desk with the 5 textbooks you are reading right now.\n\n`;
+
+          responseText += `#### **3. Formal Architecture: The Cache-Aside Pattern**\n`;
+          responseText += `\`\`\`\n`;
+          responseText += `Client ----> [ Application Server ]\n`;
+          responseText += `                   |         \\\n`;
+          responseText += `           (1) Check Cache   (2) Cache Miss -> DB Query\n`;
+          responseText += `                   v                 v\n`;
+          responseText += `           [ Redis Cluster ]    [ PostgreSQL DB ]\n`;
+          responseText += `\`\`\`\n\n`;
+
+          responseText += `#### **4. Step-by-Step Execution Sequence**\n`;
+          responseText += `1. **Read Request**: Application checks Redis key \`user:101\`.\n`;
+          responseText += `2. **Cache Hit**: Data found. Return immediately ($< 2\\text{ms}$). Database is not touched.\n`;
+          responseText += `3. **Cache Miss**: Key missing. Query PostgreSQL ($~15\\text{ms}$). Write result to Redis with a TTL (e.g. 3600s). Return data to client.\n\n`;
+
+          responseText += `#### **5. Non-Obvious Edge Cases & Pitfalls**\n`;
+          responseText += `- **Cache Stampede (Thundering Herd)**: When a popular key expires, 10,000 concurrent requests query the database at the exact same instant, crashing PostgreSQL. *Mitigation*: Mutex locking or probabilistic early expiration.\n`;
+          responseText += `- **Stale Data on Mutation**: When a user updates their profile, update PostgreSQL first, then delete (invalidate) the Redis cache key.\n\n`;
+
+          responseText += `#### **6. Quick Understanding Check**\n`;
+          responseText += `*Why is it better to **delete** the cache key on database updates rather than immediately writing the updated value to Redis?*`;
+
+          voiceText = "Welcome to Cache-Aside architecture. When data is requested, we check Redis first. On a cache miss, we query PostgreSQL and populate Redis with a TTL. Why do you think it is safer to delete the cache key rather than write to it on updates?";
+        }
+
+        recommendedActions.push(
+          { id: "act-learn-impl", title: "Implement pattern wrapper in TypeScript", category: "Implementation", priority: "high" },
+          { id: "act-learn-tradeoffs", title: "Document time & space complexity trade-offs", category: "System Design", priority: "medium" }
+        );
+      }
     }
 
     // Append Citations
@@ -307,7 +427,7 @@ export class AIMentorOrchestrator {
       skillUpdates,
       escalationRecommendation: escalation.shouldEscalate ? escalation : undefined,
       latencyMs: Math.max(0.1, elapsed),
-      modelProvider: "tathastu-pedagogy-v1",
+      modelProvider: activeModelProvider,
     };
   }
 }

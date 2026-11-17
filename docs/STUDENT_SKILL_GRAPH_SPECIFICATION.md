@@ -73,3 +73,4 @@ Where:
 - $w = 0.40$ for high-rigour evidence (`code_execution`, `mock_interview`).
 - $w = 0.20$ for lower-rigour evidence (`self_reported`, `multiple_choice`).
 - Confidence increases asymptotically toward $0.98$ with repeated assessments.
+

@@ -83,3 +83,4 @@ export interface StudentProfileContext {
 1. **Zero External Leakage**: Student context profile data is used strictly on-premises or within approved model provider API contracts where data retention for model training is disabled.
 2. **Revocation Support**: If a student toggles `useForPersonalization: false`, the context builder immediately returns a de-identified, un-personalized baseline profile.
 3. **Cross-Tenant Isolation**: Database queries enforce row-level tenant keys on `student_user_id`. No student can access or inspect another learner's memories, skill graph, or mentorship briefs.
+

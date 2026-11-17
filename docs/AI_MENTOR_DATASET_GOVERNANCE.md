@@ -36,3 +36,4 @@ MentorMaze employs regex and structural token analyzers for all ingested corpora
 
 1. **No Counseling Datasets**: Datasets originating from licensed clinical counseling or psychiatric interactions (such as `counsel-chat`) are categorically rejected. MentorMaze provides technical, academic, and career mentorship; it is not a healthcare or therapy system.
 2. **Attribution Preservation**: All open-source datasets (Apache 2.0, MIT, ODC-BY) preserve upstream copyright notices and licenses in `dataset_registry`.
+

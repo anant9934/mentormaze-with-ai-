@@ -67,3 +67,4 @@ curl -s http://localhost:3000/api/ai-mentor/eval | grep "socraticQuotientScore"
 
 - **Fallback Cascade**: If an external provider (Gemini or OpenAI) fails, times out, or throws a quota limit, `ModelProviderRouter` automatically cascades to `tathastu-pedagogy-v1` with zero student-facing interruption.
 - **Rollback**: If a code change degrades performance, revert to Git commit `2385be6` or latest tag.
+

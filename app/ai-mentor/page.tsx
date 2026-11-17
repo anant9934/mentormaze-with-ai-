@@ -121,7 +121,9 @@ export default function AIMentorPage() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Load initial skills and memory
+  const storageKey = `mentormaze_ai_mentor_chat_${user?.id || "usr-student-1"}`;
+
+  // Load initial skills, memory, and restore persisted conversation
   useEffect(() => {
     fetch(`/api/ai-mentor/skills?userId=${user?.id || "usr-student-1"}`)
       .then((r) => r.json())
@@ -141,9 +143,48 @@ export default function AIMentorPage() {
       })
       .catch(() => {});
 
-    // Initial greeting
-    dispatchTurn("Hello! Can you help me master distributed systems and prepare for SDE-1 placement interviews?", "learn");
-  }, []);
+    // Restore persisted chat from localStorage
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load chat history from localStorage", e);
+    }
+
+    // Default welcoming introductory message if no previous session exists
+    setMessages([
+      {
+        id: "msg-welcome-0",
+        sender: "mentor",
+        content: `### 👋 Namaste ${user?.displayName || "Student"}! Welcome to MentorMaze AI Mentor\n\nI am your personalized AI engineering & placement mentor, backed by verified computer science curricula, real SDE job descriptions, and human mentorship insights.\n\n**Select a mode above or ask any question:**\n- 📚 **Learn**: Break down complex concepts with intuitive mental models.\n- 💡 **Practice**: Solve algorithmic problems with guided Socratic hints.\n- 🔍 **Code Mentor**: Optimize your code and discover hidden $O(N^2)$ traps.\n- 📄 **Resume Mentor**: Align your bullets with the Google XYZ formula.\n- 🎙️ **Interview Coach**: Timed mock interviews evaluated on FAANG staff rubrics.\n\n*What would you like to focus on today?*`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        teachingStrategy: "conceptual_explanation",
+        sources: [],
+        recommendedActions: [
+          { id: "act-init-dsa", title: "Practice Two Pointers on LeetCode #1", category: "DSA", priority: "high" },
+          { id: "act-init-roadmap", title: "Review 24-week engineering placement roadmap", category: "Career", priority: "medium" },
+        ],
+        modelProvider: "tathastu-pedagogy-v1",
+      },
+    ]);
+  }, [user?.id]);
+
+  // Persist messages whenever they change
+  useEffect(() => {
+    if (messages.length > 0 && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(messages));
+      } catch (e) {
+        console.warn("Failed to persist chat history", e);
+      }
+    }
+  }, [messages, storageKey]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -215,6 +256,24 @@ export default function AIMentorPage() {
     recognition.start();
   };
 
+  // Clear conversation history
+  const handleClearChat = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(storageKey);
+    }
+    setMessages([
+      {
+        id: `msg-welcome-${Date.now()}`,
+        sender: "mentor",
+        content: `### 🔄 Session Reset\n\nI have reset your local conversation scratchpad. Your verified skill graph and persistent memories remain safely preserved.\n\n*What topic, algorithmic problem, or career question should we explore now?*`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        teachingStrategy: "conceptual_explanation",
+        sources: [],
+        modelProvider: "tathastu-pedagogy-v1",
+      },
+    ]);
+  };
+
   // Dispatch turn to backend orchestrator
   const dispatchTurn = async (userMsg: string, modeToUse: TeachingMode, codeToAttach?: string) => {
     if (!userMsg.trim()) return;
@@ -240,6 +299,10 @@ export default function AIMentorPage() {
           mode: modeToUse,
           languagePreference: language,
           codeSnippet: codeToAttach || (activeMode === "code_mentor" ? scratchCode : undefined),
+          conversationHistory: messages.slice(-6).map((m) => ({
+            role: m.sender === "user" ? "user" : "assistant",
+            content: m.content,
+          })),
         }),
       });
 
@@ -477,9 +540,18 @@ export default function AIMentorPage() {
                 </button>
               </div>
 
-              <span className="text-[11px] text-[#46514B] font-mono">
-                Mode: <span className="font-bold text-[#123B2E] uppercase">{activeMode}</span>
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-[#46514B] font-mono">
+                  Mode: <span className="font-bold text-[#123B2E] uppercase">{activeMode}</span>
+                </span>
+                <button
+                  onClick={handleClearChat}
+                  className="text-[11px] text-gray-500 hover:text-red-700 font-medium px-2 py-0.5 rounded border border-gray-300 hover:border-red-300 hover:bg-red-50 transition-all"
+                  title="Clear conversation history from browser storage"
+                >
+                  Clear Chat
+                </button>
+              </div>
             </div>
 
             {/* TAB 1: CONVERSATION */}
@@ -537,6 +609,11 @@ export default function AIMentorPage() {
                               <Bookmark className="w-3.5 h-3.5" />
                               <span>{m.savedNote ? "Saved" : "Save Note"}</span>
                             </button>
+                            {m.modelProvider && (
+                              <span className="text-[10px] text-gray-500 font-mono ml-1">
+                                [{m.modelProvider}]
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1.5">

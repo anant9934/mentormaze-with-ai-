@@ -49,3 +49,4 @@ Executed via `EvaluationBenchmarkSuite.runBenchmarkSuite()`:
 ### Baseline Comparisons
 - **Vs Generic Zero-Shot LLM (No Student Profile)**: $+18.4\%$ Accuracy Delta, $+34.2\%$ Socratic Quotient Delta.
 - **Vs RAG-Only (No Pedagogical Engine)**: $+8.2\%$ Accuracy Delta, $+24.0\%$ Socratic Quotient Delta.
+

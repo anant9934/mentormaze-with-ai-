@@ -94,3 +94,4 @@ The MentorMaze AI Mentor is not a generic wrapper or basic chatbot integration. 
   - Local Pedagogical Engine: **$< 1\text{ms}$** (deterministic, zero network cost)
   - Gemini 1.5 Flash: **$\sim 450\text{ms}$** (when API key provided)
   - OpenAI GPT-4o-Mini: **$\sim 600\text{ms}$** (when API key provided)
+

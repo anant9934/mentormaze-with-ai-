@@ -66,3 +66,4 @@ The service generates milestone roadmaps based on target role (e.g. SDE-1 vs AI 
 - **Weeks 9–14**: High-Scale Distributed Portfolio Project (Redis, PostgreSQL, WebRTC).
 - **Weeks 15–18**: System Design & Distributed Scalability.
 - **Weeks 19–24**: FAANG Mock Interviews & Engineering Referral Outreach.
+

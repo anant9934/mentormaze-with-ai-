@@ -102,17 +102,20 @@ export class CodeMentorService {
       };
     }
 
-    // Simulated isolated sandbox execution (safely mocks safe VM execution)
+    // Safety policy: Untrusted code execution requires a hardened, gVisor/Docker isolated sandbox daemon.
+    // When no isolated container daemon is running on the host, execution must fail securely rather than simulating fake success.
     const elapsed = Number((performance.now() - t0).toFixed(2));
 
     return {
-      success: true,
-      stdout: `[MentorMaze Isolated Sandbox Container]\nLanguage: ${req.language}\nStatus: PASS\nAll test assertions succeeded.\nOutput: Execution completed with return code 0.`,
-      stderr: "",
-      executionTimeMs: Math.max(12, elapsed + 15),
-      memoryUsedKb: 4096,
-      isSandboxed: true,
-      isolationNotice: "Executed within ephemeral container with network disabled, 512MB RAM cap, and 2000ms CPU timeout.",
+      success: false,
+      stdout: "",
+      stderr: "Execution unavailable: Isolated code execution container daemon is offline on host.",
+      executionTimeMs: elapsed,
+      memoryUsedKb: 0,
+      isSandboxed: false,
+      isolationNotice:
+        "Isolated code execution sandbox container is currently offline on host. Direct execution of untrusted code on Next.js server is disabled for security.",
     };
   }
 }
+
