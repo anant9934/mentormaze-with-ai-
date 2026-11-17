@@ -17,6 +17,12 @@ import {
   NotificationRecord,
   LedgerTransactionRecord,
 } from "./mock-data";
+import {
+  MatchmakingEngine,
+  StudentTargetPreferences,
+  MatchEvaluationResult,
+  MatchingStrategy,
+} from "../matching/engine";
 
 // In-Memory Durable Repository Store for Fast, Zero-Cost Dev & Testing
 class MentorMazeDataStore {
@@ -269,13 +275,13 @@ class MentorMazeDataStore {
     return this.mentors.get(id);
   }
 
-  // Top 3 Explainable Matching Algorithm (Rules-First, Deterministic, Transparent)
+  // Top 3 Explainable Matching Algorithm (Powered by 100-Factor Intelligence Engine)
   getTopRecommendedMentors(userId: string): { mentor: MentorProfileRecord; matchScore: number; reasons: string[]; isBestMatch: boolean }[] {
     const student = this.getStudentProfile(userId);
     const approvedMentors = this.getMentors(true);
 
-    if (!student) {
-      // Return top rated approved mentors as fallback
+    if (!student || approvedMentors.length === 0) {
+      // Fallback for anonymous users or non-student profiles
       return approvedMentors.slice(0, 3).map((m, idx) => ({
         mentor: m,
         matchScore: idx === 0 ? 96 : idx === 1 ? 92 : 89,
@@ -284,72 +290,33 @@ class MentorMazeDataStore {
       }));
     }
 
-    const studentSkills = (student.skills || []).map((s: any) =>
-      (s.skillName || s.name || "").toLowerCase()
+    const evaluations = MatchmakingEngine.rankMentors(
+      student,
+      {
+        targetRole: student.targetRole,
+        primaryLanguages: student.preferredLanguages,
+      },
+      approvedMentors,
+      "balanced"
     );
-    const studentTargetRole = (student.targetRole || "").toLowerCase();
-    const studentGoals = (student.goals || [])
-      .map((g: any) => `${g.title || ""} ${g.description || ""}`.toLowerCase())
-      .join(" ");
 
-    const scored = approvedMentors.map((mentor) => {
-      let score = 50; // base score
-      const reasons: string[] = [];
+    return evaluations.slice(0, 3).map((ev) => ({
+      mentor: ev.mentor,
+      matchScore: ev.overallScore,
+      reasons: ev.positiveHighlights.slice(0, 3),
+      isBestMatch: ev.isBestMatch,
+    }));
+  }
 
-      // 1. Goal alignment
-      const mentorRole = mentor.currentRole.toLowerCase();
-      const mentorDomain = mentor.primaryDomain.toLowerCase();
-      if (studentTargetRole && (mentorRole.includes(studentTargetRole) || mentorDomain.includes(studentTargetRole))) {
-        score += 25;
-        reasons.push("Matches your career goal of " + mentor.currentRole);
-      } else if (studentTargetRole.includes("engineer") && mentorRole.includes("engineer")) {
-        score += 20;
-        reasons.push("Matches your career path in engineering");
-      }
-
-      // 2. Skill overlap
-      const matchingSkills = mentor.skills.filter((sk) =>
-        studentSkills.some((stk) => stk.includes(sk.toLowerCase()) || sk.toLowerCase().includes(stk))
-      );
-      if (matchingSkills.length > 0) {
-        score += Math.min(matchingSkills.length * 5, 15);
-        reasons.push("Relevant tech expertise in " + matchingSkills.slice(0, 2).join(", "));
-      }
-
-      // 3. Focus area alignment
-      if (studentGoals.includes("interview") && mentor.focusAreas.includes("Interview Prep")) {
-        score += 5;
-        reasons.push("Specializes in technical interview preparation");
-      }
-      if (studentGoals.includes("project") && mentor.focusAreas.includes("Project Review")) {
-        score += 5;
-        reasons.push("Provides in-depth project portfolio review");
-      }
-
-      // 4. Availability fit
-      if (mentor.availabilityWeekly && mentor.availabilityWeekly.some((a) => a.isActive)) {
-        score += 5;
-        reasons.push("Available this week");
-      }
-
-      // Clamp score to 85-98 range for realistic UX calibration
-      const finalScore = Math.min(98, Math.max(82, score));
-
-      return {
-        mentor,
-        matchScore: finalScore,
-        reasons: reasons.slice(0, 3),
-        isBestMatch: false,
-      };
-    });
-
-    // Sort descending by match score
-    scored.sort((a, b) => b.matchScore - a.matchScore);
-    const topThree = scored.slice(0, 3);
-    if (topThree.length > 0) {
-      topThree[0].isBestMatch = true;
-    }
-    return topThree;
+  // Deep 100-Factor Multi-Dimensional Matching Engine API
+  getIntelligenceMatchRankings(
+    userId: string,
+    preferences?: StudentTargetPreferences,
+    strategy: MatchingStrategy = "balanced"
+  ): MatchEvaluationResult[] {
+    const student = this.getStudentProfile(userId) || null;
+    const approvedMentors = this.getMentors(true);
+    return MatchmakingEngine.rankMentors(student, preferences || {}, approvedMentors, strategy);
   }
 
   // ==========================================

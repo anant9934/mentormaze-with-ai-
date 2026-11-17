@@ -141,29 +141,47 @@ function VideoPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const attachMedia = (node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node) return;
+    node.muted = muted;
+    node.defaultMuted = muted;
+    if (stream && node.srcObject !== stream) {
+      node.srcObject = stream;
+      node.play().catch(() => {});
+    }
+  };
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !stream) return;
 
-    video.srcObject = stream;
+    video.muted = muted;
+    video.defaultMuted = muted;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
     video.play().catch(() => {});
 
-    const handleLoadedMetadata = () => {
+    const onPlayReady = () => {
       video.play().catch(() => {});
     };
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("loadedmetadata", onPlayReady);
+    video.addEventListener("canplay", onPlayReady);
 
     return () => {
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("loadedmetadata", onPlayReady);
+      video.removeEventListener("canplay", onPlayReady);
     };
-  }, [stream]);
+  }, [stream, muted]);
 
   return (
     <video
-      ref={videoRef}
+      ref={attachMedia}
       autoPlay
       playsInline
       muted={muted}
+      onCanPlay={(e) => (e.currentTarget as HTMLVideoElement).play().catch(() => {})}
       className={`w-full h-full object-cover ${mirrored ? "transform -scale-x-100" : ""} ${className}`}
     />
   );

@@ -56,6 +56,14 @@ export default function MentorsDirectoryPage() {
                 Handpicked based on your target role, declared skills, and learning goals.
               </p>
             </div>
+
+            <Link
+              href="/match"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-forest-900 hover:bg-forest-800 text-white text-xs sm:text-sm font-semibold shadow-md transition-all self-start sm:self-auto"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Launch 100-Factor AI Matchmaker</span>
+            </Link>
           </div>
 
           {/* Top 3 Cards Grid */}
