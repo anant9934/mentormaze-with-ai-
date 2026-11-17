@@ -136,3 +136,4 @@ Every request handled by `MentorMaze-2B` records the following metadata in the r
 - Router Implementation: [model-provider-router.ts](file:///Users/quantum/Desktop/MENTOR%20MAZE/lib/ai-mentor/model-provider-router.ts)
 - Test Suite: [ai-mentor-model-2b.test.ts](file:///Users/quantum/Desktop/MENTOR%20MAZE/tests/ai-mentor-model-2b.test.ts)
 - Adapter Configuration: [adapter_config.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/adapters/mentormaze-2b-smoke-adapter/adapter_config.json)
+

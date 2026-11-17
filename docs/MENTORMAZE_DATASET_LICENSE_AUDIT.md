@@ -102,3 +102,4 @@ The license validation gate was executed via `training/scripts/validate_licenses
 - License Gate Script: [validate_licenses.py](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/scripts/validate_licenses.py)
 - License Audit Output: [license_audit_report.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/reports/license_audit_report.json)
 - Dataset Registry YAML: [dataset_registry.yaml](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/datasets/dataset_registry.yaml)
+

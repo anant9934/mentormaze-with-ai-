@@ -111,3 +111,4 @@ def validate_registry():
 
 if __name__ == "__main__":
     validate_registry()
+

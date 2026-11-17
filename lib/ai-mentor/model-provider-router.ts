@@ -13,7 +13,7 @@ export type ProviderErrorType =
   | "UNKNOWN";
 
 export interface ProviderHealth {
-  provider: "local_pedagogical" | "gemini" | "openai" | "anthropic" | "ollama" | "mentormaze_2b";
+  provider: "local_pedagogical" | "gemini" | "groq" | "openrouter" | "openai" | "anthropic" | "ollama" | "mentormaze_2b";
   modelName: string;
   isAvailable: boolean;
   isConfigured: boolean;
@@ -24,7 +24,7 @@ export interface ProviderHealth {
 }
 
 export interface PromptPayload {
-  preferredProvider?: "mentormaze_2b" | "gemini" | "openai" | "anthropic" | "ollama" | "local_pedagogical";
+  preferredProvider?: "mentormaze_2b" | "gemini" | "groq" | "openrouter" | "openai" | "anthropic" | "ollama" | "local_pedagogical";
   systemPrompt: string;
   messages: { role: "system" | "user" | "assistant"; content: string }[];
   taskCategory?: "general" | "coding" | "reasoning" | "resume" | "interview" | "classification";
@@ -93,6 +93,14 @@ export class ModelProviderRouter {
   public static calculateCost(provider: string, promptTokens: number, completionTokens: number): number {
     if (provider === "mentormaze_2b" || provider === "mentormaze-2b") {
       return 0.0; // Self-hosted / local fine-tuned 2B model has zero API inference cost
+    }
+    if (provider === "groq") {
+      // Groq LPU: ~$0.05 / 1M prompt, $0.08 / 1M completion
+      return (promptTokens * 0.00000005) + (completionTokens * 0.00000008);
+    }
+    if (provider === "openrouter") {
+      // OpenRouter Llama 3.3: ~$0.12 / 1M prompt, $0.30 / 1M completion
+      return (promptTokens * 0.00000012) + (completionTokens * 0.00000030);
     }
     if (provider === "gemini") {
       // Gemini 1.5 Flash: $0.075 / 1M prompt, $0.30 / 1M completion
@@ -184,6 +192,8 @@ export class ModelProviderRouter {
    */
   public static getProviderStatus(): Record<string, ProviderHealth> {
     const geminiKey = process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
     const openAiKey = process.env.OPENAI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const ollamaUrl = process.env.OLLAMA_BASE_URL;
@@ -271,6 +281,30 @@ export class ModelProviderRouter {
           ? `Ollama local daemon configured at ${ollamaUrl}.`
           : "OLLAMA_BASE_URL environment variable not set.",
       },
+      groq: {
+        provider: "groq",
+        modelName: "qwen/qwen3.8-27b",
+        isAvailable: !!groqKey,
+        isConfigured: !!groqKey,
+        maskedKeyPreview: this.maskKey(groqKey),
+        lastChecked: new Date().toISOString(),
+        status: groqKey ? "ready" : "unconfigured",
+        message: groqKey
+          ? "Groq high-speed LPU inference engine configured with key pool."
+          : "GROQ_API_KEY environment variable not set.",
+      },
+      openrouter: {
+        provider: "openrouter",
+        modelName: "meta-llama/llama-3.3-70b-instruct",
+        isAvailable: !!openRouterKey,
+        isConfigured: !!openRouterKey,
+        maskedKeyPreview: this.maskKey(openRouterKey),
+        lastChecked: new Date().toISOString(),
+        status: openRouterKey ? "ready" : "unconfigured",
+        message: openRouterKey
+          ? "OpenRouter multi-model frontier gateway configured with key pool."
+          : "OPENROUTER_API_KEY environment variable not set.",
+      },
     };
   }
 
@@ -305,6 +339,47 @@ export class ModelProviderRouter {
       }
     }
 
+    // 0b. Explicit preferred provider routing for Groq or OpenRouter
+    if (payload.preferredProvider === "groq" && process.env.GROQ_API_KEY) {
+      try {
+        const result = await this.callGroq(payload, requestId);
+        this.logTelemetry({
+          requestId,
+          timestamp: new Date().toISOString(),
+          provider: "groq",
+          model: result.model,
+          inferenceMode: "generative",
+          latencyMs: result.latencyMs,
+          tokenUsage: result.tokenUsage,
+          estimatedCostUsd: result.estimatedCostUsd,
+          isSuccess: true,
+        });
+        return result;
+      } catch (err: any) {
+        console.warn("[ModelRouter] Preferred Groq invocation failed:", err.message);
+      }
+    }
+
+    if (payload.preferredProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+      try {
+        const result = await this.callOpenRouter(payload, requestId);
+        this.logTelemetry({
+          requestId,
+          timestamp: new Date().toISOString(),
+          provider: "openrouter",
+          model: result.model,
+          inferenceMode: "generative",
+          latencyMs: result.latencyMs,
+          tokenUsage: result.tokenUsage,
+          estimatedCostUsd: result.estimatedCostUsd,
+          isSuccess: true,
+        });
+        return result;
+      } catch (err: any) {
+        console.warn("[ModelRouter] Preferred OpenRouter invocation failed:", err.message);
+      }
+    }
+
     // 1. Check Google Gemini (Primary for fast general & educational queries)
     if (process.env.GEMINI_API_KEY) {
       try {
@@ -328,7 +403,7 @@ export class ModelProviderRouter {
           requestId,
           timestamp: new Date().toISOString(),
           provider: "gemini",
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash",
           inferenceMode: "deterministic",
           latencyMs: Number((performance.now() - t0).toFixed(2)),
           tokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
@@ -336,6 +411,50 @@ export class ModelProviderRouter {
           isSuccess: false,
           error: err.message,
         });
+      }
+    }
+
+    // 1b. Check Groq LPU (Ultra-fast 16ms high-throughput inference)
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const result = await this.callGroq(payload, requestId);
+        this.logTelemetry({
+          requestId,
+          timestamp: new Date().toISOString(),
+          provider: "groq",
+          model: result.model,
+          inferenceMode: "generative",
+          latencyMs: result.latencyMs,
+          tokenUsage: result.tokenUsage,
+          estimatedCostUsd: result.estimatedCostUsd,
+          isSuccess: true,
+        });
+        return result;
+      } catch (err: any) {
+        fallbackReason = `GROQ_FAILED: ${err.message}`;
+        console.warn("[ModelRouter] Groq invocation failed:", err.message);
+      }
+    }
+
+    // 1c. Check OpenRouter Multi-Model Gateway
+    if (process.env.OPENROUTER_API_KEY) {
+      try {
+        const result = await this.callOpenRouter(payload, requestId);
+        this.logTelemetry({
+          requestId,
+          timestamp: new Date().toISOString(),
+          provider: "openrouter",
+          model: result.model,
+          inferenceMode: "generative",
+          latencyMs: result.latencyMs,
+          tokenUsage: result.tokenUsage,
+          estimatedCostUsd: result.estimatedCostUsd,
+          isSuccess: true,
+        });
+        return result;
+      } catch (err: any) {
+        fallbackReason = `OPENROUTER_FAILED: ${err.message}`;
+        console.warn("[ModelRouter] OpenRouter invocation failed:", err.message);
       }
     }
 
@@ -458,12 +577,19 @@ export class ModelProviderRouter {
   }
 
   /**
-   * Call Google Gemini API (v1beta)
+   * Call Google Gemini API (v1beta) with automatic key pool rotation
    */
   public static async callGemini(payload: PromptPayload, requestId: string): Promise<ProviderCompletionResult> {
     const t0 = performance.now();
-    const apiKey = process.env.GEMINI_API_KEY!;
-    const model = payload.taskCategory === "coding" ? "gemini-1.5-pro" : "gemini-1.5-flash";
+    const geminiKeys = [
+      process.env.GEMINI_API_KEY,
+      process.env.GEMINI_API_KEY_2,
+      process.env.GEMINI_API_KEY_3,
+      process.env.GEMINI_API_KEY_4,
+    ].filter(Boolean) as string[];
+
+    const apiKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)] || process.env.GEMINI_API_KEY!;
+    const model = payload.taskCategory === "coding" ? "gemini-2.5-pro" : "gemini-2.5-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const controller = new AbortController();
@@ -526,6 +652,172 @@ export class ModelProviderRouter {
         inferenceMode: "generative",
         latencyMs: elapsed,
         tokenUsage,
+        tokensEstimate: totalTokens,
+        estimatedCostUsd: cost,
+        isFallback: false,
+        rawResponse: data,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Call Groq LPU High-Speed Inference Engine (OpenAI-compatible) with automatic key pool rotation
+   */
+  public static async callGroq(payload: PromptPayload, requestId: string): Promise<ProviderCompletionResult> {
+    const t0 = performance.now();
+    const groqKeys = [
+      process.env.GROQ_API_KEY,
+      process.env.GROQ_API_KEY_2,
+      process.env.GROQ_API_KEY_3,
+      process.env.GROQ_API_KEY_4,
+      process.env.GROQ_API_KEY_5,
+    ].filter(Boolean) as string[];
+
+    if (groqKeys.length === 0) {
+      throw new Error("GROQ_API_KEY not configured");
+    }
+
+    const apiKey = groqKeys[Math.floor(Math.random() * groqKeys.length)];
+    const model = "qwen/qwen3.8-27b";
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
+    );
+
+    if (payload.signal) {
+      payload.signal.addEventListener("abort", () => controller.abort());
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: payload.systemPrompt },
+            ...payload.messages,
+          ],
+          temperature: payload.temperature ?? 0.3,
+          max_tokens: payload.maxTokens ?? 2048,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Groq API Error [${response.status}]: ${errText}`);
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content || "";
+      const elapsed = Number((performance.now() - t0).toFixed(2));
+
+      const promptTokens = data?.usage?.prompt_tokens || Math.round(payload.systemPrompt.length / 4);
+      const completionTokens = data?.usage?.completion_tokens || Math.round(text.length / 4);
+      const totalTokens = promptTokens + completionTokens;
+      const cost = this.calculateCost("groq", promptTokens, completionTokens);
+
+      return {
+        requestId,
+        content: text,
+        provider: "groq",
+        model,
+        inferenceMode: "generative",
+        latencyMs: elapsed,
+        tokenUsage: { promptTokens, completionTokens, totalTokens },
+        tokensEstimate: totalTokens,
+        estimatedCostUsd: cost,
+        isFallback: false,
+        rawResponse: data,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  /**
+   * Call OpenRouter Multi-Model Gateway with automatic key pool rotation
+   */
+  public static async callOpenRouter(payload: PromptPayload, requestId: string): Promise<ProviderCompletionResult> {
+    const t0 = performance.now();
+    const openRouterKeys = [
+      process.env.OPENROUTER_API_KEY,
+      process.env.OPENROUTER_API_KEY_2,
+      process.env.OPENROUTER_API_KEY_3,
+      process.env.OPENROUTER_API_KEY_4,
+      process.env.OPENROUTER_API_KEY_5,
+    ].filter(Boolean) as string[];
+
+    if (openRouterKeys.length === 0) {
+      throw new Error("OPENROUTER_API_KEY not configured");
+    }
+
+    const apiKey = openRouterKeys[Math.floor(Math.random() * openRouterKeys.length)];
+    const model = "meta-llama/llama-3.3-70b-instruct";
+    const url = "https://openrouter.ai/api/v1/chat/completions";
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
+    );
+
+    if (payload.signal) {
+      payload.signal.addEventListener("abort", () => controller.abort());
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://mentormaze.aitathastu.com",
+          "X-Title": "MentorMaze AI Mentor",
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: payload.systemPrompt },
+            ...payload.messages,
+          ],
+          temperature: payload.temperature ?? 0.3,
+          max_tokens: payload.maxTokens ?? 2048,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter API Error [${response.status}]: ${errText}`);
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content || "";
+      const elapsed = Number((performance.now() - t0).toFixed(2));
+
+      const promptTokens = data?.usage?.prompt_tokens || Math.round(payload.systemPrompt.length / 4);
+      const completionTokens = data?.usage?.completion_tokens || Math.round(text.length / 4);
+      const totalTokens = promptTokens + completionTokens;
+      const cost = data?.usage?.cost || this.calculateCost("openrouter", promptTokens, completionTokens);
+
+      return {
+        requestId,
+        content: text,
+        provider: "openrouter",
+        model,
+        inferenceMode: "generative",
+        latencyMs: elapsed,
+        tokenUsage: { promptTokens, completionTokens, totalTokens },
         tokensEstimate: totalTokens,
         estimatedCostUsd: cost,
         isFallback: false,

@@ -139,3 +139,4 @@ Where tokens belonging to `<|im_start|>system` and `<|im_start|>user` receive a 
 - Model Verification Report: [model_verification_matrix.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/reports/model_verification_matrix.json)
 - SFT Training Configuration: [sft_config.yaml](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/configs/sft_config.yaml)
 - Verified LoRA Adapter: [adapter_model.safetensors](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/adapters/mentormaze-2b-smoke-adapter/adapter_model.safetensors)
+

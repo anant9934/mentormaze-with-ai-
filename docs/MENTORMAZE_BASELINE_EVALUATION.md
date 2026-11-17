@@ -77,3 +77,4 @@ Measured on local Apple Silicon Unified Memory:
 - 500-Case Evaluation Suite: [held_out_eval_500.jsonl](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/evaluations/held_out_eval_500.jsonl)
 - Evaluation Script: [evaluate_model.py](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/scripts/evaluate_model.py)
 - Evaluation Report: [evaluation_results.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/reports/evaluation_results.json)
+

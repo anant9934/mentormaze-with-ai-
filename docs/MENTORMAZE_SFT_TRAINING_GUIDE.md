@@ -141,3 +141,4 @@ This guarantees that gradients flow **only through the assistant's pedagogical r
 - SFT Training Script: [train_sft.py](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/scripts/train_sft.py)
 - Training Configuration YAML: [sft_config.yaml](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/configs/sft_config.yaml)
 - Smoke Test Report: [training_smoke_test_report.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/reports/training_smoke_test_report.json)
+

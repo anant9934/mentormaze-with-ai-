@@ -123,3 +123,4 @@ To further reinforce Socratic resistance against solution dumping and ensure ali
 - Smoke Test Report: [training_smoke_test_report.json](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/reports/training_smoke_test_report.json)
 - SFT Adapter Weights: [adapter_model.safetensors](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/adapters/mentormaze-2b-smoke-adapter/adapter_model.safetensors)
 - DPO Preparation Manifest: [dpo_preferences_pilot.jsonl](file:///Users/quantum/Desktop/MENTOR%20MAZE/training/datasets/manifests/dpo_preferences_pilot.jsonl)
+

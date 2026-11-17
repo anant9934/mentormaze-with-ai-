@@ -110,3 +110,4 @@ describe("MentorMaze-2B Model Provider & Specialized Inference", () => {
     expect(updatedTelemetry.totalRequests).toBeGreaterThan(initialTelemetry.totalRequests);
   });
 });
+
