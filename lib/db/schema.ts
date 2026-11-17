@@ -460,6 +460,17 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const sessionChatMessages = pgTable("session_chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: varchar("booking_id", { length: 128 }).notNull(),
+  senderUserId: varchar("sender_user_id", { length: 128 }).notNull(),
+  senderName: varchar("sender_name", { length: 160 }).notNull(),
+  senderRole: varchar("sender_role", { length: 32 }).notNull(), // student, mentor, system
+  content: text("content").notNull(),
+  latencyMs: numeric("latency_ms", { precision: 6, scale: 2 }).default("0.00"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),

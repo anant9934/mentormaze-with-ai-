@@ -788,6 +788,18 @@ export async function initializeDatabaseSchema() {
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS session_chat_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id VARCHAR(128) NOT NULL,
+      sender_user_id VARCHAR(128) NOT NULL,
+      sender_name VARCHAR(160) NOT NULL,
+      sender_role VARCHAR(32) NOT NULL,
+      content TEXT NOT NULL,
+      latency_ms NUMERIC(6, 2) DEFAULT 0.00,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_session_chat_booking ON session_chat_messages (booking_id, created_at);
+
     INSERT INTO booking_policies (
       id, version, name, platform_commission_percent, mentor_revenue_share_percent,
       gateway_fee_percent, tax_gst_percent, cancellation_cutoff_hours,
