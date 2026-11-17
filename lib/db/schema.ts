@@ -832,3 +832,6 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
   }),
 }));
 
+// Re-export official AI Mentor Intelligence schemas
+export * from "./ai-mentor-schema";
+
