@@ -139,6 +139,56 @@
       "languagePreference": "en",
       "createdAt": "2026-11-17T21:27:41.141Z",
       "updatedAt": "2026-11-17T21:27:41.141Z"
+    },
+    "conv-usr-phase2-persist-test-1794951156268-f8y5": {
+      "id": "conv-usr-phase2-persist-test-1794951156268-f8y5",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T21:32:36.268Z",
+      "updatedAt": "2026-11-17T21:32:36.268Z"
+    },
+    "conv-usr-phase2-persist-test-1794951423142-4m4w": {
+      "id": "conv-usr-phase2-persist-test-1794951423142-4m4w",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T21:37:03.142Z",
+      "updatedAt": "2026-11-17T21:37:03.142Z"
+    },
+    "conv-usr-phase2-persist-test-1794951458582-2iv6": {
+      "id": "conv-usr-phase2-persist-test-1794951458582-2iv6",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T21:37:38.582Z",
+      "updatedAt": "2026-11-17T21:37:38.583Z"
+    },
+    "conv-usr-phase2-persist-test-1794951843640-dxcb": {
+      "id": "conv-usr-phase2-persist-test-1794951843640-dxcb",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T21:44:03.640Z",
+      "updatedAt": "2026-11-17T21:44:03.640Z"
+    },
+    "conv-usr-phase2-persist-test-1794951870898-2mgu": {
+      "id": "conv-usr-phase2-persist-test-1794951870898-2mgu",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-17T21:44:30.898Z",
+      "updatedAt": "2026-11-17T21:44:30.899Z"
     }
   },
   "messages": {
@@ -434,6 +484,111 @@
         "modelProvider": "tathastu-pedagogy-v1",
         "inferenceMode": "deterministic",
         "createdAt": "2026-11-17T21:27:41.141Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794951156268-f8y5": [
+      {
+        "id": "msg-1794951156268-g44yw",
+        "conversationId": "conv-usr-phase2-persist-test-1794951156268-f8y5",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T21:32:36.268Z"
+      },
+      {
+        "id": "msg-1794951156268-db22w",
+        "conversationId": "conv-usr-phase2-persist-test-1794951156268-f8y5",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T21:32:36.268Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794951423142-4m4w": [
+      {
+        "id": "msg-1794951423142-g1a4l",
+        "conversationId": "conv-usr-phase2-persist-test-1794951423142-4m4w",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T21:37:03.142Z"
+      },
+      {
+        "id": "msg-1794951423142-sg43h",
+        "conversationId": "conv-usr-phase2-persist-test-1794951423142-4m4w",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T21:37:03.142Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794951458582-2iv6": [
+      {
+        "id": "msg-1794951458583-hjo3f",
+        "conversationId": "conv-usr-phase2-persist-test-1794951458582-2iv6",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T21:37:38.583Z"
+      },
+      {
+        "id": "msg-1794951458583-y4dza",
+        "conversationId": "conv-usr-phase2-persist-test-1794951458582-2iv6",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T21:37:38.583Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794951843640-dxcb": [
+      {
+        "id": "msg-1794951843640-aycam",
+        "conversationId": "conv-usr-phase2-persist-test-1794951843640-dxcb",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T21:44:03.640Z"
+      },
+      {
+        "id": "msg-1794951843640-qwimm",
+        "conversationId": "conv-usr-phase2-persist-test-1794951843640-dxcb",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T21:44:03.640Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1794951870898-2mgu": [
+      {
+        "id": "msg-1794951870898-qjp51",
+        "conversationId": "conv-usr-phase2-persist-test-1794951870898-2mgu",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-17T21:44:30.898Z"
+      },
+      {
+        "id": "msg-1794951870899-l3vj6",
+        "conversationId": "conv-usr-phase2-persist-test-1794951870898-2mgu",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-17T21:44:30.899Z"
       }
     ]
   }

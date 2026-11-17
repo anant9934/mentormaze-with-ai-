@@ -11,7 +11,50 @@ export type TeachingMode =
   | "resume_mentor"
   | "interview_coach"
   | "project_mentor"
-  | "study_planner";
+  | "study_planner"
+  | "coding_dsa"
+  | "system_design"
+  | "career"
+  | "resume"
+  | "interview"
+  | "projects"
+  | "study_planning";
+
+export type FocusArea =
+  | "learn"
+  | "practice"
+  | "coding_dsa"
+  | "system_design"
+  | "career"
+  | "resume"
+  | "interview"
+  | "projects"
+  | "study_planning";
+
+export interface SpecialistCapabilityInfo {
+  id: FocusArea;
+  name: string;
+  badge: string;
+  domain: string;
+  description: string;
+}
+
+export interface MentorIdentity {
+  name: string;
+  title: string;
+  credentials: string;
+  avatarUrl: string;
+  systemPersona: string;
+}
+
+export const UNIFIED_MENTOR_IDENTITY: MentorIdentity = {
+  name: "Dr. Aarav Mehta",
+  title: "Principal Mentor · AI Intelligence",
+  credentials: "Staff Software Architect & Placement Strategist · MentorMaze by AI Tathastu",
+  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  systemPersona:
+    "You are Dr. Aarav Mehta, Principal Mentor at MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com). You are a single, unified mentor with deep cross-disciplinary expertise spanning conceptual teaching, coding & DSA, system design, career roadmapping, resume transformation, and technical interviews. Maintain your singular persona, voice, and empathy across all interactions while dynamically engaging specialized internal analytical capabilities.",
+};
 
 export type TeachingStrategy =
   | "socratic_guidance"
@@ -100,6 +143,8 @@ export interface StructuredTurnResponse {
   latencyMs: number;
   modelProvider: string;
   inferenceMode?: "generative" | "deterministic" | "fine-tuned-2b";
+  specialistCapability?: SpecialistCapabilityInfo;
+  mentorIdentity?: MentorIdentity;
   tokenUsage?: {
     promptTokens: number;
     completionTokens: number;

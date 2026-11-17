@@ -1,0 +1,113 @@
+# MentorMaze-2B Model Family & Specialist LoRA Adapter Registry
+# Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+# Unified Mentor: Dr. Aarav Mehta (Principal Mentor · AI Intelligence)
+# Hardware Profile: Apple Silicon M4, 16 GB Unified Memory (MPS / MLX-LM)
+
+base_model:
+  name: "MentorMaze-2B-Base"
+  hf_id: "Qwen/Qwen3.5-2B-Base"
+  text_backbone: "Qwen3_5ForCausalLM"
+  total_parameters: 1882000000 # 1.882 Billion Text Backbone
+  architecture: "Hybrid Gated DeltaNet + Multi-Head Full Attention"
+  license: "Apache-2.0"
+  tokenizer: "Qwen/Qwen3.5-2B-Base (151,643 vocab size, ChatML template)"
+
+core_adapter:
+  id: "mentormaze-2b-sft-v1"
+  name: "MentorMaze SFT Core v1"
+  status: "DEPLOYABLE"
+  path: "training/adapters/mentormaze-2b-sft-v1"
+  checkpoints_path: "training/checkpoints/mentormaze-2b-sft-v1"
+  weights_file: "adapter_model.safetensors"
+  weights_size_bytes: 67327104 # 67.33 MB
+  sha256: "ffae2aaffd6cf50ef2562d22f2ba879103e05a5b512e0e927cbba03408092288"
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  trainable_params: 16819200
+  trainable_params_pct: 0.886
+  metrics:
+    initial_validation_loss: 2.4447
+    final_validation_loss: 0.4811
+    base_test_ppl: 7.25
+    sft_test_ppl: 1.59
+    socratic_compliance_pct: 100.0
+    zero_fabrication_pct: 100.0
+    eval_samples: 501
+    training_steps: 25
+
+specialist_adapters:
+  - id: "mentormaze-2b-adapter-learning"
+    name: "Socratic Pedagogy & Concept Learning"
+    focus_area: "learn"
+    domain: "Computer Science Curriculum & Invariant Scaffolding"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "first_principles_derivation"
+      - "progressive_hint_level_1_to_3"
+      - "counter_example_inquiry"
+      - "active_recall_checks"
+
+  - id: "mentormaze-2b-adapter-coding"
+    name: "Algorithmic Analysis & Code Review"
+    focus_area: "coding_dsa"
+    domain: "Data Structures, Algorithms & Time-Space Asymptotics"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "big_o_complexity_proofs"
+      - "edge_case_synthesis"
+      - "in_place_memory_optimization"
+      - "bug_and_trap_detection"
+
+  - id: "mentormaze-2b-adapter-system-design"
+    name: "Distributed Architecture & Trade-offs"
+    focus_area: "system_design"
+    domain: "High Scalability, Caching, Consensus & Storage"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "cap_theorem_tradeoff_analysis"
+      - "cache_aside_invalidation"
+      - "partitioning_and_replication"
+      - "thundering_herd_mitigation"
+
+  - id: "mentormaze-2b-adapter-career"
+    name: "Job Market & Seniority Calibration"
+    focus_area: "career"
+    domain: "JD Analysis, Compensation & 24-Week Roadmaps"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "naukri_jd_skill_gap_extraction"
+      - "l3_to_l6_level_expectations"
+      - "compensation_band_benchmarking"
+
+  - id: "mentormaze-2b-adapter-resume"
+    name: "Google XYZ Resume Transformation"
+    focus_area: "resume"
+    domain: "Resume Engineering & Zero-Fabrication Metrics"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "google_xyz_formula_rewriting"
+      - "action_verb_strengthening"
+      - "zero_fabrication_placeholder_validation"
+
+  - id: "mentormaze-2b-adapter-interview"
+    name: "FAANG Interview Rubrics & Coaching"
+    focus_area: "interview"
+    domain: "Technical & Behavioral (STAR) Interview Simulation"
+    parent_core: "mentormaze-2b-sft-v1"
+    rank: 16
+    alpha: 32
+    target_capabilities:
+      - "faang_4_tier_hiring_decisions"
+      - "star_behavioral_probing"
+      - "clarification_and_communication_scoring"

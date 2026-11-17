@@ -7,12 +7,15 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth/context";
 import {
+  FocusArea,
   TeachingMode,
   LanguageCode,
   SourceCitation,
   RecommendedAction,
   SkillUpdate,
   EscalationRecommendation,
+  SpecialistCapabilityInfo,
+  UNIFIED_MENTOR_IDENTITY,
 } from "@/lib/ai-mentor/types";
 import {
   Bot,
@@ -60,6 +63,8 @@ import {
   XSquare,
   Clock,
   Shield,
+  Activity,
+  Cpu,
 } from "lucide-react";
 
 interface PostInteractionCheck {
@@ -75,13 +80,14 @@ interface ChatMessage {
   content: string;
   timestamp: string;
   teachingStrategy?: string;
+  specialistCapability?: SpecialistCapabilityInfo;
   sources?: SourceCitation[];
   recommendedActions?: RecommendedAction[];
   skillUpdates?: SkillUpdate[];
   escalation?: EscalationRecommendation;
   latencyMs?: number;
   modelProvider?: string;
-  inferenceMode?: "generative" | "deterministic";
+  inferenceMode?: "generative" | "deterministic" | "fine-tuned-2b";
   requestId?: string;
   tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number };
   estimatedCostUsd?: number;
@@ -111,20 +117,103 @@ interface StudentSkillItem {
 interface ConversationSummary {
   id: string;
   title: string;
-  mode: TeachingMode;
+  mode: TeachingMode | FocusArea;
   updatedAt: string;
   createdAt: string;
 }
 
-const TEACHING_MODES: { id: TeachingMode; label: string; icon: any; description: string }[] = [
-  { id: "learn", label: "Learn", icon: BookOpen, description: "Master technical concepts from first principles" },
-  { id: "practice", label: "Practice", icon: Zap, description: "Active recall, quizzes, and Socratic discovery" },
-  { id: "code_mentor", label: "Code Mentor", icon: Code2, description: "Debug, review, explain, and optimize code" },
-  { id: "career_mentor", label: "Career Mentor", icon: Compass, description: "Strategic career direction & 6-month roadmaps" },
-  { id: "resume_mentor", label: "Resume Mentor", icon: FileText, description: "Google XYZ formula analysis against real JDs" },
-  { id: "interview_coach", label: "Interview Coach", icon: Briefcase, description: "FAANG rubrics and behavioral STAR preparation" },
-  { id: "project_mentor", label: "Project Mentor", icon: Layers, description: "Distributed architecture & system design" },
-  { id: "study_planner", label: "Study Planner", icon: Calendar, description: "24-week personalized milestone schedule" },
+interface FocusAreaDef {
+  id: FocusArea;
+  label: string;
+  icon: any;
+  specialistTitle: string;
+  badge: string;
+  description: string;
+  placeholder: string;
+}
+
+const FOCUS_AREAS: FocusAreaDef[] = [
+  {
+    id: "learn",
+    label: "Learn",
+    icon: BookOpen,
+    specialistTitle: "Concept Pedagogy",
+    badge: "Using Conceptual Pedagogy",
+    description: "Master CS concepts from first principles with invariants and trade-offs",
+    placeholder: "Ask Dr. Aarav to explain any CS concept, algorithmic invariant, or architectural pattern...",
+  },
+  {
+    id: "practice",
+    label: "Practice",
+    icon: Zap,
+    specialistTitle: "Socratic Practice",
+    badge: "Using Socratic Scaffolding",
+    description: "3-tier progressive hints & active recall without premature code dumps",
+    placeholder: "Share an algorithmic problem you're stuck on to receive progressive Socratic hints...",
+  },
+  {
+    id: "coding_dsa",
+    label: "Coding & DSA",
+    icon: Code2,
+    specialistTitle: "Algorithmic Review",
+    badge: "Using Coding & DSA Expertise",
+    description: "Line-by-line review, asymptotic proofs, edge cases & bug detection",
+    placeholder: "Paste your code snippet or LeetCode solution for algorithmic complexity review...",
+  },
+  {
+    id: "system_design",
+    label: "System Design",
+    icon: Layers,
+    specialistTitle: "Distributed Systems",
+    badge: "Using System Design Expertise",
+    description: "Distributed architectures, caching topologies, CAP trade-offs & scaling",
+    placeholder: "Ask to design a rate limiter, cache-aside layer, Kafka pipeline, or URL shortener...",
+  },
+  {
+    id: "career",
+    label: "Career",
+    icon: Compass,
+    specialistTitle: "Job Market & Calibration",
+    badge: "Using Career Intelligence",
+    description: "Naukri JD analysis, SDE-1 vs SDE-2 expectations & compensation bands",
+    placeholder: "Paste a job description or ask about tier-1 CTC compensation benchmarks...",
+  },
+  {
+    id: "resume",
+    label: "Resume",
+    icon: FileText,
+    specialistTitle: "Google XYZ Resume",
+    badge: "Using Resume Engineering",
+    description: "Google XYZ formula rewriting with zero-fabrication metric guardrails",
+    placeholder: "Paste your resume experience bullets for Google XYZ formula restructuring...",
+  },
+  {
+    id: "interview",
+    label: "Interview",
+    icon: Briefcase,
+    specialistTitle: "Mock Simulation & Rubric",
+    badge: "Using Interview Coaching",
+    description: "FAANG 4-tier evaluation rubrics & STAR behavioral mock simulations",
+    placeholder: "Ask for a simulated technical coding round or behavioral STAR question...",
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    icon: BrainCircuit,
+    specialistTitle: "Portfolio Engineering",
+    badge: "Using Project Architecture",
+    description: "Production fullstack portfolio architectures with real distributed scale",
+    placeholder: "Ask how to architect a high-signal distributed portfolio project with schemas...",
+  },
+  {
+    id: "study_planning",
+    label: "Study Planning",
+    icon: Calendar,
+    specialistTitle: "24-Week Roadmaps",
+    badge: "Using Study Architecture",
+    description: "Personalized milestone calendars, spaced retrieval & placement pacing",
+    placeholder: "Request a personalized 24-week engineering study schedule and milestone plan...",
+  },
 ];
 
 export default function AIMentorPage() {
@@ -132,7 +221,7 @@ export default function AIMentorPage() {
   const studentUserId = user?.id || "usr-student-1";
   const studentName = user?.displayName || "Anant Kumar";
 
-  const [activeMode, setActiveMode] = useState<TeachingMode>("learn");
+  const [activeFocus, setActiveFocus] = useState<FocusArea>("learn");
   const [language, setLanguage] = useState<LanguageCode>("en");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
@@ -150,10 +239,13 @@ export default function AIMentorPage() {
   // Auxiliary context state
   const [skills, setSkills] = useState<StudentSkillItem[]>([]);
   const [memories, setMemories] = useState<StudentMemoryItem[]>([]);
-  const [weakSkills, setWeakSkills] = useState<string[]>(["Dynamic Programming", "Distributed Consensus (Raft)", "Kafka Partitions"]);
-  const [scratchCode, setScratchCode] = useState(`// Scratch Code Lab: Paste snippet to debug or review\nfunction twoSum(nums, target) {\n  const seen = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (seen.has(complement)) {\n      return [seen.get(complement), i];\n    }\n    seen.set(nums[i], i);\n  }\n  return [];\n}`);
+  const [scratchCode, setScratchCode] = useState(
+    `// Scratch Code Lab: Paste snippet to debug or review\nfunction twoSum(nums, target) {\n  const seen = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (seen.has(complement)) {\n      return [seen.get(complement), i];\n    }\n    seen.set(nums[i], i);\n  }\n  return [];\n}`
+  );
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [resumeText, setResumeText] = useState("Software Engineer Intern | Built real-time WebRTC collaboration tool and Redis cache for 10k users. Worked on optimizing database queries.");
+  const [resumeText, setResumeText] = useState(
+    "Software Engineer Intern | Built real-time WebRTC collaboration tool and Redis cache for 10k users. Worked on optimizing database queries."
+  );
   const [escalationData, setEscalationData] = useState<EscalationRecommendation | null>(null);
   const [answeredChecks, setAnsweredChecks] = useState<Record<string, number>>({});
 
@@ -203,17 +295,14 @@ export default function AIMentorPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.conversations) && data.conversations.length > 0) {
         setConversations(data.conversations);
-        // Load the first conversation if none active
         if (!activeConversationId) {
           switchConversation(data.conversations[0].id);
         }
       } else {
-        // Create initial default conversation
-        handleCreateNewConversation("Initial Mentorship Session", activeMode);
+        handleCreateNewConversation("Initial Mentorship Session", activeFocus);
       }
     } catch (err) {
       console.warn("Failed to load conversations from server:", err);
-      // Fallback welcome message
       setupDefaultWelcome();
     }
   };
@@ -223,9 +312,16 @@ export default function AIMentorPage() {
       {
         id: "msg-welcome-0",
         sender: "mentor",
-        content: `### 👋 Namaste ${studentName}! Welcome to MentorMaze AI Mentor\n\nI am your personalized AI engineering & placement mentor, backed by verified computer science curricula, real SDE job descriptions, and human mentorship insights.\n\n**Select a mode above or ask any question:**\n- 📚 **Learn**: Break down complex concepts with intuitive mental models.\n- 💡 **Practice**: Solve algorithmic problems with guided Socratic hints.\n- 🔍 **Code Mentor**: Optimize your code and discover hidden $O(N^2)$ traps.\n- 📄 **Resume Mentor**: Align your bullets with the Google XYZ formula.\n- 🎙️ **Interview Coach**: Timed mock interviews evaluated on FAANG staff rubrics.\n\n*What would you like to focus on today?*`,
+        content: `### 👋 Namaste ${studentName}! I am Dr. Aarav Mehta.\n\nI am your unified AI engineering mentor inside MentorMaze by AI Tathastu. Whether you need to master Dynamic Programming from first principles, review your code complexity, design a distributed system, rewrite your resume bullets using Google XYZ, or calibrate your placement readiness, I apply specialized internal capabilities across our continuous conversation.\n\n**Select a focus area above or ask any technical question:**\n- 📚 **Learn**: Conceptual derivations, invariants, and foundational deep-dives.\n- 💡 **Practice**: Socratic scaffolding with 3-tier progressive hints.\n- 🔍 **Coding & DSA**: Line-by-line review, asymptotic proofs, and $O(N^2)$ trap elimination.\n- 🏗️ **System Design**: Distributed caching, consensus, and CAP theorem trade-offs.\n- 📄 **Resume & Career**: Factual Google XYZ rewrites with strict zero-fabrication metrics.\n\n*Where would you like to begin today?*`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         teachingStrategy: "conceptual_explanation",
+        specialistCapability: {
+          id: "learn",
+          name: "Concept Learning Specialist",
+          badge: "Using Conceptual Pedagogy",
+          domain: "Computer Science Fundamentals & Pedagogy",
+          description: "Explains core concepts from first principles with verified analogies and invariants.",
+        },
         sources: [],
         recommendedActions: [
           { id: "act-init-dsa", title: "Practice Two Pointers on LeetCode #1", category: "DSA", priority: "high" },
@@ -244,7 +340,10 @@ export default function AIMentorPage() {
       const res = await fetch(`/api/ai-mentor/conversations/${convId}?userId=${studentUserId}`);
       const data = await res.json();
       if (data.success && data.conversation) {
-        setActiveMode(data.conversation.mode || "learn");
+        if (data.conversation.mode) {
+          const matched = FOCUS_AREAS.find((f) => f.id === data.conversation.mode);
+          if (matched) setActiveFocus(matched.id);
+        }
         if (data.messages && data.messages.length > 0) {
           const loaded: ChatMessage[] = data.messages.map((m: any) => ({
             id: m.id,
@@ -252,6 +351,7 @@ export default function AIMentorPage() {
             content: m.content,
             timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             teachingStrategy: m.metadata?.teachingStrategy,
+            specialistCapability: m.metadata?.specialistCapability,
             sources: m.metadata?.sources,
             recommendedActions: m.metadata?.recommendedActions,
             skillUpdates: m.metadata?.skillUpdates,
@@ -275,15 +375,15 @@ export default function AIMentorPage() {
     }
   };
 
-  const handleCreateNewConversation = async (title?: string, mode?: TeachingMode) => {
+  const handleCreateNewConversation = async (title?: string, focus?: FocusArea) => {
     try {
       const res = await fetch("/api/ai-mentor/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: studentUserId,
-          title: title || `Mentorship on ${activeMode.toUpperCase()}`,
-          mode: mode || activeMode,
+          title: title || `Mentorship on ${activeFocus.toUpperCase()}`,
+          mode: focus || activeFocus,
         }),
       });
       const data = await res.json();
@@ -312,7 +412,7 @@ export default function AIMentorPage() {
           if (remaining.length > 0) {
             switchConversation(remaining[0].id);
           } else {
-            handleCreateNewConversation("New Mentorship Session", activeMode);
+            handleCreateNewConversation("New Mentorship Session", activeFocus);
           }
         }
       }
@@ -321,7 +421,7 @@ export default function AIMentorPage() {
     }
   };
 
-  // Scroll to bottom on new messages or generation updates
+  // Scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isGenerating]);
@@ -383,7 +483,7 @@ export default function AIMentorPage() {
       const transcript = event.results[0][0].transcript;
       setInputText(transcript);
       setIsListening(false);
-      dispatchTurn(transcript, activeMode);
+      dispatchTurn(transcript, activeFocus);
     };
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
@@ -470,7 +570,7 @@ export default function AIMentorPage() {
   };
 
   // Dispatch turn to backend orchestrator with SSE Streaming & AbortController
-  const dispatchTurn = async (userMsg: string, modeToUse: TeachingMode, codeToAttach?: string) => {
+  const dispatchTurn = async (userMsg: string, focusToUse: FocusArea, codeToAttach?: string) => {
     if (!userMsg.trim() || isGenerating) return;
 
     const userMessageObj: ChatMessage = {
@@ -510,9 +610,10 @@ export default function AIMentorPage() {
           studentUserId,
           conversationId: activeConversationId,
           userMessage: userMsg,
-          mode: modeToUse,
+          focusArea: focusToUse,
+          mode: focusToUse,
           languagePreference: language,
-          codeSnippet: codeToAttach || (activeMode === "code_mentor" ? scratchCode : undefined),
+          codeSnippet: codeToAttach || (activeFocus === "coding_dsa" ? scratchCode : undefined),
           conversationHistory: messages.slice(-6).map((m) => ({
             role: m.sender === "user" ? "user" : "assistant",
             content: m.content,
@@ -562,7 +663,7 @@ export default function AIMentorPage() {
               metadataReceived = parsed.metadata;
             }
           } catch (e) {
-            // Partial JSON buffer parse guard
+            // Buffer parse guard
           }
         }
       }
@@ -578,6 +679,7 @@ export default function AIMentorPage() {
                   ...msg,
                   content: accumulatedContent,
                   teachingStrategy: metadataReceived.teachingStrategy,
+                  specialistCapability: metadataReceived.specialistCapability,
                   sources: metadataReceived.sources,
                   recommendedActions: metadataReceived.recommendedActions,
                   skillUpdates: metadataReceived.skillUpdates,
@@ -623,7 +725,7 @@ export default function AIMentorPage() {
         speakText(metadataReceived.voiceText || accumulatedContent.slice(0, 200));
       }
 
-      // Refresh conversation list to show updated timestamps
+      // Refresh conversations list
       fetch(`/api/ai-mentor/conversations?userId=${studentUserId}`)
         .then((r) => r.json())
         .then((d) => {
@@ -634,10 +736,7 @@ export default function AIMentorPage() {
       setIsGenerating(false);
       abortControllerRef.current = null;
 
-      if (err.name === "AbortError") {
-        // Preserved partially streamed text on stop
-        console.log("Generation cleanly cancelled by user.");
-      } else {
+      if (err.name !== "AbortError") {
         console.error("AI Mentor stream error:", err);
         setMessages((prev) =>
           prev.map((msg) =>
@@ -669,46 +768,57 @@ export default function AIMentorPage() {
     });
   };
 
+  const currentFocusDef = FOCUS_AREAS.find((f) => f.id === activeFocus) || FOCUS_AREAS[0];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FBF8F1] text-[#17211E] font-sans">
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* TOP STATUS BAR */}
-        <div className="bg-[#123B2E] text-white rounded-2xl p-5 mb-4 shadow-xl border border-[#174B39] flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* UNIFIED MENTOR HEADER CARD */}
+        <div className="bg-[#123B2E] text-white rounded-2xl p-5 mb-3 shadow-xl border border-[#174B39] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-400 shadow-md flex-shrink-0">
+            <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-400/80 shadow-md flex-shrink-0 bg-[#0d2a21]">
               <Image
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                src={UNIFIED_MENTOR_IDENTITY.avatarUrl}
                 alt="Dr. Aarav Mehta"
                 fill
                 className="object-cover"
               />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold tracking-tight text-[#EDF1E8]">Dr. Aarav Mehta</h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                  Principal Mentor
+                  Principal Mentor · AI Intelligence
                 </span>
-                <span className="flex items-center gap-1 text-[11px] text-emerald-300">
+                <span className="flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/40">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>24/7 AI Intelligence</span>
+                  <span>Continuous Persona & Context</span>
                 </span>
               </div>
-              <p className="text-xs text-[#DDE6D7]/80 mt-0.5">
+              <p className="text-xs text-[#DDE6D7]/80 mt-1">
                 Staff Software Architect & Placement Strategist · MentorMaze by AI Tathastu
               </p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap text-[10px]">
+                <span className="px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-700/50 flex items-center gap-1 font-mono">
+                  <Cpu className="w-3 h-3 text-emerald-400" />
+                  <span>Adapter: mentormaze-2b-sft-v1 (DEPLOYABLE)</span>
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[#174B39] text-[#DDE6D7] border border-[#21634A] flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-emerald-400" />
+                  <span>Active Focus: <strong>{currentFocusDef.specialistTitle}</strong></span>
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Language & Voice Controls */}
-          <div className="flex items-center gap-3 self-end md:self-auto">
-            {/* Conversation Drawer Toggle Button */}
+          {/* Controls: Sessions Drawer, Language, Voice */}
+          <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="px-3 py-1.5 rounded-xl bg-[#174B39] hover:bg-[#21634A] border border-[#21634A] text-xs font-semibold text-[#DDE6D7] hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              title="Toggle Saved Conversations"
+              title="Toggle Saved Sessions Drawer"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
               <span>Sessions ({conversations.length})</span>
@@ -742,7 +852,7 @@ export default function AIMentorPage() {
               </button>
             </div>
 
-            {/* Voice Read-aloud Toggle */}
+            {/* Voice Toggle */}
             <button
               onClick={() => {
                 if (isVoiceEnabled && isSpeaking) window.speechSynthesis.cancel();
@@ -760,59 +870,70 @@ export default function AIMentorPage() {
           </div>
         </div>
 
-        {/* INFERENCE TRANSPARENCY NOTICE BANNER */}
-        <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl px-4 py-2.5 mb-4 text-xs text-amber-900 flex items-center justify-between">
+        {/* INFERENCE TRANSPARENCY NOTICE */}
+        <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-xl px-4 py-2 mb-3 text-xs text-emerald-950 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <Shield className="w-4 h-4 text-emerald-700 flex-shrink-0" />
             <span>
-              <strong>System Status:</strong> Primary router running on{" "}
-              <span className="font-mono font-bold">tathastu-pedagogy-v1 (Deterministic Core)</span>. Zero-hallucination guardrails active. For live generative inference, configure <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">GEMINI_API_KEY</code> or <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">OPENAI_API_KEY</code> in server settings.
+              <strong>Unified Architecture:</strong> Interacting with ONE mentor (Dr. Aarav Mehta). Switching Focus Areas updates internal specialist analysis without wiping conversation history. Fine-tuned core model adapter <code className="bg-emerald-100/90 px-1 py-0.5 rounded text-[11px] font-mono font-bold">mentormaze-2b-sft-v1</code> is verified & deployable (Test PPL 1.59, Socratic 100%).
             </span>
           </div>
           <Link
             href="/admin/ai-mentor"
-            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline flex-shrink-0 ml-3"
+            className="text-[11px] font-bold text-emerald-900 hover:text-emerald-950 underline flex-shrink-0"
           >
-            Admin Observability →
+            Admin Model Registry →
           </Link>
         </div>
 
-        {/* 8 TEACHING MODES SELECTOR STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
-          {TEACHING_MODES.map((m) => {
-            const Icon = m.icon;
-            const isSelected = activeMode === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => {
-                  setActiveMode(m.id);
-                  if (activeTab !== "chat") setActiveTab("chat");
-                }}
-                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                  isSelected
-                    ? "bg-[#123B2E] text-white border-[#123B2E] shadow-md shadow-[#123B2E]/10"
-                    : "bg-white text-[#46514B] border-[#DED2BF] hover:border-[#123B2E]/40 hover:bg-[#F4EFE4]/30"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <Icon className={`w-4 h-4 ${isSelected ? "text-emerald-400" : "text-[#123B2E]"}`} />
-                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-                </div>
-                <div>
-                  <p className="font-bold text-xs">{m.label}</p>
-                  <p className={`text-[10px] truncate ${isSelected ? "text-[#DDE6D7]/80" : "text-gray-500"}`}>
-                    {m.description.slice(0, 22)}...
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+        {/* 9 FOCUS AREAS COMPACT SELECTOR STRIP */}
+        <div className="bg-white rounded-2xl border border-[#DED2BF] p-2 mb-4 shadow-sm">
+          <div className="flex items-center justify-between px-2 pb-1.5 border-b border-[#EAE3D2] mb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#46514B] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Select Focus Area (Maintains Continuous Memory)</span>
+            </span>
+            <span className="text-[10px] text-gray-500 hidden sm:inline">
+              Active Capability: <strong className="text-[#123B2E]">{currentFocusDef.description}</strong>
+            </span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5">
+            {FOCUS_AREAS.map((f) => {
+              const Icon = f.icon;
+              const isSelected = activeFocus === f.id;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setActiveFocus(f.id);
+                    if (activeTab !== "chat") setActiveTab("chat");
+                  }}
+                  className={`p-2 rounded-xl text-left transition-all border flex flex-col justify-between ${
+                    isSelected
+                      ? "bg-[#123B2E] text-white border-[#123B2E] shadow-sm"
+                      : "bg-[#FBF8F1] text-[#46514B] border-[#DED2BF] hover:border-[#123B2E]/40 hover:bg-[#F4EFE4]"
+                  }`}
+                  title={f.description}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-emerald-400" : "text-[#123B2E]"}`} />
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-[11px] leading-tight truncate">{f.label}</p>
+                    <p className={`text-[9px] truncate ${isSelected ? "text-emerald-200" : "text-gray-500"}`}>
+                      {f.specialistTitle}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* MAIN WORKSPACE GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1">
-          {/* CONVERSATION DRAWER (IF OPEN) OR HIDDEN */}
+          {/* CONVERSATION DRAWER (IF OPEN) */}
           {isSidebarOpen && (
             <div className="lg:col-span-1 bg-white rounded-2xl border border-[#DED2BF] p-4 shadow-sm flex flex-col max-h-[720px]">
               <div className="flex items-center justify-between pb-3 border-b border-[#DED2BF] mb-3">
@@ -821,7 +942,7 @@ export default function AIMentorPage() {
                   <span className="font-bold text-xs text-[#123B2E]">Saved Sessions</span>
                 </div>
                 <button
-                  onClick={() => handleCreateNewConversation("New Mentorship Session", activeMode)}
+                  onClick={() => handleCreateNewConversation("New Mentorship Session", activeFocus)}
                   className="px-2 py-1 rounded bg-[#123B2E] text-white text-[10px] font-bold flex items-center gap-1 hover:bg-[#174B39]"
                   title="Create new conversation"
                 >
@@ -866,9 +987,13 @@ export default function AIMentorPage() {
             </div>
           )}
 
-          {/* LEFT 3 COLS (OR 2 IF SIDEBAR OPEN): WORKSPACE TABS */}
-          <div className={`${isSidebarOpen ? "lg:col-span-2" : "lg:col-span-3"} bg-white rounded-2xl border border-[#DED2BF] shadow-sm flex flex-col overflow-hidden`}>
-            {/* WORKSPACE SUB-NAVBAR */}
+          {/* WORKSPACE CENTRAL COLUMN */}
+          <div
+            className={`${
+              isSidebarOpen ? "lg:col-span-2" : "lg:col-span-3"
+            } bg-white rounded-2xl border border-[#DED2BF] shadow-sm flex flex-col overflow-hidden`}
+          >
+            {/* WORKSPACE TABS */}
             <div className="px-5 py-3 border-b border-[#DED2BF] bg-[#F4EFE4]/40 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <button
@@ -909,244 +1034,302 @@ export default function AIMentorPage() {
                     activeTab === "memory" ? "bg-[#123B2E] text-white" : "text-[#46514B] hover:text-[#123B2E]"
                   }`}
                 >
-                  Memory & Privacy ({memories.length})
+                  Student Memory ({memories.length})
                 </button>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] text-[#46514B] font-mono">
-                  Mode: <span className="font-bold text-[#123B2E] uppercase">{activeMode}</span>
-                </span>
-                <button
-                  onClick={() => handleCreateNewConversation("New Mentorship Session", activeMode)}
-                  className="text-[11px] text-gray-500 hover:text-emerald-700 font-medium px-2 py-0.5 rounded border border-gray-300 hover:border-emerald-300 hover:bg-emerald-50 transition-all"
-                  title="Start a new clean session"
-                >
-                  + New Session
-                </button>
+              {/* Focus Badge Indicator */}
+              <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                <span>{currentFocusDef.badge}</span>
               </div>
             </div>
 
-            {/* TAB 1: CONVERSATION */}
+            {/* TAB 1: CHAT CONVERSATION */}
             {activeTab === "chat" && (
-              <div className="flex-1 flex flex-col p-5 overflow-y-auto max-h-[640px] space-y-4">
-                {messages.map((m, idx) => (
-                  <div
-                    key={m.id || idx}
-                    className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-[#46514B]">
-                      <span className="font-semibold">{m.sender === "user" ? "You" : "Dr. Aarav Mehta"}</span>
-                      <span>·</span>
-                      <span>{m.timestamp}</span>
-                      {m.teachingStrategy && (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                          {m.teachingStrategy.replace(/_/g, " ")}
-                        </span>
-                      )}
-                      {m.latencyMs && (
-                        <span className="text-[10px] text-gray-400 font-mono">
-                          {m.latencyMs}ms
-                        </span>
-                      )}
-                      {m.inferenceMode && (
-                        <span
-                          className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-mono font-bold ${
-                            m.inferenceMode === "generative"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-emerald-100 text-emerald-800"
-                          }`}
-                        >
-                          {m.inferenceMode}
-                        </span>
-                      )}
-                    </div>
-
+              <div className="flex-1 flex flex-col min-h-[500px]">
+                {/* MESSAGES SCROLL AREA */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-h-[640px]">
+                  {messages.map((m, idx) => (
                     <div
-                      className={`relative max-w-2xl rounded-2xl p-4 text-xs leading-relaxed shadow-sm ${
-                        m.sender === "user"
-                          ? "bg-[#123B2E] text-white rounded-tr-none"
-                          : "bg-[#F4EFE4] text-[#17211E] border border-[#DED2BF] rounded-tl-none"
-                      }`}
+                      key={m.id || idx}
+                      className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
                     >
-                      <div className="whitespace-pre-wrap font-sans">{m.content}</div>
-
-                      {/* POST-INTERACTION LEARNING CHECK (IF PRESENT) */}
-                      {m.postInteractionCheck && (
-                        <div className="mt-4 p-4 rounded-xl bg-white border-2 border-emerald-500/40 shadow-sm text-xs text-[#17211E]">
-                          <div className="flex items-center gap-2 text-emerald-800 font-bold mb-2">
-                            <Lightbulb className="w-4 h-4 text-emerald-600" />
-                            <span>Concept Verification Check</span>
+                      {/* Sender Tag & Badges */}
+                      <div className="flex items-center gap-2 mb-1 px-1 flex-wrap">
+                        {m.sender === "mentor" && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="font-bold text-xs text-[#123B2E]">Dr. Aarav Mehta</span>
                           </div>
-                          <p className="font-semibold mb-3">{m.postInteractionCheck.question}</p>
-                          <div className="space-y-1.5">
-                            {m.postInteractionCheck.options.map((opt, oIdx) => {
-                              const checkKey = `${m.id}-check`;
-                              const selected = answeredChecks[checkKey];
-                              const isAnswered = selected !== undefined;
-                              const isCorrect = oIdx === m.postInteractionCheck!.correctOptionIndex;
-                              const isChosen = selected === oIdx;
+                        )}
+                        {m.specialistCapability && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300/80 px-2 py-0.5 rounded-md font-semibold">
+                            {m.specialistCapability.badge}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-gray-500">{m.timestamp}</span>
+                        {m.modelProvider && (
+                          <span className="text-[9px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded">
+                            {m.modelProvider}
+                          </span>
+                        )}
+                        {m.latencyMs && (
+                          <span className="text-[9px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded">
+                            {m.latencyMs}ms
+                          </span>
+                        )}
+                      </div>
 
-                              let btnStyle = "bg-[#FBF8F1] hover:bg-[#F4EFE4] text-[#17211E] border-[#DED2BF]";
-                              if (isAnswered) {
-                                if (isCorrect) {
-                                  btnStyle = "bg-emerald-100 border-emerald-500 text-emerald-900 font-bold";
-                                } else if (isChosen && !isCorrect) {
-                                  btnStyle = "bg-red-100 border-red-500 text-red-900 line-through";
-                                } else {
-                                  btnStyle = "opacity-50 border-[#DED2BF]";
-                                }
-                              }
+                      {/* Message Bubble */}
+                      <div
+                        className={`relative max-w-2xl rounded-2xl p-4 text-xs leading-relaxed shadow-sm ${
+                          m.sender === "user"
+                            ? "bg-[#123B2E] text-white rounded-tr-none"
+                            : "bg-[#F4EFE4] text-[#17211E] border border-[#DED2BF] rounded-tl-none"
+                        }`}
+                      >
+                        <div className="whitespace-pre-wrap font-sans">{m.content}</div>
 
-                              return (
-                                <button
-                                  key={oIdx}
-                                  disabled={isAnswered}
-                                  onClick={() =>
-                                    setAnsweredChecks((prev) => ({ ...prev, [checkKey]: oIdx }))
-                                  }
-                                  className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all flex items-center justify-between ${btnStyle}`}
-                                >
-                                  <span>{opt}</span>
-                                  {isAnswered && isCorrect && (
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          {answeredChecks[`${m.id}-check`] !== undefined && (
-                            <div className="mt-3 pt-2 border-t border-gray-200 text-[11px] text-gray-700">
-                              <p className="font-bold text-emerald-800 mb-0.5">Explanation:</p>
-                              <p>{m.postInteractionCheck.explanation}</p>
+                        {/* POST-INTERACTION LEARNING CHECK */}
+                        {m.postInteractionCheck && (
+                          <div className="mt-4 p-4 rounded-xl bg-white border-2 border-emerald-500/40 shadow-sm text-xs text-[#17211E]">
+                            <div className="flex items-center gap-2 text-emerald-800 font-bold mb-2">
+                              <Lightbulb className="w-4 h-4 text-emerald-600" />
+                              <span>Concept Verification Check</span>
                             </div>
-                          )}
-                        </div>
-                      )}
+                            <p className="font-semibold mb-3">{m.postInteractionCheck.question}</p>
+                            <div className="space-y-1.5">
+                              {m.postInteractionCheck.options.map((opt, oIdx) => {
+                                const checkKey = `${m.id}-check`;
+                                const selected = answeredChecks[checkKey];
+                                const isAnswered = selected !== undefined;
+                                const isCorrect = oIdx === m.postInteractionCheck!.correctOptionIndex;
+                                const isChosen = selected === oIdx;
 
-                      {/* Mentor Message Toolbar */}
-                      {m.sender === "mentor" && (
-                        <div className="mt-3 pt-2 border-t border-[#DED2BF] flex items-center justify-between text-[11px] flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleCopyMessage(m.content, idx)}
-                              className="text-[#46514B] hover:text-[#123B2E] flex items-center gap-1"
-                              title="Copy response"
-                            >
-                              {copiedIndex === idx ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                              <span>{copiedIndex === idx ? "Copied" : "Copy"}</span>
-                            </button>
-                            <button
-                              onClick={() => handleSaveNote(idx)}
-                              className={`flex items-center gap-1 ${
-                                m.savedNote ? "text-amber-600 font-bold" : "text-[#46514B] hover:text-[#123B2E]"
-                              }`}
-                              title="Save to learning notes"
-                            >
-                              <Bookmark className="w-3.5 h-3.5" />
-                              <span>{m.savedNote ? "Saved" : "Save Note"}</span>
-                            </button>
-                            {m.modelProvider && (
-                              <span className="text-[10px] text-gray-500 font-mono ml-1">
-                                [{m.modelProvider}]
+                                let btnStyle = "bg-[#FBF8F1] hover:bg-[#F4EFE4] text-[#17211E] border-[#DED2BF]";
+                                if (isAnswered) {
+                                  if (isCorrect) {
+                                    btnStyle = "bg-emerald-100 border-emerald-500 text-emerald-900 font-bold";
+                                  } else if (isChosen && !isCorrect) {
+                                    btnStyle = "bg-red-100 border-red-500 text-red-900 line-through";
+                                  } else {
+                                    btnStyle = "opacity-50 border-[#DED2BF]";
+                                  }
+                                }
+
+                                return (
+                                  <button
+                                    key={oIdx}
+                                    disabled={isAnswered}
+                                    onClick={() =>
+                                      setAnsweredChecks((prev) => ({ ...prev, [checkKey]: oIdx }))
+                                    }
+                                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all flex items-center justify-between ${btnStyle}`}
+                                  >
+                                    <span>{opt}</span>
+                                    {isAnswered && isCorrect && (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {answeredChecks[`${m.id}-check`] !== undefined && (
+                              <div className="mt-3 pt-2 border-t border-gray-200 text-[11px] text-gray-700">
+                                <p className="font-bold text-emerald-800 mb-0.5">Explanation:</p>
+                                <p>{m.postInteractionCheck.explanation}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Toolbar: Copy, Save Note */}
+                        {m.sender === "mentor" && (
+                          <div className="mt-3 pt-2 border-t border-[#DED2BF] flex items-center justify-between text-[11px] flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleCopyMessage(m.content, idx)}
+                                className="text-[#46514B] hover:text-[#123B2E] flex items-center gap-1"
+                                title="Copy response"
+                              >
+                                {copiedIndex === idx ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                                <span>{copiedIndex === idx ? "Copied" : "Copy"}</span>
+                              </button>
+                              <button
+                                onClick={() => handleSaveNote(idx)}
+                                className={`flex items-center gap-1 ${
+                                  m.savedNote ? "text-amber-600 font-bold" : "text-[#46514B] hover:text-[#123B2E]"
+                                }`}
+                                title="Save to learning notes"
+                              >
+                                <Bookmark className="w-3.5 h-3.5" />
+                                <span>{m.savedNote ? "Saved" : "Save Note"}</span>
+                              </button>
+                            </div>
+
+                            {/* Citations Accordion (if any) */}
+                            {m.sources && m.sources.length > 0 && (
+                              <span className="text-[10px] text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded">
+                                {m.sources.length} Verified Sources
                               </span>
                             )}
                           </div>
+                        )}
+                      </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <button className="text-[#46514B] hover:text-emerald-700 p-1" title="Helpful">
-                              <ThumbsUp className="w-3.5 h-3.5" />
+                      {/* Recommended Actions Pills */}
+                      {m.recommendedActions && m.recommendedActions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 max-w-2xl">
+                          {m.recommendedActions.map((act) => (
+                            <button
+                              key={act.id}
+                              onClick={() => {
+                                setInputText(act.title);
+                                dispatchTurn(act.title, activeFocus);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-[#DED2BF] hover:border-[#123B2E] text-[11px] text-[#123B2E] hover:bg-[#F4EFE4] transition-all flex items-center gap-1 shadow-2xs"
+                            >
+                              <ArrowRight className="w-3 h-3 text-emerald-600" />
+                              <span>{act.title}</span>
                             </button>
-                            <button className="text-[#46514B] hover:text-red-700 p-1" title="Unhelpful">
-                              <ThumbsDown className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          ))}
                         </div>
                       )}
                     </div>
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
 
-                    {/* Escalation Recommendation Card */}
-                    {m.escalation?.shouldEscalate && (
-                      <div className="mt-3 p-4 bg-amber-50 border border-amber-300 rounded-xl max-w-2xl text-xs shadow-sm">
-                        <div className="flex items-center gap-2 text-amber-900 font-bold mb-1">
-                          <UserCheck className="w-4 h-4 text-amber-600" />
-                          <span>Recommended Next Step: Connect with a Senior Human Mentor</span>
-                        </div>
-                        <p className="text-amber-800 text-[11px] mb-3 leading-relaxed">
-                          {m.escalation.reason}
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {m.escalation.recommendedMentors.map((ment) => (
-                            <div key={ment.mentorId} className="bg-white p-2.5 rounded-lg border border-amber-200 flex flex-col justify-between">
-                              <div>
-                                <p className="font-bold text-[#123B2E] text-xs">{ment.name}</p>
-                                <p className="text-[10px] text-gray-600">{ment.role} @ {ment.company}</p>
-                                <p className="text-[10px] text-emerald-700 font-semibold mt-1">₹{(ment.hourlyRatePaise / 100).toFixed(0)}/hr</p>
-                              </div>
-                              <Link
-                                href={`/mentors/${ment.mentorId}/book`}
-                                className="mt-2 w-full text-center py-1 bg-[#123B2E] text-white rounded text-[10px] font-bold hover:bg-[#174B39] transition-all"
-                              >
-                                Book Slot
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {isGenerating && (
-                  <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 rounded-xl px-4 py-2.5 text-xs text-emerald-900">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-600 animate-spin" />
-                      <span>Dr. Aarav Mehta is formulating adaptive pedagogical response...</span>
-                    </div>
+                {/* PROMPT INPUT BAR */}
+                <div className="p-4 border-t border-[#DED2BF] bg-[#F4EFE4]/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold uppercase text-[#46514B]">Suggestion Chips:</span>
                     <button
-                      onClick={handleStopGeneration}
-                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold transition-all shadow flex items-center gap-1"
+                      onClick={() => setInputText("How do I implement Cache-Aside in Redis?")}
+                      className="text-[11px] text-[#123B2E] hover:underline bg-white px-2 py-0.5 rounded border border-[#DED2BF]"
                     >
-                      <Square className="w-3 h-3 fill-white" />
-                      <span>Stop Generation</span>
+                      Cache-Aside Invalidation
+                    </button>
+                    <button
+                      onClick={() => setInputText("Teach me 0/1 Knapsack recurrence relation.")}
+                      className="text-[11px] text-[#123B2E] hover:underline bg-white px-2 py-0.5 rounded border border-[#DED2BF]"
+                    >
+                      0/1 Knapsack Recurrence
+                    </button>
+                    <button
+                      onClick={() => setInputText("Review my twoSum function in the Code Lab.")}
+                      className="text-[11px] text-[#123B2E] hover:underline bg-white px-2 py-0.5 rounded border border-[#DED2BF]"
+                    >
+                      Review twoSum
                     </button>
                   </div>
-                )}
-                <div ref={chatEndRef} />
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      dispatchTurn(inputText, activeFocus);
+                    }}
+                    className="flex items-end gap-2"
+                  >
+                    <div className="relative flex-1">
+                      <textarea
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            dispatchTurn(inputText, activeFocus);
+                          }
+                        }}
+                        placeholder={currentFocusDef.placeholder}
+                        rows={2}
+                        className="w-full p-3 rounded-xl border border-[#DED2BF] focus:outline-none focus:ring-2 focus:ring-[#123B2E] bg-white text-xs resize-none"
+                      />
+                    </div>
+
+                    {/* Microphone Dictation */}
+                    <button
+                      type="button"
+                      onClick={toggleVoiceRecognition}
+                      className={`p-3 rounded-xl border transition-all ${
+                        isListening
+                          ? "bg-red-600 border-red-500 text-white animate-pulse"
+                          : "bg-white border-[#DED2BF] text-gray-600 hover:text-[#123B2E]"
+                      }`}
+                      title={isListening ? "Listening... (Click to stop)" : "Dictate via microphone"}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+
+                    {/* Send / Stop Button */}
+                    {isGenerating ? (
+                      <button
+                        type="button"
+                        onClick={handleStopGeneration}
+                        className="px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center gap-1.5 shadow"
+                        title="Cancel streaming"
+                      >
+                        <Square className="w-4 h-4" />
+                        <span>Stop</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={!inputText.trim()}
+                        className="px-5 py-3 rounded-xl bg-[#123B2E] hover:bg-[#174B39] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow"
+                      >
+                        <span>Send</span>
+                        <Send className="w-4 h-4" />
+                      </button>
+                    )}
+                  </form>
+                </div>
               </div>
             )}
 
             {/* TAB 2: SKILL GRAPH */}
             {activeTab === "skills" && (
-              <div className="flex-1 p-6 overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
+              <div className="p-6 overflow-y-auto space-y-6">
+                <div className="flex items-center justify-between pb-3 border-b border-[#DED2BF]">
                   <div>
-                    <h3 className="font-bold text-base text-[#123B2E]">Persistent Student Skill Graph</h3>
-                    <p className="text-xs text-[#46514B]">
-                      Evidence-based mastery calibrated across 6 instructional states
+                    <h3 className="font-bold text-base text-[#123B2E]">Student Skill Graph</h3>
+                    <p className="text-xs text-gray-600">
+                      Grounded competencies verified through automated test evidence and mentor assessments.
                     </p>
                   </div>
-                  <span className="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold">
-                    Active Skills: {skills.length}
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                    {skills.length} Tracked Nodes
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {skills.map((s) => (
-                    <div key={s.skillId} className="bg-[#F4EFE4] p-4 rounded-xl border border-[#DED2BF] flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-xs text-[#123B2E]">{s.skillName}</p>
-                        <p className="text-[11px] text-[#46514B] capitalize mt-0.5">
-                          Status: <span className="font-semibold">{s.masteryState.replace(/_/g, " ")}</span>
-                        </p>
+                    <div key={s.skillId} className="p-4 rounded-xl border border-[#DED2BF] bg-[#FBF8F1]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-xs text-[#123B2E]">{s.skillName}</span>
+                        <span
+                          className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                            s.masteryState === "demonstrated" || s.masteryState === "consistently_demonstrated"
+                              ? "bg-emerald-200 text-emerald-900"
+                              : "bg-amber-200 text-amber-900"
+                          }`}
+                        >
+                          {s.masteryState.replace("_", " ")}
+                        </span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold font-mono text-emerald-700">{s.masteryScore}/10</span>
-                        <div className="w-20 bg-gray-200 h-1.5 rounded-full mt-1 overflow-hidden">
-                          <div className="bg-emerald-600 h-full" style={{ width: `${s.masteryScore * 10}%` }} />
-                        </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                        <div
+                          className="bg-[#123B2E] h-2 rounded-full"
+                          style={{ width: `${Math.min(100, (s.masteryScore / 10) * 100)}%` }}
+                        />
                       </div>
+                      <span className="text-[10px] text-gray-500">Score: {s.masteryScore}/10</span>
                     </div>
                   ))}
                 </div>
@@ -1155,162 +1338,141 @@ export default function AIMentorPage() {
 
             {/* TAB 3: CODE LAB */}
             {activeTab === "code_lab" && (
-              <div className="flex-1 p-6 flex flex-col">
-                <div className="flex items-center justify-between mb-3">
+              <div className="p-6 flex flex-col flex-1">
+                <div className="flex items-center justify-between pb-3 border-b border-[#DED2BF] mb-4">
                   <div>
-                    <h3 className="font-bold text-base text-[#123B2E]">Interactive Code Lab & Debugger</h3>
-                    <p className="text-xs text-[#46514B]">
-                      Analyze algorithms for hidden O(N²) traps and test edge cases
+                    <h3 className="font-bold text-base text-[#123B2E]">Scratch Code Lab</h3>
+                    <p className="text-xs text-gray-600">
+                      Paste or draft code here. Dr. Aarav Mehta will review asymptotic complexity, hidden $O(N^2)$ traps, and edge cases.
                     </p>
                   </div>
                   <button
                     onClick={() => {
+                      setActiveFocus("coding_dsa");
                       setActiveTab("chat");
-                      dispatchTurn("Please review and optimize the code in my Code Lab.", "code_mentor", scratchCode);
+                      dispatchTurn("Please review this code snippet for complexity and bugs.", "coding_dsa", scratchCode);
                     }}
-                    className="px-4 py-2 bg-[#123B2E] hover:bg-[#174B39] text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-[#123B2E] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#174B39]"
                   >
-                    <Play className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Review with Dr. Mehta</span>
+                    <Code2 className="w-4 h-4" />
+                    <span>Send to Dr. Aarav</span>
                   </button>
                 </div>
                 <textarea
                   value={scratchCode}
                   onChange={(e) => setScratchCode(e.target.value)}
-                  className="flex-1 p-4 font-mono text-xs bg-[#0F1E17] text-[#EDF1E8] rounded-xl border border-[#1E3A2F] focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none min-h-[300px]"
+                  rows={14}
+                  className="w-full p-4 font-mono text-xs bg-[#17211E] text-emerald-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             )}
 
             {/* TAB 4: RESUME & JD MATCHER */}
             {activeTab === "resume_jd" && (
-              <div className="flex-1 p-6 overflow-y-auto">
-                <h3 className="font-bold text-base text-[#123B2E] mb-1">Resume & JD Alignment Studio</h3>
-                <p className="text-xs text-[#46514B] mb-4">
-                  Audit your experience against Google and Microsoft Tier-1 engineering requirements
-                </p>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-[#123B2E] mb-1">Target Job Description</label>
-                    <select className="w-full p-2.5 rounded-xl border border-[#DED2BF] bg-white text-xs font-medium">
-                      <option>Google — Software Engineer I (SDE-1), Core Systems</option>
-                      <option>Microsoft — Software Engineer, Azure Core & Cloud</option>
-                      <option>Swiggy — SDE-1 Backend Logistics</option>
-                      <option>Zepto — Associate AI & Search Engineer</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#123B2E] mb-1">Paste Your Resume Bullet Points</label>
-                    <textarea
-                      value={resumeText}
-                      onChange={(e) => setResumeText(e.target.value)}
-                      rows={4}
-                      className="w-full p-3 rounded-xl border border-[#DED2BF] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                    />
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setActiveTab("chat");
-                      dispatchTurn(`Please analyze my resume against the Google SDE-1 JD:\n\n${resumeText}`, "resume_mentor");
-                    }}
-                    className="px-5 py-2.5 bg-[#123B2E] hover:bg-[#174B39] text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2"
-                  >
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                    <span>Run Google XYZ Audit & ATS Match</span>
-                  </button>
+              <div className="p-6 flex flex-col flex-1 space-y-4">
+                <div className="pb-3 border-b border-[#DED2BF]">
+                  <h3 className="font-bold text-base text-[#123B2E]">Resume & Google XYZ Bullet Alignment</h3>
+                  <p className="text-xs text-gray-600">
+                    Transform vague bullets into metric-driven statements (&quot;Accomplished [X] as measured by [Y], by doing [Z]&quot;) with strict zero-fabrication guardrails.
+                  </p>
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#123B2E] mb-1">
+                    Your Current Resume Bullet / Experience:
+                  </label>
+                  <textarea
+                    value={resumeText}
+                    onChange={(e) => setResumeText(e.target.value)}
+                    rows={4}
+                    className="w-full p-3 text-xs rounded-xl border border-[#DED2BF] focus:outline-none focus:ring-2 focus:ring-[#123B2E]"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setActiveFocus("resume");
+                    setActiveTab("chat");
+                    dispatchTurn(
+                      `Please evaluate and rewrite this resume experience using the Google XYZ formula: "${resumeText}"`,
+                      "resume"
+                    );
+                  }}
+                  className="self-start px-4 py-2.5 rounded-xl bg-[#123B2E] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#174B39]"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Analyze with Resume Specialist</span>
+                </button>
               </div>
             )}
 
-            {/* TAB 5: MEMORY & PRIVACY */}
+            {/* TAB 5: STUDENT MEMORY */}
             {activeTab === "memory" && (
-              <div className="flex-1 p-6 overflow-y-auto space-y-6">
-                <div className="flex items-center justify-between">
+              <div className="p-6 overflow-y-auto space-y-6">
+                <div className="pb-3 border-b border-[#DED2BF] flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-base text-[#123B2E]">Structured Student Memory & Privacy</h3>
-                    <p className="text-xs text-[#46514B]">
-                      Verified preferences, active goals, and learning gaps remembered by your AI mentor
+                    <h3 className="font-bold text-base text-[#123B2E]">Persistent Student Memory</h3>
+                    <p className="text-xs text-gray-600">
+                      Facts, learning preferences, and confirmed goals retained across sessions with strict student privacy consent.
                     </p>
                   </div>
-                  <span className="text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold">
-                    {memories.length} Items Saved
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                    {memories.length} Retained Facts
                   </span>
                 </div>
 
-                {/* Add Custom Fact/Goal */}
-                <form onSubmit={handleAddMemory} className="p-4 bg-[#F4EFE4]/60 rounded-xl border border-[#DED2BF] text-xs space-y-3">
-                  <p className="font-bold text-[#123B2E]">Add Confirmed Learning Goal or Preference</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <select
-                      value={newMemoryCat}
-                      onChange={(e) => setNewMemoryCat(e.target.value)}
-                      className="p-2 rounded-lg border border-[#DED2BF] bg-white text-xs font-medium"
-                    >
-                      <option value="learning_preferences">Learning Preferences</option>
-                      <option value="current_goals">Current Goals</option>
-                      <option value="career_objectives">Career Objectives</option>
-                      <option value="confirmed_strengths">Confirmed Strengths</option>
-                      <option value="active_projects">Active Projects</option>
-                    </select>
+                {/* Add Memory Form */}
+                <form onSubmit={handleAddMemory} className="p-4 rounded-xl border border-[#DED2BF] bg-[#FBF8F1] flex gap-2 flex-wrap items-end">
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block text-[10px] font-bold text-gray-700 mb-0.5">Key</label>
                     <input
                       type="text"
-                      placeholder="Title / Key (e.g. Target Company)"
+                      placeholder="e.g. target_role"
                       value={newMemoryKey}
                       onChange={(e) => setNewMemoryKey(e.target.value)}
-                      className="p-2 rounded-lg border border-[#DED2BF] text-xs bg-white"
+                      className="w-full p-2 bg-white border border-[#DED2BF] rounded-lg text-xs"
                     />
+                  </div>
+                  <div className="flex-2 min-w-[200px]">
+                    <label className="block text-[10px] font-bold text-gray-700 mb-0.5">Value</label>
                     <input
                       type="text"
-                      placeholder="Value (e.g. Google India SDE-1)"
+                      placeholder="e.g. Distributed Systems Engineer"
                       value={newMemoryVal}
                       onChange={(e) => setNewMemoryVal(e.target.value)}
-                      className="p-2 rounded-lg border border-[#DED2BF] text-xs bg-white"
+                      className="w-full p-2 bg-white border border-[#DED2BF] rounded-lg text-xs"
                     />
                   </div>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-[#123B2E] hover:bg-[#174B39] text-white rounded-lg text-xs font-bold transition-all"
+                    className="px-3 py-2 bg-[#123B2E] text-white text-xs font-bold rounded-lg hover:bg-[#174B39]"
                   >
-                    Save Memory Item
+                    + Add Memory
                   </button>
                 </form>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {memories.map((m) => (
-                    <div key={m.id} className="p-3.5 bg-[#F4EFE4] rounded-xl border border-[#DED2BF] flex items-center justify-between">
+                    <div key={m.id} className="p-3 rounded-xl border border-[#DED2BF] bg-white flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#123B2E] text-white">
-                            {m.category.replace(/_/g, " ")}
-                          </span>
-                          {m.studentConfirmed && (
-                            <span className="flex items-center gap-0.5 text-[10px] text-emerald-700 font-bold">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Student Confirmed</span>
-                            </span>
-                          )}
-                        </div>
-                        <p className="font-bold text-xs text-[#123B2E] mt-1">{m.key}</p>
-                        <p className="text-[11px] text-[#46514B] mt-0.5">{m.value}</p>
+                        <span className="font-bold text-xs text-[#123B2E]">{m.key}</span>
+                        <p className="text-xs text-gray-700 mt-0.5">{m.value}</p>
                       </div>
-
                       <div className="flex items-center gap-2">
-                        {!m.studentConfirmed && (
+                        {m.studentConfirmed ? (
+                          <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">
+                            Confirmed
+                          </span>
+                        ) : (
                           <button
                             onClick={() => handleConfirmMemory(m.id)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition-all"
-                            title="Confirm this fact"
+                            className="text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 rounded hover:bg-amber-200"
                           >
                             Confirm
                           </button>
                         )}
                         <button
                           onClick={() => handleDeleteMemory(m.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-700 rounded transition-all"
-                          title="Permanently erase memory item"
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete memory item"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1320,130 +1482,79 @@ export default function AIMentorPage() {
                 </div>
               </div>
             )}
-
-            {/* INPUT FORM CONTAINER */}
-            <div className="p-4 bg-white border-t border-[#DED2BF]">
-              {/* Quick Prompt Shortcuts */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
-                {[
-                  "Explain Cache-Aside vs Write-Through directly",
-                  "Review my twoSum function in the Code Lab",
-                  "Give me progressive hint #1 for Knapsack",
-                  "Quiz me on Operating System paging",
-                  "Outline my 24-week SDE placement roadmap",
-                ].map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => dispatchTurn(prompt, activeMode)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap bg-[#F4EFE4] hover:bg-[#DED2BF]/50 text-[#123B2E] font-medium border border-[#DED2BF] transition-all"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  dispatchTurn(inputText, activeMode);
-                }}
-                className="flex items-center gap-2 mt-2"
-              >
-                <button
-                  type="button"
-                  onClick={toggleVoiceRecognition}
-                  className={`p-3 rounded-xl border transition-all ${
-                    isListening
-                      ? "bg-red-600 text-white border-red-500 animate-pulse shadow-md shadow-red-600/30"
-                      : "bg-[#F4EFE4] hover:bg-[#DED2BF]/50 text-[#123B2E] border-[#DED2BF]"
-                  }`}
-                  title={isListening ? "Listening... click to stop" : "Speak your message"}
-                >
-                  <Mic className={`w-4 h-4 ${isListening ? "animate-bounce" : ""}`} />
-                </button>
-
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Ask Dr. Aarav Mehta in ${language === "hi" ? "हिन्दी" : language === "hinglish" ? "Hinglish" : "English"}...`}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-[#DED2BF] text-xs text-[#17211E] bg-[#FBF8F1] focus:outline-none focus:ring-1 focus:ring-[#123B2E]"
-                />
-
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() || isGenerating}
-                  className="px-5 py-2.5 rounded-xl bg-[#123B2E] hover:bg-[#174B39] disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md shadow-[#123B2E]/20 flex items-center gap-1.5"
-                >
-                  <span>Send</span>
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
           </div>
 
-          {/* RIGHT 1 COL: STUDENT INTELLIGENCE PROFILE SIDEBAR */}
-          <div className="space-y-5">
-            {/* Context Card */}
-            <div className="bg-white p-5 rounded-2xl border border-[#DED2BF] shadow-sm">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-[#123B2E] mb-3 flex items-center gap-1.5">
-                <BrainCircuit className="w-4 h-4 text-emerald-600" />
-                <span>Student Intelligence Profile</span>
-              </h3>
-
-              <div className="space-y-3 text-xs">
+          {/* RIGHT SIDEBAR: CONTEXT & ESCALATION */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* Student Profile Card */}
+            <div className="bg-white rounded-2xl border border-[#DED2BF] p-4 shadow-sm">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-[#123B2E] mb-3 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>Student Intelligence Context</span>
+              </h4>
+              <div className="space-y-2 text-xs">
                 <div>
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase">Target Role</p>
-                  <p className="font-bold text-[#123B2E]">SDE-1 (Google / Microsoft)</p>
+                  <span className="text-gray-500 text-[11px]">Student:</span>
+                  <p className="font-semibold">{studentName}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase">Target Timeline</p>
-                  <p className="font-semibold text-gray-800">2026 Campus Placement</p>
+                  <span className="text-gray-500 text-[11px]">Target Role:</span>
+                  <p className="font-semibold text-emerald-800">Software Development Engineer (SDE-1)</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase">Teaching Mode</p>
-                  <p className="font-bold text-emerald-700 capitalize">{activeMode.replace(/_/g, " ")}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#DED2BF]/70">
-                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Identified Knowledge Gaps</p>
-                <div className="flex flex-wrap gap-1">
-                  {weakSkills.map((w) => (
-                    <span key={w} className="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-800 font-medium">
-                      {w}
+                  <span className="text-gray-500 text-[11px]">Known Skill Invariants:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">
+                      Two Pointers: Monotonic Invariant
                     </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#DED2BF]/70">
-                <p className="text-[10px] text-gray-500 font-semibold uppercase mb-1.5">Demonstrated Strengths</p>
-                <div className="flex flex-wrap gap-1">
-                  {["TypeScript", "PostgreSQL", "Arrays & Strings"].map((s) => (
-                    <span key={s} className="px-2 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-medium">
-                      {s}
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono">
+                      Redis: Cache-Aside Pattern
                     </span>
-                  ))}
+                    <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-mono">
+                      0/1 Knapsack: 1D Space Recurrence
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Human Mentorship Card */}
-            <div className="bg-gradient-to-br from-[#123B2E] to-[#174B39] text-white p-5 rounded-2xl shadow-md border border-[#21634A]">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="w-5 h-5 text-emerald-400" />
-                <h4 className="font-bold text-sm">Need a 1:1 Human Mock?</h4>
+            {/* Human Mentor Escalation Card */}
+            {escalationData?.shouldEscalate && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs mb-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>Human Mentor Escalation Recommended</span>
+                </div>
+                <p className="text-[11px] text-amber-950 mb-3">{escalationData.reason}</p>
+                {escalationData.recommendedMentors.map((m) => (
+                  <div key={m.mentorId} className="p-2.5 rounded-xl bg-white border border-amber-200 text-xs mb-2">
+                    <p className="font-bold text-[#123B2E]">{m.name}</p>
+                    <p className="text-[11px] text-gray-600">{m.role} at {m.company}</p>
+                    <p className="text-[10px] text-emerald-700 font-bold mt-1">₹{(m.hourlyRatePaise / 100).toFixed(0)}/hr</p>
+                  </div>
+                ))}
+                <Link
+                  href="/mentors"
+                  className="block text-center mt-2 w-full py-2 bg-[#123B2E] text-white rounded-xl text-xs font-bold hover:bg-[#174B39]"
+                >
+                  Book 1:1 Human Mentor Session →
+                </Link>
               </div>
-              <p className="text-[11px] text-[#DDE6D7] leading-relaxed mb-4">
-                Test your skills in a live WebRTC simulation with Senior Engineers from Google, Microsoft, and Amazon.
+            )}
+
+            {/* Model Architecture Transparency */}
+            <div className="bg-white rounded-2xl border border-[#DED2BF] p-4 text-xs text-gray-600 space-y-2 shadow-sm">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-[#123B2E] flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-emerald-600" />
+                <span>Model Verification</span>
+              </h4>
+              <p className="text-[11px]">
+                Trained on <strong>9,987 curated examples</strong> across Socratic, technical, career, and leveling domains on Apple Silicon MPS.
               </p>
-              <Link
-                href="/mentors"
-                className="block w-full text-center py-2 bg-emerald-500 hover:bg-emerald-400 text-[#123B2E] font-bold rounded-xl text-xs shadow transition-all"
-              >
-                Browse Verified Mentors
-              </Link>
+              <div className="pt-2 border-t border-[#DED2BF] flex items-center justify-between text-[11px]">
+                <span className="font-mono text-emerald-800 font-bold">Base PPL: 7.25 → SFT: 1.59</span>
+                <span className="font-bold text-emerald-700">-78.1%</span>
+              </div>
             </div>
           </div>
         </div>

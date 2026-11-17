@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
     }
 
     const studentUserId = await resolveAuthenticatedUser(req, body.studentUserId);
-    const mode = (body.mode || "learn") as TeachingMode;
+    const mode = (body.focusArea || body.mode || "learn") as TeachingMode;
+    const focusArea = body.focusArea;
     const languagePreference = (body.languagePreference || "en") as LanguageCode;
     const hintLevel = body.hintLevel || 0;
     const activeTopic = body.activeTopic || body.topic;
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
       studentUserId,
       userMessage,
       mode,
+      focusArea,
       codeSnippet,
       languagePreference,
       hintLevel,
@@ -91,6 +93,8 @@ export async function POST(req: NextRequest) {
                   latencyMs: result.latencyMs,
                   modelProvider: result.modelProvider,
                   inferenceMode: result.inferenceMode,
+                  specialistCapability: result.specialistCapability,
+                  mentorIdentity: result.mentorIdentity,
                   tokenUsage: result.tokenUsage,
                   estimatedCostUsd: result.estimatedCostUsd,
                   fallbackReason: result.fallbackReason,
@@ -129,6 +133,8 @@ export async function POST(req: NextRequest) {
       latencyMs: result.latencyMs,
       modelProvider: result.modelProvider,
       inferenceMode: result.inferenceMode,
+      specialistCapability: result.specialistCapability,
+      mentorIdentity: result.mentorIdentity,
       tokenUsage: result.tokenUsage,
       estimatedCostUsd: result.estimatedCostUsd,
       fallbackReason: result.fallbackReason,
