@@ -22,7 +22,10 @@ export class StudentContextBuilder {
   /**
    * Builds an authorized, permission-filtered StudentProfileContext for AI Mentor turns
    */
-  public static async buildContext(studentUserId: string): Promise<StudentProfileContext> {
+  public static async buildContext(
+    studentUserId: string,
+    consentOverride?: { shareWithMentors?: boolean; useForPersonalization?: boolean }
+  ): Promise<StudentProfileContext> {
     // 1. Resolve user identity from store or database
     const user = store.getUser(studentUserId);
     const studentProfile = store.getStudentProfile(studentUserId);
@@ -167,8 +170,8 @@ export class StudentContextBuilder {
       },
       preferredLanguage: isStudent2 ? "hinglish" : "en",
       consentScope: {
-        shareWithMentors: true,
-        useForPersonalization: true,
+        shareWithMentors: consentOverride?.shareWithMentors !== undefined ? consentOverride.shareWithMentors : true,
+        useForPersonalization: consentOverride?.useForPersonalization !== undefined ? consentOverride.useForPersonalization : true,
         retentionDays: 365,
       },
     };

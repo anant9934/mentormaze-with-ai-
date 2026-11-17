@@ -139,3 +139,4 @@ The rebuilt benchmark was executed across the four holdout cases. The empirical 
 2. **vs. Static Document Retrieval (No Pedagogy Engine)**:
    - *Technical Delta:* **+6.4%** (RAG alone lacks prerequisite tracking; the student skill graph ensures missing foundational concepts are addressed before advanced dynamic programming).
    - *Socratic Delta:* **+19.0%** (Static retrieval presents raw documentation paragraphs rather than structured, progressive hints).
+

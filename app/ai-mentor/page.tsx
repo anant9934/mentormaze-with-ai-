@@ -52,7 +52,22 @@ import {
   Database,
   Search,
   ExternalLink,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Info,
+  CheckSquare,
+  XSquare,
+  Clock,
+  Shield,
 } from "lucide-react";
+
+interface PostInteractionCheck {
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+}
 
 interface ChatMessage {
   id: string;
@@ -66,6 +81,12 @@ interface ChatMessage {
   escalation?: EscalationRecommendation;
   latencyMs?: number;
   modelProvider?: string;
+  inferenceMode?: "generative" | "deterministic";
+  requestId?: string;
+  tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+  estimatedCostUsd?: number;
+  fallbackReason?: string;
+  postInteractionCheck?: PostInteractionCheck;
   savedNote?: boolean;
 }
 
@@ -74,6 +95,10 @@ interface StudentMemoryItem {
   category: string;
   key: string;
   value: string;
+  confidence?: number;
+  studentConfirmed?: boolean;
+  isTemporary?: boolean;
+  source?: string;
 }
 
 interface StudentSkillItem {
@@ -81,6 +106,14 @@ interface StudentSkillItem {
   skillName: string;
   masteryState: string;
   masteryScore: number;
+}
+
+interface ConversationSummary {
+  id: string;
+  title: string;
+  mode: TeachingMode;
+  updatedAt: string;
+  createdAt: string;
 }
 
 const TEACHING_MODES: { id: TeachingMode; label: string; icon: any; description: string }[] = [
@@ -96,17 +129,23 @@ const TEACHING_MODES: { id: TeachingMode; label: string; icon: any; description:
 
 export default function AIMentorPage() {
   const { user } = useAuth();
+  const studentUserId = user?.id || "usr-student-1";
   const studentName = user?.displayName || "Anant Kumar";
 
   const [activeMode, setActiveMode] = useState<TeachingMode>("learn");
   const [language, setLanguage] = useState<LanguageCode>("en");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(true);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "skills" | "memory" | "resume_jd" | "code_lab">("chat");
+
+  // Server-side conversation list state
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Auxiliary context state
   const [skills, setSkills] = useState<StudentSkillItem[]>([]);
@@ -116,53 +155,75 @@ export default function AIMentorPage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [resumeText, setResumeText] = useState("Software Engineer Intern | Built real-time WebRTC collaboration tool and Redis cache for 10k users. Worked on optimizing database queries.");
   const [escalationData, setEscalationData] = useState<EscalationRecommendation | null>(null);
+  const [answeredChecks, setAnsweredChecks] = useState<Record<string, number>>({});
+
+  // New Memory Input
+  const [newMemoryKey, setNewMemoryKey] = useState("");
+  const [newMemoryVal, setNewMemoryVal] = useState("");
+  const [newMemoryCat, setNewMemoryCat] = useState("learning_preferences");
 
   const speechRecognitionRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const storageKey = `mentormaze_ai_mentor_chat_${user?.id || "usr-student-1"}`;
-
-  // Load initial skills, memory, and restore persisted conversation
+  // 1. Fetch Conversations, Skills, and Memories on mount
   useEffect(() => {
-    fetch(`/api/ai-mentor/skills?userId=${user?.id || "usr-student-1"}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.skills) {
-          setSkills(d.skills);
-        }
-      })
-      .catch(() => {});
+    loadConversations();
+    loadSkills();
+    loadMemories();
+  }, [studentUserId]);
 
-    fetch(`/api/ai-mentor/memory?userId=${user?.id || "usr-student-1"}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.memories) {
-          setMemories(d.memories);
-        }
-      })
-      .catch(() => {});
-
-    // Restore persisted chat from localStorage
+  const loadSkills = async () => {
     try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-          return;
-        }
+      const r = await fetch(`/api/ai-mentor/skills?userId=${studentUserId}`);
+      const d = await r.json();
+      if (d.success && d.skills) {
+        setSkills(d.skills);
       }
     } catch (e) {
-      console.warn("Failed to load chat history from localStorage", e);
+      console.warn("Failed to load skills", e);
     }
+  };
 
-    // Default welcoming introductory message if no previous session exists
+  const loadMemories = async () => {
+    try {
+      const r = await fetch(`/api/ai-mentor/memory?userId=${studentUserId}`);
+      const d = await r.json();
+      if (d.success && d.memories) {
+        setMemories(d.memories);
+      }
+    } catch (e) {
+      console.warn("Failed to load memories", e);
+    }
+  };
+
+  const loadConversations = async () => {
+    try {
+      const res = await fetch(`/api/ai-mentor/conversations?userId=${studentUserId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.conversations) && data.conversations.length > 0) {
+        setConversations(data.conversations);
+        // Load the first conversation if none active
+        if (!activeConversationId) {
+          switchConversation(data.conversations[0].id);
+        }
+      } else {
+        // Create initial default conversation
+        handleCreateNewConversation("Initial Mentorship Session", activeMode);
+      }
+    } catch (err) {
+      console.warn("Failed to load conversations from server:", err);
+      // Fallback welcome message
+      setupDefaultWelcome();
+    }
+  };
+
+  const setupDefaultWelcome = () => {
     setMessages([
       {
         id: "msg-welcome-0",
         sender: "mentor",
-        content: `### 👋 Namaste ${user?.displayName || "Student"}! Welcome to MentorMaze AI Mentor\n\nI am your personalized AI engineering & placement mentor, backed by verified computer science curricula, real SDE job descriptions, and human mentorship insights.\n\n**Select a mode above or ask any question:**\n- 📚 **Learn**: Break down complex concepts with intuitive mental models.\n- 💡 **Practice**: Solve algorithmic problems with guided Socratic hints.\n- 🔍 **Code Mentor**: Optimize your code and discover hidden $O(N^2)$ traps.\n- 📄 **Resume Mentor**: Align your bullets with the Google XYZ formula.\n- 🎙️ **Interview Coach**: Timed mock interviews evaluated on FAANG staff rubrics.\n\n*What would you like to focus on today?*`,
+        content: `### 👋 Namaste ${studentName}! Welcome to MentorMaze AI Mentor\n\nI am your personalized AI engineering & placement mentor, backed by verified computer science curricula, real SDE job descriptions, and human mentorship insights.\n\n**Select a mode above or ask any question:**\n- 📚 **Learn**: Break down complex concepts with intuitive mental models.\n- 💡 **Practice**: Solve algorithmic problems with guided Socratic hints.\n- 🔍 **Code Mentor**: Optimize your code and discover hidden $O(N^2)$ traps.\n- 📄 **Resume Mentor**: Align your bullets with the Google XYZ formula.\n- 🎙️ **Interview Coach**: Timed mock interviews evaluated on FAANG staff rubrics.\n\n*What would you like to focus on today?*`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         teachingStrategy: "conceptual_explanation",
         sources: [],
@@ -171,21 +232,96 @@ export default function AIMentorPage() {
           { id: "act-init-roadmap", title: "Review 24-week engineering placement roadmap", category: "Career", priority: "medium" },
         ],
         modelProvider: "tathastu-pedagogy-v1",
+        inferenceMode: "deterministic",
+        requestId: `req-init-${Date.now()}`,
       },
     ]);
-  }, [user?.id]);
+  };
 
-  // Persist messages whenever they change
-  useEffect(() => {
-    if (messages.length > 0 && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(messages));
-      } catch (e) {
-        console.warn("Failed to persist chat history", e);
+  const switchConversation = async (convId: string) => {
+    setActiveConversationId(convId);
+    try {
+      const res = await fetch(`/api/ai-mentor/conversations/${convId}?userId=${studentUserId}`);
+      const data = await res.json();
+      if (data.success && data.conversation) {
+        setActiveMode(data.conversation.mode || "learn");
+        if (data.messages && data.messages.length > 0) {
+          const loaded: ChatMessage[] = data.messages.map((m: any) => ({
+            id: m.id,
+            sender: m.role === "user" ? "user" : "mentor",
+            content: m.content,
+            timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            teachingStrategy: m.metadata?.teachingStrategy,
+            sources: m.metadata?.sources,
+            recommendedActions: m.metadata?.recommendedActions,
+            skillUpdates: m.metadata?.skillUpdates,
+            escalation: m.metadata?.escalationRecommendation,
+            latencyMs: m.metadata?.latencyMs,
+            modelProvider: m.metadata?.modelProvider || "tathastu-pedagogy-v1",
+            inferenceMode: m.metadata?.inferenceMode || "deterministic",
+            requestId: m.metadata?.requestId,
+            tokenUsage: m.metadata?.tokenUsage,
+            estimatedCostUsd: m.metadata?.estimatedCostUsd,
+            fallbackReason: m.metadata?.fallbackReason,
+            postInteractionCheck: m.metadata?.postInteractionCheck,
+          }));
+          setMessages(loaded);
+        } else {
+          setupDefaultWelcome();
+        }
       }
+    } catch (e) {
+      console.warn("Error switching conversation", e);
     }
-  }, [messages, storageKey]);
+  };
 
+  const handleCreateNewConversation = async (title?: string, mode?: TeachingMode) => {
+    try {
+      const res = await fetch("/api/ai-mentor/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: studentUserId,
+          title: title || `Mentorship on ${activeMode.toUpperCase()}`,
+          mode: mode || activeMode,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.conversation) {
+        setConversations((prev) => [data.conversation, ...prev]);
+        setActiveConversationId(data.conversation.id);
+        setupDefaultWelcome();
+      }
+    } catch (e) {
+      console.warn("Failed to create conversation", e);
+    }
+  };
+
+  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to permanently delete this conversation?")) return;
+    try {
+      const res = await fetch(`/api/ai-mentor/conversations/${convId}?userId=${studentUserId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConversations((prev) => prev.filter((c) => c.id !== convId));
+        if (activeConversationId === convId) {
+          const remaining = conversations.filter((c) => c.id !== convId);
+          if (remaining.length > 0) {
+            switchConversation(remaining[0].id);
+          } else {
+            handleCreateNewConversation("New Mentorship Session", activeMode);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to delete conversation", e);
+    }
+  };
+
+  // Scroll to bottom on new messages or generation updates
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isGenerating]);
@@ -256,27 +392,86 @@ export default function AIMentorPage() {
     recognition.start();
   };
 
-  // Clear conversation history
-  const handleClearChat = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(storageKey);
+  // Stop Generation Handler
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-    setMessages([
-      {
-        id: `msg-welcome-${Date.now()}`,
-        sender: "mentor",
-        content: `### 🔄 Session Reset\n\nI have reset your local conversation scratchpad. Your verified skill graph and persistent memories remain safely preserved.\n\n*What topic, algorithmic problem, or career question should we explore now?*`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        teachingStrategy: "conceptual_explanation",
-        sources: [],
-        modelProvider: "tathastu-pedagogy-v1",
-      },
-    ]);
+    setIsGenerating(false);
   };
 
-  // Dispatch turn to backend orchestrator
+  // Memory operations
+  const handleConfirmMemory = async (id: string) => {
+    try {
+      const res = await fetch("/api/ai-mentor/memory", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-mentormaze-user-id": studentUserId,
+        },
+        body: JSON.stringify({ userId: studentUserId, memoryId: id }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMemories((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, studentConfirmed: true } : m))
+        );
+      }
+    } catch (e) {
+      console.warn("Failed to confirm memory", e);
+    }
+  };
+
+  const handleDeleteMemory = async (id: string) => {
+    try {
+      const res = await fetch(`/api/ai-mentor/memory?userId=${studentUserId}&id=${id}`, {
+        method: "DELETE",
+        headers: { "x-mentormaze-user-id": studentUserId },
+      });
+      const d = await res.json();
+      if (d.success) {
+        setMemories((prev) => prev.filter((m) => m.id !== id));
+      }
+    } catch (e) {
+      console.warn("Failed to delete memory", e);
+    }
+  };
+
+  const handleAddMemory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemoryKey.trim() || !newMemoryVal.trim()) return;
+    try {
+      const res = await fetch("/api/ai-mentor/memory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-mentormaze-user-id": studentUserId,
+        },
+        body: JSON.stringify({
+          userId: studentUserId,
+          category: newMemoryCat,
+          key: newMemoryKey,
+          value: newMemoryVal,
+          source: "user_explicit",
+          confidence: 1.0,
+          studentConfirmed: true,
+        }),
+      });
+      const d = await res.json();
+      if (d.success && d.memory) {
+        setMemories((prev) => [d.memory, ...prev]);
+        setNewMemoryKey("");
+        setNewMemoryVal("");
+      }
+    } catch (e) {
+      console.warn("Failed to add memory", e);
+    }
+  };
+
+  // Dispatch turn to backend orchestrator with SSE Streaming & AbortController
   const dispatchTurn = async (userMsg: string, modeToUse: TeachingMode, codeToAttach?: string) => {
-    if (!userMsg.trim()) return;
+    if (!userMsg.trim() || isGenerating) return;
 
     const userMessageObj: ChatMessage = {
       id: `msg-u-${Date.now()}`,
@@ -289,12 +484,31 @@ export default function AIMentorPage() {
     setInputText("");
     setIsGenerating(true);
 
+    const mentorTempId = `msg-m-${Date.now()}`;
+    const initialMentorMessage: ChatMessage = {
+      id: mentorTempId,
+      sender: "mentor",
+      content: "",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      modelProvider: "tathastu-pedagogy-v1",
+      inferenceMode: "deterministic",
+    };
+
+    setMessages((prev) => [...prev, initialMentorMessage]);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       const res = await fetch("/api/ai-mentor", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({
-          studentUserId: user?.id || "usr-student-1",
+          studentUserId,
+          conversationId: activeConversationId,
           userMessage: userMsg,
           mode: modeToUse,
           languagePreference: language,
@@ -303,37 +517,92 @@ export default function AIMentorPage() {
             role: m.sender === "user" ? "user" : "assistant",
             content: m.content,
           })),
+          stream: true,
         }),
+        signal: abortController.signal,
       });
 
-      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+
+      if (!reader) {
+        throw new Error("ReadableStream not supported by browser");
+      }
+
+      let accumulatedContent = "";
+      let metadataReceived: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunkStr = decoder.decode(value, { stream: true });
+        const lines = chunkStr.split("\n\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.replace("data: ", "").trim();
+          if (!jsonStr) continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.chunk) {
+              accumulatedContent += parsed.chunk;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === mentorTempId ? { ...msg, content: accumulatedContent } : msg
+                )
+              );
+            }
+            if (parsed.done && parsed.metadata) {
+              metadataReceived = parsed.metadata;
+            }
+          } catch (e) {
+            // Partial JSON buffer parse guard
+          }
+        }
+      }
+
       setIsGenerating(false);
+      abortControllerRef.current = null;
 
-      if (data.success) {
-        const mentorMessageObj: ChatMessage = {
-          id: `msg-m-${Date.now()}`,
-          sender: "mentor",
-          content: data.aiResponse,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          teachingStrategy: data.teachingStrategy,
-          sources: data.sources,
-          recommendedActions: data.recommendedActions,
-          skillUpdates: data.skillUpdates,
-          escalation: data.escalationRecommendation,
-          latencyMs: data.latencyMs,
-          modelProvider: data.modelProvider,
-        };
+      if (metadataReceived) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === mentorTempId
+              ? {
+                  ...msg,
+                  content: accumulatedContent,
+                  teachingStrategy: metadataReceived.teachingStrategy,
+                  sources: metadataReceived.sources,
+                  recommendedActions: metadataReceived.recommendedActions,
+                  skillUpdates: metadataReceived.skillUpdates,
+                  escalation: metadataReceived.escalationRecommendation,
+                  latencyMs: metadataReceived.latencyMs,
+                  modelProvider: metadataReceived.modelProvider || "tathastu-pedagogy-v1",
+                  inferenceMode: metadataReceived.inferenceMode || "deterministic",
+                  requestId: metadataReceived.requestId,
+                  tokenUsage: metadataReceived.tokenUsage,
+                  estimatedCostUsd: metadataReceived.estimatedCostUsd,
+                  fallbackReason: metadataReceived.fallbackReason,
+                  postInteractionCheck: metadataReceived.postInteractionCheck,
+                }
+              : msg
+          )
+        );
 
-        setMessages((prev) => [...prev, mentorMessageObj]);
-
-        if (data.escalationRecommendation?.shouldEscalate) {
-          setEscalationData(data.escalationRecommendation);
+        if (metadataReceived.escalationRecommendation?.shouldEscalate) {
+          setEscalationData(metadataReceived.escalationRecommendation);
         }
 
-        if (data.skillUpdates && data.skillUpdates.length > 0) {
+        if (metadataReceived.skillUpdates && metadataReceived.skillUpdates.length > 0) {
           setSkills((prev) => {
             const updated = [...prev];
-            data.skillUpdates.forEach((u: SkillUpdate) => {
+            metadataReceived.skillUpdates.forEach((u: SkillUpdate) => {
               const idx = updated.findIndex((s) => s.skillId === u.skillId);
               if (idx >= 0) {
                 updated[idx].masteryState = u.newState;
@@ -351,11 +620,38 @@ export default function AIMentorPage() {
           });
         }
 
-        speakText(data.voiceText || data.aiResponse.slice(0, 200));
+        speakText(metadataReceived.voiceText || accumulatedContent.slice(0, 200));
       }
-    } catch (err) {
+
+      // Refresh conversation list to show updated timestamps
+      fetch(`/api/ai-mentor/conversations?userId=${studentUserId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.conversations) setConversations(d.conversations);
+        })
+        .catch(() => {});
+    } catch (err: any) {
       setIsGenerating(false);
-      console.error("AI Mentor error:", err);
+      abortControllerRef.current = null;
+
+      if (err.name === "AbortError") {
+        // Preserved partially streamed text on stop
+        console.log("Generation cleanly cancelled by user.");
+      } else {
+        console.error("AI Mentor stream error:", err);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === mentorTempId
+              ? {
+                  ...msg,
+                  content:
+                    msg.content ||
+                    "⚠️ Notice: The connection to the inference pipeline was interrupted. Please retry or check your network.",
+                }
+              : msg
+          )
+        );
+      }
     }
   };
 
@@ -379,7 +675,7 @@ export default function AIMentorPage() {
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* TOP STATUS BAR */}
-        <div className="bg-[#123B2E] text-white rounded-2xl p-5 mb-6 shadow-xl border border-[#174B39] flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-[#123B2E] text-white rounded-2xl p-5 mb-4 shadow-xl border border-[#174B39] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-400 shadow-md flex-shrink-0">
               <Image
@@ -408,6 +704,16 @@ export default function AIMentorPage() {
 
           {/* Language & Voice Controls */}
           <div className="flex items-center gap-3 self-end md:self-auto">
+            {/* Conversation Drawer Toggle Button */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="px-3 py-1.5 rounded-xl bg-[#174B39] hover:bg-[#21634A] border border-[#21634A] text-xs font-semibold text-[#DDE6D7] hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
+              title="Toggle Saved Conversations"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Sessions ({conversations.length})</span>
+            </button>
+
             {/* Language Switcher */}
             <div className="flex items-center bg-[#174B39] rounded-xl p-1 border border-[#21634A]">
               <button
@@ -451,52 +757,119 @@ export default function AIMentorPage() {
             >
               {isVoiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
-
-            {/* Human Mentorship Escalation Pill */}
-            {escalationData && (
-              <button
-                onClick={() => setActiveTab("chat")}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold shadow-md animate-pulse flex items-center gap-1.5"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Human Mentor Available</span>
-              </button>
-            )}
           </div>
         </div>
 
-        {/* 8 TEACHING MODES RIBBON */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+        {/* INFERENCE TRANSPARENCY NOTICE BANNER */}
+        <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl px-4 py-2.5 mb-4 text-xs text-amber-900 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span>
+              <strong>System Status:</strong> Primary router running on{" "}
+              <span className="font-mono font-bold">tathastu-pedagogy-v1 (Deterministic Core)</span>. Zero-hallucination guardrails active. For live generative inference, configure <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">GEMINI_API_KEY</code> or <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">OPENAI_API_KEY</code> in server settings.
+            </span>
+          </div>
+          <Link
+            href="/admin/ai-mentor"
+            className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline flex-shrink-0 ml-3"
+          >
+            Admin Observability →
+          </Link>
+        </div>
+
+        {/* 8 TEACHING MODES SELECTOR STRIP */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
           {TEACHING_MODES.map((m) => {
             const Icon = m.icon;
-            const isActive = activeMode === m.id;
+            const isSelected = activeMode === m.id;
             return (
               <button
                 key={m.id}
                 onClick={() => {
                   setActiveMode(m.id);
-                  dispatchTurn(`Switching to ${m.label} mode. How should we proceed?`, m.id);
+                  if (activeTab !== "chat") setActiveTab("chat");
                 }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                  isActive
-                    ? "bg-[#123B2E] text-white border-[#174B39] shadow-md shadow-[#123B2E]/20"
-                    : "bg-white text-[#46514B] border-[#DED2BF]/60 hover:border-[#123B2E] hover:text-[#123B2E]"
+                className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                  isSelected
+                    ? "bg-[#123B2E] text-white border-[#123B2E] shadow-md shadow-[#123B2E]/10"
+                    : "bg-white text-[#46514B] border-[#DED2BF] hover:border-[#123B2E]/40 hover:bg-[#F4EFE4]/30"
                 }`}
-                title={m.description}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : "text-[#123B2E]"}`} />
-                <span>{m.label}</span>
+                <div className="flex items-center justify-between mb-1">
+                  <Icon className={`w-4 h-4 ${isSelected ? "text-emerald-400" : "text-[#123B2E]"}`} />
+                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                </div>
+                <div>
+                  <p className="font-bold text-xs">{m.label}</p>
+                  <p className={`text-[10px] truncate ${isSelected ? "text-[#DDE6D7]/80" : "text-gray-500"}`}>
+                    {m.description.slice(0, 22)}...
+                  </p>
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* MAIN TWO-COLUMN WORKSPACE */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-[580px]">
-          {/* LEFT 3 COLS: CHAT & ACTIVE TOOL WORKSPACE */}
-          <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl border border-[#DED2BF] shadow-sm overflow-hidden">
-            {/* TOOL TABS HEADER */}
-            <div className="px-5 py-3 border-b border-[#DED2BF]/70 bg-[#F4EFE4]/60 flex items-center justify-between">
+        {/* MAIN WORKSPACE GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1">
+          {/* CONVERSATION DRAWER (IF OPEN) OR HIDDEN */}
+          {isSidebarOpen && (
+            <div className="lg:col-span-1 bg-white rounded-2xl border border-[#DED2BF] p-4 shadow-sm flex flex-col max-h-[720px]">
+              <div className="flex items-center justify-between pb-3 border-b border-[#DED2BF] mb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#123B2E]" />
+                  <span className="font-bold text-xs text-[#123B2E]">Saved Sessions</span>
+                </div>
+                <button
+                  onClick={() => handleCreateNewConversation("New Mentorship Session", activeMode)}
+                  className="px-2 py-1 rounded bg-[#123B2E] text-white text-[10px] font-bold flex items-center gap-1 hover:bg-[#174B39]"
+                  title="Create new conversation"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-1.5">
+                {conversations.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => switchConversation(c.id)}
+                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between ${
+                      activeConversationId === c.id
+                        ? "bg-[#123B2E] text-white border-[#123B2E]"
+                        : "bg-[#FBF8F1] hover:bg-[#F4EFE4] text-[#17211E] border-[#DED2BF]"
+                    }`}
+                  >
+                    <div className="truncate pr-2">
+                      <p className="font-semibold truncate text-[11px]">{c.title}</p>
+                      <span
+                        className={`text-[9px] uppercase font-mono px-1.5 py-0.2 rounded ${
+                          activeConversationId === c.id ? "bg-emerald-800 text-emerald-200" : "bg-gray-200 text-gray-700"
+                        }`}
+                      >
+                        {c.mode}
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteConversation(c.id, e)}
+                      className={`p-1 rounded hover:bg-red-500/20 text-red-500 transition-all ${
+                        activeConversationId === c.id ? "hover:text-red-200 text-red-300" : ""
+                      }`}
+                      title="Delete session"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* LEFT 3 COLS (OR 2 IF SIDEBAR OPEN): WORKSPACE TABS */}
+          <div className={`${isSidebarOpen ? "lg:col-span-2" : "lg:col-span-3"} bg-white rounded-2xl border border-[#DED2BF] shadow-sm flex flex-col overflow-hidden`}>
+            {/* WORKSPACE SUB-NAVBAR */}
+            <div className="px-5 py-3 border-b border-[#DED2BF] bg-[#F4EFE4]/40 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveTab("chat")}
@@ -536,7 +909,7 @@ export default function AIMentorPage() {
                     activeTab === "memory" ? "bg-[#123B2E] text-white" : "text-[#46514B] hover:text-[#123B2E]"
                   }`}
                 >
-                  Memory ({memories.length})
+                  Memory & Privacy ({memories.length})
                 </button>
               </div>
 
@@ -545,11 +918,11 @@ export default function AIMentorPage() {
                   Mode: <span className="font-bold text-[#123B2E] uppercase">{activeMode}</span>
                 </span>
                 <button
-                  onClick={handleClearChat}
-                  className="text-[11px] text-gray-500 hover:text-red-700 font-medium px-2 py-0.5 rounded border border-gray-300 hover:border-red-300 hover:bg-red-50 transition-all"
-                  title="Clear conversation history from browser storage"
+                  onClick={() => handleCreateNewConversation("New Mentorship Session", activeMode)}
+                  className="text-[11px] text-gray-500 hover:text-emerald-700 font-medium px-2 py-0.5 rounded border border-gray-300 hover:border-emerald-300 hover:bg-emerald-50 transition-all"
+                  title="Start a new clean session"
                 >
-                  Clear Chat
+                  + New Session
                 </button>
               </div>
             </div>
@@ -559,7 +932,7 @@ export default function AIMentorPage() {
               <div className="flex-1 flex flex-col p-5 overflow-y-auto max-h-[640px] space-y-4">
                 {messages.map((m, idx) => (
                   <div
-                    key={m.id}
+                    key={m.id || idx}
                     className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}
                   >
                     <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-[#46514B]">
@@ -576,6 +949,17 @@ export default function AIMentorPage() {
                           {m.latencyMs}ms
                         </span>
                       )}
+                      {m.inferenceMode && (
+                        <span
+                          className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-mono font-bold ${
+                            m.inferenceMode === "generative"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {m.inferenceMode}
+                        </span>
+                      )}
                     </div>
 
                     <div
@@ -587,9 +971,63 @@ export default function AIMentorPage() {
                     >
                       <div className="whitespace-pre-wrap font-sans">{m.content}</div>
 
+                      {/* POST-INTERACTION LEARNING CHECK (IF PRESENT) */}
+                      {m.postInteractionCheck && (
+                        <div className="mt-4 p-4 rounded-xl bg-white border-2 border-emerald-500/40 shadow-sm text-xs text-[#17211E]">
+                          <div className="flex items-center gap-2 text-emerald-800 font-bold mb-2">
+                            <Lightbulb className="w-4 h-4 text-emerald-600" />
+                            <span>Concept Verification Check</span>
+                          </div>
+                          <p className="font-semibold mb-3">{m.postInteractionCheck.question}</p>
+                          <div className="space-y-1.5">
+                            {m.postInteractionCheck.options.map((opt, oIdx) => {
+                              const checkKey = `${m.id}-check`;
+                              const selected = answeredChecks[checkKey];
+                              const isAnswered = selected !== undefined;
+                              const isCorrect = oIdx === m.postInteractionCheck!.correctOptionIndex;
+                              const isChosen = selected === oIdx;
+
+                              let btnStyle = "bg-[#FBF8F1] hover:bg-[#F4EFE4] text-[#17211E] border-[#DED2BF]";
+                              if (isAnswered) {
+                                if (isCorrect) {
+                                  btnStyle = "bg-emerald-100 border-emerald-500 text-emerald-900 font-bold";
+                                } else if (isChosen && !isCorrect) {
+                                  btnStyle = "bg-red-100 border-red-500 text-red-900 line-through";
+                                } else {
+                                  btnStyle = "opacity-50 border-[#DED2BF]";
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={oIdx}
+                                  disabled={isAnswered}
+                                  onClick={() =>
+                                    setAnsweredChecks((prev) => ({ ...prev, [checkKey]: oIdx }))
+                                  }
+                                  className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all flex items-center justify-between ${btnStyle}`}
+                                >
+                                  <span>{opt}</span>
+                                  {isAnswered && isCorrect && (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {answeredChecks[`${m.id}-check`] !== undefined && (
+                            <div className="mt-3 pt-2 border-t border-gray-200 text-[11px] text-gray-700">
+                              <p className="font-bold text-emerald-800 mb-0.5">Explanation:</p>
+                              <p>{m.postInteractionCheck.explanation}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Mentor Message Toolbar */}
                       {m.sender === "mentor" && (
-                        <div className="mt-3 pt-2 border-t border-[#DED2BF] flex items-center justify-between text-[11px]">
+                        <div className="mt-3 pt-2 border-t border-[#DED2BF] flex items-center justify-between text-[11px] flex-wrap gap-2">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleCopyMessage(m.content, idx)}
@@ -661,9 +1099,18 @@ export default function AIMentorPage() {
                 ))}
 
                 {isGenerating && (
-                  <div className="flex items-center gap-2 text-xs text-[#46514B] italic">
-                    <Sparkles className="w-4 h-4 text-emerald-600 animate-spin" />
-                    <span>Dr. Aarav Mehta is formulating adaptive pedagogical response...</span>
+                  <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 rounded-xl px-4 py-2.5 text-xs text-emerald-900">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-600 animate-spin" />
+                      <span>Dr. Aarav Mehta is formulating adaptive pedagogical response...</span>
+                    </div>
+                    <button
+                      onClick={handleStopGeneration}
+                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold transition-all shadow flex items-center gap-1"
+                    >
+                      <Square className="w-3 h-3 fill-white" />
+                      <span>Stop Generation</span>
+                    </button>
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -717,7 +1164,10 @@ export default function AIMentorPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => dispatchTurn("Please review and optimize the code in my Code Lab.", "code_mentor", scratchCode)}
+                    onClick={() => {
+                      setActiveTab("chat");
+                      dispatchTurn("Please review and optimize the code in my Code Lab.", "code_mentor", scratchCode);
+                    }}
                     className="px-4 py-2 bg-[#123B2E] hover:bg-[#174B39] text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
                   >
                     <Play className="w-3.5 h-3.5 text-emerald-400" />
@@ -775,12 +1225,12 @@ export default function AIMentorPage() {
               </div>
             )}
 
-            {/* TAB 5: MEMORY */}
+            {/* TAB 5: MEMORY & PRIVACY */}
             {activeTab === "memory" && (
-              <div className="flex-1 p-6 overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-base text-[#123B2E]">Structured Student Memory</h3>
+                    <h3 className="font-bold text-base text-[#123B2E]">Structured Student Memory & Privacy</h3>
                     <p className="text-xs text-[#46514B]">
                       Verified preferences, active goals, and learning gaps remembered by your AI mentor
                     </p>
@@ -790,15 +1240,80 @@ export default function AIMentorPage() {
                   </span>
                 </div>
 
+                {/* Add Custom Fact/Goal */}
+                <form onSubmit={handleAddMemory} className="p-4 bg-[#F4EFE4]/60 rounded-xl border border-[#DED2BF] text-xs space-y-3">
+                  <p className="font-bold text-[#123B2E]">Add Confirmed Learning Goal or Preference</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <select
+                      value={newMemoryCat}
+                      onChange={(e) => setNewMemoryCat(e.target.value)}
+                      className="p-2 rounded-lg border border-[#DED2BF] bg-white text-xs font-medium"
+                    >
+                      <option value="learning_preferences">Learning Preferences</option>
+                      <option value="current_goals">Current Goals</option>
+                      <option value="career_objectives">Career Objectives</option>
+                      <option value="confirmed_strengths">Confirmed Strengths</option>
+                      <option value="active_projects">Active Projects</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Title / Key (e.g. Target Company)"
+                      value={newMemoryKey}
+                      onChange={(e) => setNewMemoryKey(e.target.value)}
+                      className="p-2 rounded-lg border border-[#DED2BF] text-xs bg-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Value (e.g. Google India SDE-1)"
+                      value={newMemoryVal}
+                      onChange={(e) => setNewMemoryVal(e.target.value)}
+                      className="p-2 rounded-lg border border-[#DED2BF] text-xs bg-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-[#123B2E] hover:bg-[#174B39] text-white rounded-lg text-xs font-bold transition-all"
+                  >
+                    Save Memory Item
+                  </button>
+                </form>
+
                 <div className="space-y-2.5">
                   {memories.map((m) => (
                     <div key={m.id} className="p-3.5 bg-[#F4EFE4] rounded-xl border border-[#DED2BF] flex items-center justify-between">
                       <div>
-                        <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#123B2E] text-white">
-                          {m.category}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#123B2E] text-white">
+                            {m.category.replace(/_/g, " ")}
+                          </span>
+                          {m.studentConfirmed && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-emerald-700 font-bold">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Student Confirmed</span>
+                            </span>
+                          )}
+                        </div>
                         <p className="font-bold text-xs text-[#123B2E] mt-1">{m.key}</p>
                         <p className="text-[11px] text-[#46514B] mt-0.5">{m.value}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {!m.studentConfirmed && (
+                          <button
+                            onClick={() => handleConfirmMemory(m.id)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition-all"
+                            title="Confirm this fact"
+                          >
+                            Confirm
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteMemory(m.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-700 rounded transition-all"
+                          title="Permanently erase memory item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}

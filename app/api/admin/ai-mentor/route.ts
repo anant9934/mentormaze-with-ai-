@@ -9,23 +9,26 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const providers = ModelProviderRouter.getProviderStatus();
+    const telemetry = ModelProviderRouter.getTelemetryAnalytics();
     const datasets = DatasetGovernanceService.getDatasetRegistry();
     const benchmark = EvaluationBenchmarkSuite.runBenchmarkSuite();
-    const sampleKnowledge = KnowledgeRAGService.search("", undefined, 10);
+    const ragStats = KnowledgeRAGService.getStats();
 
     return NextResponse.json({
       success: true,
       data: {
         providers,
+        telemetry,
         datasets,
         benchmark,
-        knowledgeSourcesCount: 5,
-        totalDocumentsIndexed: 6,
-        safetyStatus: "Active - PII Scrubbing & Crisis Escalation Operational",
+        ragStats,
+        knowledgeSourcesCount: 8,
+        totalDocumentsIndexed: ragStats.totalDocuments,
+        verifiedDocumentCount: ragStats.verifiedCount,
+        safetyStatus: "Active - PII Scrubbing, Crisis Escalation & Data Isolation Operational",
       },
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

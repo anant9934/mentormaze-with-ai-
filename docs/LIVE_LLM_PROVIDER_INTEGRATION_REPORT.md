@@ -125,3 +125,4 @@ The system was verified against the required real inference criteria:
 3. **Live Generative Execution**: When `GEMINI_API_KEY` is provided, live streaming or completion executes with verified model attribution (`gemini/gemini-1.5-flash`).
 4. **Conversation Persistence**: History is durably stored in the student's browser `localStorage` under `mentormaze_ai_mentor_chat_${userId}` and survives page reloads.
 5. **Contextual Injection**: Injected student context (weak skills, demonstrated skills, target role) is passed into the prompt, steering the model's educational examples.
+

@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const codeSnippet = body.codeSnippet;
     const hintLevel = body.hintLevel || 0;
     const activeTopic = body.activeTopic || body.topic;
+    const conversationId = body.conversationId;
     const conversationHistory = body.conversationHistory;
 
     // Check if client requested streaming
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       languagePreference,
       hintLevel,
       activeTopic,
+      conversationId,
       conversationHistory,
     });
 
@@ -47,6 +49,7 @@ export async function POST(req: NextRequest) {
               `data: ${JSON.stringify({
                 done: true,
                 metadata: {
+                  requestId: result.requestId,
                   voiceText: result.voiceText,
                   teachingStrategy: result.teachingStrategy,
                   sources: result.sources,
@@ -54,6 +57,12 @@ export async function POST(req: NextRequest) {
                   skillUpdates: result.skillUpdates,
                   escalationRecommendation: result.escalationRecommendation,
                   latencyMs: result.latencyMs,
+                  modelProvider: result.modelProvider,
+                  inferenceMode: result.inferenceMode,
+                  tokenUsage: result.tokenUsage,
+                  estimatedCostUsd: result.estimatedCostUsd,
+                  fallbackReason: result.fallbackReason,
+                  postInteractionCheck: result.postInteractionCheck,
                 },
               })}\n\n`
             )
@@ -73,6 +82,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      requestId: result.requestId,
       aiResponse: result.message,
       voiceText: result.voiceText,
       teachingStrategy: result.teachingStrategy,
@@ -86,6 +96,11 @@ export async function POST(req: NextRequest) {
       escalationRecommendation: result.escalationRecommendation,
       latencyMs: result.latencyMs,
       modelProvider: result.modelProvider,
+      inferenceMode: result.inferenceMode,
+      tokenUsage: result.tokenUsage,
+      estimatedCostUsd: result.estimatedCostUsd,
+      fallbackReason: result.fallbackReason,
+      postInteractionCheck: result.postInteractionCheck,
     });
   } catch (error: any) {
     console.error("[API AI Mentor Error]:", error);

@@ -96,3 +96,4 @@ NEXT_PUBLIC_APP_URL="https://mentormaze.aitathastu.com"
    - Classified as `MODEL_UNAVAILABLE`. Seamlessly routed to the secondary provider or local fallback.
 3. **Emergency Crisis Response**:
    - Tele-MANAS helpline (`14416`) is hardcoded into `SafetyGuardrails`. Requires zero external API connectivity and operates at 100% availability.
+

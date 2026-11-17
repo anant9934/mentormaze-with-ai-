@@ -120,3 +120,4 @@ The curated dataset is exposed through `CareerIntelligenceService.searchJobs`:
 - **Query Coverage**: Case-insensitive substring matching over titles, companies, must-have skills, and tooling.
 - **Combined Benchmarks**: Combines the 4 Tier-1 FAANG benchmark specs (Google, Microsoft, Swiggy, Zepto) with the 1,500 curated Indian tech ecosystem postings.
 - **Verified Status**: Fully validated by `tests/ai-mentor-intelligence.test.ts` (Test 5), ensuring instant retrieval with sub-5ms response times.
+

@@ -166,3 +166,4 @@ The following execution trace details how a student's prompt moves through the s
 ## Conclusion
 
 MentorMaze AI Mentor now operates with complete architectural transparency. When external API keys are configured, it invokes real generative models with full student context and RAG citations. When running locally without keys, it explicitly discloses its deterministic fallback mode rather than fabricating AI capabilities.
+

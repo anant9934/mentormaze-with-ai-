@@ -98,3 +98,4 @@ While the current token-matching engine provides fast, deterministic retrieval w
 2. **Hybrid Search Execution**:
    $$\text{FinalScore} = \alpha \cdot \text{DenseCosineSimilarity} + (1 - \alpha) \cdot \text{SparseKeywordMatch}$$
 3. **Dynamic Corpus Expansion**: Ingest university syllabus chapters and SDE interview question banks directly into PostgreSQL.
+

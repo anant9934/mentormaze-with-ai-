@@ -85,6 +85,7 @@ export interface EscalationRecommendation {
 }
 
 export interface StructuredTurnResponse {
+  requestId?: string;
   message: string;
   voiceText: string;
   teachingStrategy: TeachingStrategy;
@@ -98,6 +99,20 @@ export interface StructuredTurnResponse {
   escalationRecommendation?: EscalationRecommendation;
   latencyMs: number;
   modelProvider: string;
+  inferenceMode?: "generative" | "deterministic";
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  estimatedCostUsd?: number;
+  fallbackReason?: string;
+  postInteractionCheck?: {
+    question: string;
+    options: string[];
+    correctOptionIndex: number;
+    explanation: string;
+  };
 }
 
 export interface StudentProfileContext {
