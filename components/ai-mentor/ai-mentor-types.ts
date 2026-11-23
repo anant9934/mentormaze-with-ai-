@@ -1,7 +1,7 @@
 /**
- * MentorMaze AI Mentor — Standalone Workspace Types
- * Brand: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
- * Mentor: Dr. Aarav Mehta (Principal Mentor · AI Intelligence)
+ * MentorMaze AI Mentor — ASTRION Workspace Types
+ * Brand: ASTRION by MentorMaze (AI Tathastu Ecosystem)
+ * Identity: ASTRION (Adaptive Strategic Intelligence & Reasoning Network)
  */
 
 import {
@@ -62,6 +62,87 @@ export interface ChatMessage {
   fallbackReason?: string;
   postInteractionCheck?: PostInteractionCheck;
   savedNote?: boolean;
+  feedback?: "like" | "dislike";
+  isEdited?: boolean;
+  studyPlan?: {
+    primaryGoal: string;
+    totalWeeks: number;
+    currentMilestone: {
+      weekNumber: number;
+      title: string;
+      objectives: string[];
+      deliverables: string[];
+      status: "pending" | "in_progress" | "completed";
+    };
+    milestones: {
+      weekNumber: number;
+      title: string;
+      objectives: string[];
+      deliverables: string[];
+      status: "pending" | "in_progress" | "completed";
+    }[];
+  };
+  progressInsights?: {
+    confirmedStrengths: string[];
+    confirmedGaps: { skillName: string; gapType: string; remediation: string }[];
+    suspectedGaps: { skillName: string; gapType: string }[];
+    masteryLevel: string;
+  };
+  resources?: {
+    id: string;
+    title: string;
+    category: string;
+    provider: string;
+    urlOrRef: string;
+    freshnessDate: string;
+  }[];
+  reminders?: {
+    milestoneTitle: string;
+    prompt: string;
+    scheduledTime: string;
+  }[];
+  mentorHandoff?: {
+    eligible: boolean;
+    domains: string[];
+    sanitizedBriefing: string;
+  };
+  goalReference?: {
+    goalId: string;
+    goalTitle: string;
+    category: string;
+    importance: string;
+    status: string;
+  };
+  assessment?: {
+    goalTitle?: string;
+    readinessScore: number;
+    strengths: { skillName: string; evidenceSource: string; tier: number }[];
+    confirmedGaps: { skillName: string; gapType: string; remediation: string }[];
+    suspectedGaps: { skillName: string; gapType: string; suggestedClarification: string }[];
+    missingInfoQuestions: string[];
+    evidenceSummary: {
+      confirmedCount: number;
+      selfReportedCount: number;
+      inferredCount: number;
+      unknownCount: number;
+    };
+  };
+  recommendedNextAction?: RecommendedAction;
+  roadmapUpdates?: {
+    roadmapId: string;
+    adaptedReason: string;
+    updatedMilestones: any[];
+  };
+  milestoneUpdates?: {
+    milestoneId: string;
+    weekNumber: number;
+    status: string;
+    progressPct: number;
+  };
+  followUpSuggestion?: string;
+  requiresStudentConfirmation?: boolean;
+  confidence?: number;
+  evidenceReferences?: string[];
 }
 
 export interface ConversationSummary {
@@ -103,84 +184,84 @@ export interface FocusAreaDef {
 
 export const FOCUS_AREAS_CONFIG: FocusAreaDef[] = [
   {
-    id: "study_planning",
-    label: "Set a Learning Goal",
-    iconName: "Calendar",
-    specialistTitle: "Study Planner & Roadmap",
-    badge: "Goal Specialist",
-    description: "Milestone roadmaps, target competencies, and structured timelines.",
-    placeholder: "Tell me your target role and timeline to set a tailored learning goal...",
-    suggestionPrompt: "Set a tailored 12-week learning goal to master distributed systems and staff engineer system design.",
-  },
-  {
     id: "learn",
-    label: "Learn a Concept",
+    label: "SAGE — Learn a Concept",
     iconName: "BookOpen",
-    specialistTitle: "Conceptual Learning & Pedagogy",
-    badge: "Conceptual Specialist",
-    description: "Deep-dive explanations using first principles and progressive scaffolding.",
-    placeholder: "Ask Dr. Aarav Mehta to explain any technical or scientific concept...",
+    specialistTitle: "SAGE Learning Intelligence",
+    badge: "SAGE · Learning",
+    description: "Conceptual explanations, Socratic tutoring, mathematical proofs & first principles.",
+    placeholder: "Ask ASTRION to explain any technical or scientific concept using first principles...",
     suggestionPrompt: "Explain how React reconciles virtual DOM diffs under the hood using first principles.",
   },
   {
     id: "coding_dsa",
-    label: "Review Code & DSA",
+    label: "CIPHER — Review Code & DSA",
     iconName: "Code2",
-    specialistTitle: "DSA & Code Specialist",
-    badge: "Coding Specialist",
-    description: "Algorithm walkthroughs, edge cases, space-time complexity analysis.",
+    specialistTitle: "CIPHER Engineering Intelligence",
+    badge: "CIPHER · Engineering",
+    description: "Programming fundamentals, algorithm walkthroughs, debugging & complexity analysis.",
     placeholder: "Paste code or ask about an algorithmic pattern (graphs, DP, trees)...",
     suggestionPrompt: "Review my Longest Increasing Subsequence patience sorting implementation and prove its O(N log N) complexity.",
   },
   {
     id: "system_design",
-    label: "Design a System",
+    label: "ATLAS — Design a System",
     iconName: "Layers",
-    specialistTitle: "Distributed Systems Architect",
-    badge: "Systems Architect",
-    description: "High-level architecture, scalability trade-offs, microservices & caching.",
+    specialistTitle: "ATLAS Systems Intelligence",
+    badge: "ATLAS · Systems",
+    description: "High-level architecture, scalability trade-offs, distributed systems & API design.",
     placeholder: "Describe a distributed system requirement or ask architectural trade-offs...",
     suggestionPrompt: "How should I design an idempotency key layer for a distributed payment processing system?",
   },
   {
+    id: "projects",
+    label: "FORGE — Build & Review Projects",
+    iconName: "Cpu",
+    specialistTitle: "FORGE Project Intelligence",
+    badge: "FORGE · Projects",
+    description: "Project planning, production-readiness reviews, architecture & test strategies.",
+    placeholder: "Share your project architecture or repository structure for engineering critique...",
+    suggestionPrompt: "Review my portfolio project architecture: a real-time collaborative code editor using WebSockets and CRDTs.",
+  },
+  {
+    id: "career",
+    label: "VECTRA — Explore Career Options",
+    iconName: "Compass",
+    specialistTitle: "VECTRA Career Intelligence",
+    badge: "VECTRA · Career",
+    description: "Career-roadmap planning, skill-gap analysis, market demand & role ladders.",
+    placeholder: "Ask about career trajectories, in-demand skills, or market expectations...",
+    suggestionPrompt: "What are the most in-demand skills for a High-Frequency Trading (HFT) C++ developer in 2026?",
+  },
+  {
     id: "resume",
-    label: "Improve a Resume",
+    label: "PRISM — Improve Your Resume",
     iconName: "FileText",
-    specialistTitle: "Resume Auditor & Transformer",
-    badge: "Resume Specialist",
-    description: "Google XYZ formula alignment, ATS score diagnostics, metric quantification.",
+    specialistTitle: "PRISM Resume Intelligence",
+    badge: "PRISM · Resume",
+    description: "Google XYZ formula alignment, ATS compatibility, impact metric quantification.",
     placeholder: "Paste a resume bullet or work summary to transform into high-impact metrics...",
     suggestionPrompt: "Rewrite this resume bullet using the Google XYZ formula: 'Worked on backend API to speed up search response time.'",
   },
   {
     id: "interview",
-    label: "Prepare for an Interview",
+    label: "ORACLE — Prepare for Interviews",
     iconName: "Target",
-    specialistTitle: "Interview Coach & Calibration",
-    badge: "Interview Coach",
-    description: "Technical & behavioral STAR calibration, mock questions, rubric evaluation.",
-    placeholder: "Simulate a technical screen or ask for behavioral interview feedback...",
+    specialistTitle: "ORACLE Interview Intelligence",
+    badge: "ORACLE · Interviews",
+    description: "Technical & behavioral STAR calibration, mock questions, rubric scorecards.",
+    placeholder: "Simulate a technical interview screen or practice behavioral STAR questions...",
     suggestionPrompt: "Conduct a mock behavioral interview question for an SDE-2 role focusing on conflict resolution with a senior engineer.",
   },
   {
-    id: "career",
-    label: "Explore Career Options",
-    iconName: "Compass",
-    specialistTitle: "Career & Market Intelligence",
-    badge: "Career Strategist",
-    description: "Real-time Naukri & LinkedIn JD analysis, market compensation, role ladders.",
-    placeholder: "Ask about career trajectories, in-demand skills, or market expectations...",
-    suggestionPrompt: "What are the most in-demand skills for a High-Frequency Trading (HFT) C++ developer in 2026?",
-  },
-  {
-    id: "projects",
-    label: "Review Projects",
-    iconName: "Cpu",
-    specialistTitle: "Project Portfolio Architect",
-    badge: "Project Architect",
-    description: "Production readiness audits, architectural critique, standout portfolio features.",
-    placeholder: "Share your project architecture or repository structure for expert review...",
-    suggestionPrompt: "Review my portfolio project architecture: a real-time collaborative code editor using WebSockets and CRDTs.",
+    id: "study_planning",
+    label: "CHRONOS — Plan Your Learning",
+    iconName: "Calendar",
+    specialistTitle: "CHRONOS Planning Intelligence",
+    badge: "CHRONOS · Planning",
+    description: "Milestone roadmaps, target competencies, spaced retrieval & habit consistency.",
+    placeholder: "Tell me your target role and timeline to set a tailored learning roadmap...",
+    suggestionPrompt: "Set a tailored 12-week learning roadmap to master distributed systems and staff engineer system design.",
   },
 ];
 

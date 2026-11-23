@@ -41,19 +41,23 @@ export interface SpecialistCapabilityInfo {
 
 export interface MentorIdentity {
   name: string;
+  role?: string;
   title: string;
   credentials: string;
   avatarUrl: string;
   systemPersona: string;
+  organization?: string;
 }
 
 export const UNIFIED_MENTOR_IDENTITY: MentorIdentity = {
-  name: "Dr. Aarav Mehta",
-  title: "Principal Mentor · AI Intelligence",
-  credentials: "Staff Software Architect & Placement Strategist · MentorMaze by AI Tathastu",
-  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+  name: "ASTRION",
+  role: "ASTRION Lead AI Mentor",
+  title: "Adaptive Strategic Intelligence & Reasoning Network",
+  credentials: "ASTRION CORE · MentorMaze by AI Tathastu",
+  organization: "MentorMaze by AI Tathastu",
+  avatarUrl: "/brand/astrion-icon.svg",
   systemPersona:
-    "You are Dr. Aarav Mehta, Principal Mentor at MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com). You are a single, unified mentor with deep cross-disciplinary expertise spanning conceptual teaching, coding & DSA, system design, career roadmapping, resume transformation, and technical interviews. Maintain your singular persona, voice, and empathy across all interactions while dynamically engaging specialized internal analytical capabilities.",
+    "You are ASTRION, the Adaptive Strategic Intelligence & Reasoning Network at MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com). You are a single, unified mentor with deep cross-disciplinary expertise spanning learning pedagogy (SAGE), software engineering (CIPHER), systems architecture (ATLAS), project execution (FORGE), career strategy (VECTRA), resume transformation (PRISM), interview preparation (ORACLE), and disciplined planning (CHRONOS). Maintain your singular persona, analytical depth, and intellectual honesty across all interactions while dynamically engaging specialized internal intelligence modules.",
 };
 
 export type TeachingStrategy =
@@ -80,7 +84,10 @@ export type ProvenanceType =
   | "student_reported"
   | "institution_provided"
   | "mentor_assessed"
-  | "ai_inferred";
+  | "ai_inferred"
+  | "confirmed_evidence"
+  | "extracted"
+  | "system_inference";
 
 export interface SourceCitation {
   sourceTitle: string;
@@ -152,6 +159,48 @@ export interface StructuredTurnResponse {
   };
   estimatedCostUsd?: number;
   fallbackReason?: string;
+  studyPlan?: {
+    primaryGoal: string;
+    totalWeeks: number;
+    currentMilestone: {
+      weekNumber: number;
+      title: string;
+      objectives: string[];
+      deliverables: string[];
+      status: "pending" | "in_progress" | "completed";
+    };
+    milestones: {
+      weekNumber: number;
+      title: string;
+      objectives: string[];
+      deliverables: string[];
+      status: "pending" | "in_progress" | "completed";
+    }[];
+  };
+  progressInsights?: {
+    confirmedStrengths: string[];
+    confirmedGaps: { skillName: string; gapType: string; remediation: string }[];
+    suspectedGaps: { skillName: string; gapType: string }[];
+    masteryLevel: string;
+  };
+  resources?: {
+    id: string;
+    title: string;
+    category: string;
+    provider: string;
+    urlOrRef: string;
+    freshnessDate: string;
+  }[];
+  reminders?: {
+    milestoneTitle: string;
+    prompt: string;
+    scheduledTime: string;
+  }[];
+  mentorHandoff?: {
+    eligible: boolean;
+    domains: string[];
+    sanitizedBriefing: string;
+  };
   postInteractionCheck?: {
     question: string;
     options: string[];
@@ -159,6 +208,30 @@ export interface StructuredTurnResponse {
     explanation: string;
     expectedKeyPoints?: string[];
   };
+  goalReference?: {
+    goalId: string;
+    goalTitle: string;
+    category: string;
+    importance: string;
+    status: string;
+  };
+  assessment?: any;
+  recommendedNextAction?: RecommendedAction;
+  roadmapUpdates?: {
+    roadmapId: string;
+    adaptedReason: string;
+    updatedMilestones: any[];
+  };
+  milestoneUpdates?: {
+    milestoneId: string;
+    weekNumber: number;
+    status: string;
+    progressPct: number;
+  };
+  followUpSuggestion?: string;
+  requiresStudentConfirmation?: boolean;
+  confidence?: number;
+  evidenceReferences?: string[];
 }
 
 export interface StudentProfileContext {
