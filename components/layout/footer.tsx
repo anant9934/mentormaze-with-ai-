@@ -298,55 +298,55 @@ export function Footer() {
               </div>
             </div>
 
-            {/* Column 2: Programs (span 2) */}
+            {/* Column 2: Mentoring (span 2) */}
             <div className="lg:col-span-2">
-              <h4 className="text-sm font-semibold text-white mb-3 tracking-wide">Programs</h4>
+              <h4 className="text-sm font-semibold text-white mb-3 tracking-wide">Mentorship</h4>
               <ul className="space-y-2 text-xs sm:text-sm text-emerald-100/80">
                 <li>
                   <Link href="/mentors" className="hover:text-white transition-colors">
-                    Mentorship
+                    Find a Mentor
                   </Link>
                 </li>
                 <li>
-                  <Link href="/mock-interviews" className="hover:text-white transition-colors">
-                    Mock Interviews
+                  <Link href="/ai-mentor" className="hover:text-white transition-colors">
+                    ASTRION AI Mentor
                   </Link>
                 </li>
                 <li>
-                  <Link href="/programs" className="hover:text-white transition-colors">
-                    Career Guidance
+                  <Link href="/how-it-works" className="hover:text-white transition-colors">
+                    How It Works
                   </Link>
                 </li>
                 <li>
-                  <Link href="/programs" className="hover:text-white transition-colors">
-                    Skill Workshops
+                  <Link href="/pricing" className="hover:text-white transition-colors">
+                    Pricing & Plans
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Column 3: Resources (span 2) */}
+            {/* Column 3: Platform (span 2) */}
             <div className="lg:col-span-2">
-              <h4 className="text-sm font-semibold text-white mb-3 tracking-wide">Resources</h4>
+              <h4 className="text-sm font-semibold text-white mb-3 tracking-wide">Platform</h4>
               <ul className="space-y-2 text-xs sm:text-sm text-emerald-100/80">
                 <li>
-                  <Link href="/dashboard/resources" className="hover:text-white transition-colors">
-                    Documentation
+                  <Link href="/dashboard/mentorship" className="hover:text-white transition-colors">
+                    My Mentorship
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard/resources" className="hover:text-white transition-colors">
-                    Guides
+                  <Link href="/support" className="hover:text-white transition-colors">
+                    Help & Support
                   </Link>
                 </li>
                 <li>
-                  <Link href="/how-it-works" className="hover:text-white transition-colors">
-                    Blog
+                  <Link href="/privacy" className="hover:text-white transition-colors">
+                    Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/how-it-works" className="hover:text-white transition-colors">
-                    FAQs
+                  <Link href="/terms" className="hover:text-white transition-colors">
+                    Terms of Service
                   </Link>
                 </li>
               </ul>

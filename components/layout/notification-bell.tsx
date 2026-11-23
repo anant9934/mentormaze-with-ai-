@@ -272,22 +272,23 @@ export function NotificationBell() {
           setIsOpen(!isOpen);
           if (!isOpen) fetchRecentNotifications();
         }}
-        className="relative p-2.5 rounded-full text-ink-950 hover:bg-sage-100/70 transition-colors focus:outline-none focus:ring-2 focus:ring-forest-800/20"
+        className="relative min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-full text-ink-950 hover:bg-sage-100/70 transition-colors focus:outline-none focus:ring-2 focus:ring-forest-800/20"
         aria-label="Notifications"
+        aria-expanded={isOpen}
       >
         <Bell className="w-5 h-5 text-[#123B2E]" />
 
         {/* Live SSE Pulse Dot */}
         {isConnected && (
           <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-white"
+            className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 animate-pulse ring-2 ring-white"
             title="Real-time connected"
           />
         )}
 
         {/* Unread Counter Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-rose-600 rounded-full shadow-sm ring-2 ring-white">
+          <span className="absolute top-0 right-0 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-rose-600 rounded-full shadow-sm ring-2 ring-white">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -295,7 +296,7 @@ export function NotificationBell() {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-sand-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white rounded-2xl shadow-2xl border border-sand-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Header */}
           <div className="px-4 py-3 bg-[#FBF8F1] border-b border-sand-200 flex items-center justify-between">
             <div className="flex items-center gap-2">

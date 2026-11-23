@@ -233,12 +233,12 @@ export function BookingCalendar({
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-card border border-border/80 space-y-6">
+    <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-card border border-border/80 space-y-5 sm:space-y-6">
       {/* Header with Title & Timezone Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-border">
         <div>
-          <h2 className="font-serif text-xl sm:text-2xl font-bold text-ink-950 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-forest-700" />
+          <h2 className="font-serif text-lg sm:text-2xl font-bold text-ink-950 flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-forest-700 flex-shrink-0" />
             <span>Select Date & Time</span>
           </h2>
           <p className="text-xs text-ink-700 mt-0.5">
@@ -247,12 +247,12 @@ export function BookingCalendar({
         </div>
 
         {/* Timezone Picker */}
-        <div className="flex items-center gap-2 bg-cream-50 px-3 py-1.5 rounded-2xl border border-border">
+        <div className="flex items-center gap-2 bg-cream-50 px-3 py-1.5 rounded-2xl border border-border max-w-full">
           <Globe className="w-3.5 h-3.5 text-forest-700 flex-shrink-0" />
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="text-xs font-semibold bg-transparent text-ink-950 focus:outline-none cursor-pointer"
+            className="text-xs font-semibold bg-transparent text-ink-950 focus:outline-none cursor-pointer truncate max-w-[220px] sm:max-w-none"
           >
             {COMMON_TIMEZONES.map((tz) => (
               <option key={tz.value} value={tz.value}>
@@ -268,27 +268,27 @@ export function BookingCalendar({
         <label className="block text-xs font-bold uppercase tracking-wider text-ink-700 mb-2">
           Session Duration
         </label>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
           {[15, 30, 45, 60].map((dur) => (
             <button
               key={dur}
               type="button"
               onClick={() => onDurationChange(dur)}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2 px-1 sm:px-3 min-h-[40px] rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 ${
                 selectedDuration === dur
                   ? "bg-forest-900 text-white shadow-sm"
                   : "bg-cream-100/70 text-ink-700 hover:bg-cream-100 border border-border/40"
               }`}
             >
-              <Clock className="w-3.5 h-3.5" />
-              <span>{dur} min</span>
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+              <span>{dur}m</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Date Navigation & Strip */}
-      <div className="space-y-3">
+      <div className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-ink-950">
             {startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} –{" "}
@@ -299,14 +299,16 @@ export function BookingCalendar({
               type="button"
               onClick={() => setDateOffset((prev) => Math.max(0, prev - 1))}
               disabled={dateOffset === 0}
-              className="p-1.5 rounded-lg border border-border bg-white text-ink-700 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-border bg-white text-ink-700 hover:bg-cream-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous week"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => setDateOffset((prev) => prev + 1)}
-              className="p-1.5 rounded-lg border border-border bg-white text-ink-700 hover:bg-cream-50"
+              className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg border border-border bg-white text-ink-700 hover:bg-cream-50"
+              aria-label="Next week"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -314,7 +316,7 @@ export function BookingCalendar({
         </div>
 
         {/* 7-Day Buttons */}
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {daysInView.map((d) => {
             const isSelected = selectedDate === d.dateStr;
             const isPast = d.dateObj < new Date(today.setHours(0, 0, 0, 0));
@@ -324,7 +326,7 @@ export function BookingCalendar({
                 type="button"
                 disabled={isPast}
                 onClick={() => setSelectedDate(d.dateStr)}
-                className={`py-3 px-1 rounded-2xl text-center transition-all flex flex-col items-center justify-center ${
+                className={`py-2 sm:py-3 px-0.5 sm:px-1 rounded-xl sm:rounded-2xl text-center transition-all flex flex-col items-center justify-center ${
                   isSelected
                     ? "bg-forest-900 text-white shadow-sm ring-2 ring-forest-700"
                     : isPast
@@ -332,8 +334,8 @@ export function BookingCalendar({
                     : "bg-cream-50 hover:bg-cream-100 text-ink-950 border border-border/50"
                 }`}
               >
-                <span className="text-[10px] uppercase font-bold tracking-wider">{d.dayName}</span>
-                <span className="text-base font-extrabold mt-0.5">{d.dayNum}</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider">{d.dayName}</span>
+                <span className="text-sm sm:text-base font-extrabold mt-0.5">{d.dayNum}</span>
               </button>
             );
           })}
@@ -344,15 +346,15 @@ export function BookingCalendar({
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-ink-700 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-forest-700" />
+            <Clock className="w-3.5 h-3.5 text-forest-700 flex-shrink-0" />
             <span>Available Slots ({slotsForSelectedDate.filter((s) => s.available).length})</span>
           </label>
 
           {/* Active Hold Countdown Badge */}
           {activeHold && holdSecondsRemaining > 0 && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-bold animate-pulse">
-              <Timer className="w-3.5 h-3.5 text-amber-700" />
-              <span>Held for {formatCountdown(holdSecondsRemaining)}</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[10px] sm:text-[11px] font-bold animate-pulse">
+              <Timer className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+              <span>Held {formatCountdown(holdSecondsRemaining)}</span>
             </div>
           )}
         </div>
@@ -376,7 +378,7 @@ export function BookingCalendar({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5 max-h-64 overflow-y-auto pr-1">
             {slotsForSelectedDate.map((slot) => {
               const isSelected =
                 selectedSlot?.startTimeUtc === slot.startTimeUtc;
@@ -386,7 +388,7 @@ export function BookingCalendar({
                   type="button"
                   disabled={!slot.available || holding}
                   onClick={() => handleSelectSlot(slot)}
-                  className={`p-3 rounded-2xl text-left border transition-all relative ${
+                  className={`p-3 min-h-[44px] rounded-2xl text-left border transition-all relative ${
                     isSelected
                       ? "bg-forest-900 text-white border-forest-900 shadow-md ring-2 ring-forest-700"
                       : slot.available
@@ -395,7 +397,7 @@ export function BookingCalendar({
                   }`}
                 >
                   <div className="text-xs font-bold">{slot.startTimeLocal}</div>
-                  <div className="text-[10px] opacity-75 mt-0.5">
+                  <div className="text-[10px] opacity-75 mt-0.5 truncate">
                     {slot.durationMinutes} min • {timezone.split("/")[1]?.replace(/_/g, " ") || timezone}
                   </div>
                   {isSelected && (
