@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 interface HealthStatus {
   status: "ok" | "degraded" | "error";
@@ -47,8 +48,11 @@ export async function GET(request: Request) {
       dbStatus = "in-memory";
       dbLatency = Date.now() - startDbCheck;
     } else {
-      // Quick ping test
-      await db.execute(sql`SELECT 1`);
+      // Quick ping test with 2.5s timeout
+      await Promise.race([
+        db.execute(sql`SELECT 1`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Database check timeout")), 2500))
+      ]);
       dbStatus = "connected";
       dbLatency = Date.now() - startDbCheck;
     }

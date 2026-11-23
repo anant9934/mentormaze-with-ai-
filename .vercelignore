@@ -1,0 +1,19 @@
+.git
+.next
+node_modules
+tests
+training
+reports
+scratch
+.bin
+.mentormaze-pgdata*
+.mentormaze-conversations.json
+.mentormaze-memories.json
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.xlsx
+Naukri Dataset with Salary column
+*.log
+.DS_Store
