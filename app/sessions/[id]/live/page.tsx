@@ -43,6 +43,8 @@ import {
   VolumeX,
   Sparkles,
 } from "lucide-react";
+import { MeetingIntelligencePanel } from "@/components/meeting-intelligence/meeting-intelligence-panel";
+import { PostSessionReportModal } from "@/components/meeting-intelligence/post-session-report-modal";
 
 interface ChatMessage {
   id: string;
@@ -351,9 +353,11 @@ export default function LiveSessionRoomPage() {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "speaker">("speaker");
-  const [activeTab, setActiveTab] = useState<"chat" | "code" | "plan" | "notes" | "private" | "briefing">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "code" | "plan" | "notes" | "private" | "briefing" | "intelligence">("chat");
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const [briefingData, setBriefingData] = useState<any | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
@@ -2490,6 +2494,22 @@ export default function LiveSessionRoomPage() {
                   <span>Briefing</span>
                 </button>
               )}
+
+              {/* Tab 7: Meeting Intelligence (Cicada Powered) */}
+              <button
+                onClick={() => setActiveTab("intelligence")}
+                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                  activeTab === "intelligence"
+                    ? "text-emerald-400 border-emerald-400"
+                    : "text-emerald-400/70 border-transparent hover:text-emerald-300"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                <span>AI Intelligence</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  Cicada
+                </span>
+              </button>
             </div>
           </div>
 
@@ -2980,6 +3000,21 @@ export default function LiveSessionRoomPage() {
                 )}
               </div>
             )}
+
+            {/* TAB 7: MEETING INTELLIGENCE SUBSYSTEM (CICADA POWERED) */}
+            {activeTab === "intelligence" && (
+              <div className="flex-1 flex flex-col min-h-0 -m-4 overflow-hidden">
+                <MeetingIntelligencePanel
+                  bookingId={bookingId || (params?.id as string)}
+                  studentUserId={booking?.studentUserId || user?.id || "student-user"}
+                  studentName={isMentor ? "Student" : currentName}
+                  mentorUserId={mentor?.userId || "mentor-user"}
+                  mentorName={mentor?.headline || "Mentor"}
+                  userRole={isMentor ? "mentor" : "student"}
+                  onOpenReportModal={() => setShowReportModal(true)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Sidebar Footer */}
@@ -3107,6 +3142,18 @@ export default function LiveSessionRoomPage() {
           </div>
         </div>
       )}
+
+      {/* 5. MODAL: POST-SESSION MEETING INTELLIGENCE REPORT */}
+      <PostSessionReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        bookingId={bookingId || (params?.id as string)}
+        studentUserId={booking?.studentUserId || user?.id || "student-user"}
+        studentName={isMentor ? "Student" : currentName}
+        mentorUserId={mentor?.userId || "mentor-user"}
+        mentorName={mentor?.headline || "Mentor"}
+        userRole={isMentor ? "mentor" : "student"}
+      />
     </div>
   );
 }
