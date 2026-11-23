@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "start:backend": "next start -p ${PORT:-3000}",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-10000}",
+    "start:backend": "next start -H 0.0.0.0 -p ${PORT:-10000}",
     "start:worker": "node -r esbuild-register scripts/run-outbox-worker.ts",
     "health:check": "curl -f http://localhost:${PORT:-3000}/api/health || exit 1",
     "lint": "next lint",
