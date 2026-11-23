@@ -41,6 +41,10 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: "MentorMaze <hellomentormaze@gmail.com>"
+      - key: RENDER_API_KEY
+        sync: false
+      - key: VERCEL_TOKEN
+        sync: false
       - key: LIVEKIT_PRIMARY_PROVIDER_ID
         value: meet-2uq83g48
       - key: LIVEKIT_PRIMARY_URL
@@ -52,6 +56,18 @@ services:
       - key: CLOUDFLARE_TURNSTILE_SITE_KEY
         value: "0x4AAAAAAGPNIAKkr1sYRPY7"
       - key: CLOUDFLARE_TURNSTILE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY
+        value: "0x4AAAAAAGPNIAKkr1sYRPY7"
+      - key: TURNSTILE_SITE_KEY
+        value: "0x4AAAAAAGPNIAKkr1sYRPY7"
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+        value: "0x4AAAAAAGPNIAKkr1sYRPY7"
+      - key: RENDER_API_KEY
+        sync: false
+      - key: VERCEL_TOKEN
         sync: false
 
   # ==============================================================================
@@ -86,3 +102,7 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: "MentorMaze <hellomentormaze@gmail.com>"
+      - key: RENDER_API_KEY
+        sync: false
+      - key: VERCEL_TOKEN
+        sync: false
