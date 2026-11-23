@@ -22,7 +22,8 @@ import torch
 
 PORT = int(os.environ.get("PORT", "8000"))
 BASE_MODEL_ID = "Qwen/Qwen3.5-2B-Base"
-ADAPTER_PATH = Path("training/adapters/mentormaze-2b-sft-v1")
+default_adapter = "training/adapters/mentormaze-2b-core-sft-v2" if os.path.exists("training/adapters/mentormaze-2b-core-sft-v2") else "training/adapters/mentormaze-2b-sft-v1"
+ADAPTER_PATH = Path(os.environ.get("MENTORMAZE_ADAPTER_PATH", default_adapter))
 
 print("=" * 70)
 print("MENTORMAZE-2B LOCAL INFERENCE SERVER")
@@ -83,9 +84,9 @@ class MentorMazeInferenceHandler(BaseHTTPRequestHandler):
                 "service": "mentormaze-2b-inference",
                 "base_model": BASE_MODEL_ID,
                 "adapter": str(ADAPTER_PATH),
-                "adapter_status": "EVALUATED_INTERMEDIATE",
-                "training_steps": 25,
-                "effective_batch_size": 8,
+                "adapter_id": ADAPTER_PATH.name,
+                "adapter_status": "EVALUATED_V2" if "v2" in ADAPTER_PATH.name else "EVALUATED_INTERMEDIATE",
+                "training_steps": 4 if "v2" in ADAPTER_PATH.name else 25,
                 "device": device,
                 "trainable_parameters": 16819200,
                 "total_parameters": 1898644288,
@@ -103,7 +104,7 @@ class MentorMazeInferenceHandler(BaseHTTPRequestHandler):
                 "object": "list",
                 "data": [
                     {
-                        "id": "mentormaze/mentormaze-2b-sft-v1",
+                        "id": f"mentormaze/{ADAPTER_PATH.name}",
                         "object": "model",
                         "created": int(time.time()),
                         "owned_by": "ai-tathastu",

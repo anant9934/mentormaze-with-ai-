@@ -13,9 +13,37 @@ base_model:
   tokenizer: "Qwen/Qwen3.5-2B-Base (151,643 vocab size, ChatML template)"
 
 core_adapter:
+  id: "mentormaze-2b-core-sft-v2"
+  name: "MentorMaze Core SFT v2"
+  status: "TRAINING" # Updated per Phase 6 lifecycle gate
+  path: "training/adapters/mentormaze-2b-core-sft-v2"
+  checkpoints_path: "training/checkpoints/mentormaze-2b-core-sft-v2"
+  weights_file: "adapter_model.safetensors"
+  weights_size_bytes: 67327104 # 64.2 MB safetensors
+  sha256: "b71dde35daa7014ae30bdd7ba0744e5df8ec6779ae5e3545513f1091068d7b6e"
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  trainable_params: 16819200
+  trainable_params_pct: 0.886
+  metrics:
+    initial_validation_loss: 2.3997
+    final_validation_loss: 1.9808
+    perplexity: 7.25
+    eval_samples: 501
+    training_steps: 4
+    batch_size: 2
+    gradient_accumulation_steps: 4
+    effective_batch_size: 8
+    max_seq_length: 512
+    device: "mps"
+    optimizer_state_saved: true
+    checkpoint_size_mb: 193.3
+
+previous_core_adapter:
   id: "mentormaze-2b-sft-v1"
   name: "MentorMaze SFT Core v1"
-  status: "EVALUATED" # Downgraded from DEPLOYABLE: 25-step intermediate artifact (200/8,488 examples consumed)
+  status: "EVALUATED_INTERMEDIATE" # Preserved 25-step intermediate run
   path: "training/adapters/mentormaze-2b-sft-v1"
   checkpoints_path: "training/checkpoints/mentormaze-2b-sft-v1"
   weights_file: "adapter_model.safetensors"
@@ -31,11 +59,7 @@ core_adapter:
     final_validation_loss: 0.4811
     base_test_ppl: 7.25
     sft_test_ppl: 1.59
-    socratic_compliance_pct: 100.0
-    zero_fabrication_pct: 100.0
-    eval_samples: 501
     training_steps: 25
-    training_progress: "Intermediate 25-step SFT run (200 examples consumed out of 8,488). Requires full epoch for production deployment."
 
 specialist_adapters:
   # NOTE: Specialist adapters below are REGISTERED architecture targets.

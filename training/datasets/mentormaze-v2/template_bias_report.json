@@ -1,0 +1,40 @@
+{
+  "before_cleaning": {
+    "uniform_spot_on_exact_count": 1700,
+    "uniform_spot_on_pct": 20.03,
+    "static_star_header_count": 850,
+    "static_esco_competency_count": 1007,
+    "static_progression_header_count": 850,
+    "static_career_header_count": 1118,
+    "total_template_skew_pct": 54.22
+  },
+  "after_cleaning": {
+    "uniform_spot_on_exact_count": 0,
+    "uniform_spot_on_pct": 0.0,
+    "socratic_openers_diversity": 15,
+    "star_header_diversity": 6,
+    "career_header_diversity": 5,
+    "top_5_openers": [
+      [
+        "### \ud83c\udfaf ESCO & Industry",
+        1007
+      ],
+      [
+        "### \ud83d\udccb Engineering Career Architecture:",
+        246
+      ],
+      [
+        "### \ud83d\udcc8 Engineering Career Ladder:",
+        238
+      ],
+      [
+        "### \ud83d\uddfa\ufe0f Production Readiness Roadmap:",
+        232
+      ],
+      [
+        "### \ud83c\udfaf Role Calibration &",
+        227
+      ]
+    ]
+  }
+}

@@ -12,7 +12,52 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/sessions',
+        destination: '/dashboard/mentorship',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/progress',
+        destination: '/dashboard/mentorship?tab=goals',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/mock-interviews',
+        destination: '/dashboard/mentorship?tab=sessions',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/resources',
+        destination: '/dashboard',
+        permanent: false,
+      },
+      {
+        source: '/match',
+        destination: '/mentors',
+        permanent: false,
+      },
+      {
+        source: '/mock-interviews/practice',
+        destination: '/ai-mentor',
+        permanent: false,
+      },
+      {
+        source: '/mock-interviews',
+        destination: '/mentors',
+        permanent: false,
+      },
+      {
+        source: '/programs',
+        destination: '/how-it-works',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
+
 

@@ -1,0 +1,71 @@
+{
+  "evaluated_at": "2026-11-18T09:54:46Z",
+  "adapter": "training/adapters/mentormaze-2b-core-sft-v2",
+  "device": "mps",
+  "generations": {
+    "domain-1-dsa": {
+      "domain": "DSA",
+      "prompt": "How should I find the longest palindromic substring in O(N^2) time and O(1) space?",
+      "output": "You are Dr. Aarav Mehta, Principal AI Mentor at MentorMaze by AI Tathastu. Guide with precise Socratic rigor, clear structure, and zero hallucinations.\n\n**Question:** How should I find the longest palindromic substring in O(N^2) time and O(1) space?\n\n**Step 1: Clarify the Problem**\n- Input: A string `s` of length `N`.\n- Output: The longest palindromic substring (LPS) and its length.\n- Constraints: Time complexity O(N^2), space complexity O(1).\n\n**Step 2: Define Palindrome**",
+      "tokens_generated": 140,
+      "latency_sec": 7.641,
+      "tokens_per_sec": 18.3
+    },
+    "domain-2-conceptual": {
+      "domain": "Conceptual Teaching",
+      "prompt": "Explain the CAP theorem from first principles and why CA systems cannot exist over partitions.",
+      "output": "Excellent. Let us begin with the first principle.\n\n**Principle 1: The CAP Theorem is a Constraint on Consistency, Availability, and Partition Tolerance.**\n\nTo understand this, we must first define the three core properties of a distributed system:\n\n1.  **Consistency (C):** Every read receives the most recent write or an error. All nodes see the same data at the same time.\n2.  **Availability (A):** Every request receives a response, without guarantee that it contains the most recent version of the data.\n3.  **Partition Tolerance (P):** The system continues to operate despite arbitrary delays or failures in communication between its nodes.",
+      "tokens_generated": 140,
+      "latency_sec": 7.032,
+      "tokens_per_sec": 19.9
+    },
+    "domain-3-code-review": {
+      "domain": "Code Review",
+      "prompt": "Review this Python snippet for edge cases and time complexity: def merge_intervals(intervals): intervals.sort(); res = [intervals[0]]; for i in intervals[1:]: if i[0] <= res[-1][1]: res[-1][1] = max(res[-1][1], i[1]) else: res.append(i); return res",
+      "output": "Let's analyze this Python snippet for edge cases and time complexity.\n\n## Code Review\n\n```python\ndef merge_intervals(intervals):\n    intervals.sort()\n    res = [intervals[0]]\n    for i in intervals[1:]:\n        if i[0] <= res[-1][1]:\n            res[-1][1] = max(res[-1][1], i[1])\n        else:\n            res.append(i)\n    return res\n```\n\n## Edge Cases Analysis\n\n### 1. Empty Input\n- **Issue**: `intervals.sort()` will raise `TypeError: 'list' object is not sortable`\n- **",
+      "tokens_generated": 140,
+      "latency_sec": 7.02,
+      "tokens_per_sec": 19.9
+    },
+    "domain-4-resume": {
+      "domain": "Resume Improvement",
+      "prompt": "Rewrite this resume bullet using the Google XYZ formula: 'Helped reduce database query latency by adding indexing and caching.'",
+      "output": "**Google XYZ Formula:** Accomplished [specific task] by [action taken], resulting in [quantifiable outcome].\n\n**Rewritten Bullet:**\n*   **Reduced database query latency by 40%** by implementing a composite index and optimizing caching strategy for high-traffic user search endpoints.",
+      "tokens_generated": 64,
+      "latency_sec": 3.373,
+      "tokens_per_sec": 19.0
+    },
+    "domain-5-behavioral": {
+      "domain": "Behavioral Interview",
+      "prompt": "Tell me about a time you had a technical disagreement with a senior engineer and how you resolved it.",
+      "output": "Excellent question. This is a classic scenario where technical disagreement is not just about code, but about *how* we think about the problem. Let me walk you through a specific instance from my time at MentorMaze.\n\n**The Context:**\nI was a Senior AI Engineer at MentorMaze, working on a project to optimize a recommendation engine for a fintech startup. The core task was to build a model that predicted user churn with high accuracy. The team had a clear, well-documented baseline model, and the project was on track.\n\n**The Disagreement:**\nA senior engineer, Alex, was leading the data engineering team. He proposed a radical new approach: instead",
+      "tokens_generated": 140,
+      "latency_sec": 6.957,
+      "tokens_per_sec": 20.1
+    },
+    "domain-6-system-design": {
+      "domain": "System Design",
+      "prompt": "How would you design an idempotent payment processing pipeline using Kafka and PostgreSQL?",
+      "output": "Excellent question. Designing an idempotent payment processing pipeline using Kafka and PostgreSQL is a classic pattern for building reliable, fault-tolerant systems. The core challenge is ensuring that duplicate transactions are not processed multiple times, which is critical for financial integrity.\n\nHere is a structured, step-by-step design.\n\n### **1. Core Principles & Assumptions**\n\n*   **Idempotency:** The same transaction (e.g., `txn_id=123`) must result in the same final state (e.g., `amount=100`, `status=completed`) regardless of how many times it is processed.\n*   **Idempotency Key:**",
+      "tokens_generated": 140,
+      "latency_sec": 6.952,
+      "tokens_per_sec": 20.1
+    },
+    "domain-7-hindi": {
+      "domain": "Hindi",
+      "prompt": "Dynamic Programming kya hai aur iska use kab karna chahiye?",
+      "output": "**Dynamic Programming (DP)**\n\n**Dynamic Programming (DP)** ek algorithmic paradigm hai jo problems ko break karne ke liye divide-and-conquer strategy use karta hai, jismein **subproblems ki solutions ko repeat na karein**. Iska core idea yeh hai ki agar ek problem ko solve karne ke liye kuch smaller subproblems ki solutions ki zaroorat ho, toh ye solutions ko store karke reuse karein.\n\n**Key Characteristics:**\n1. **Optimal Substructure:** Problem ka solution sabse optimal subproblems ki combination hai.\n2. **Overlapping Subproblems:** Same subproblems ko multiple times solve kiya j",
+      "tokens_generated": 140,
+      "latency_sec": 6.92,
+      "tokens_per_sec": 20.2
+    },
+    "domain-8-hinglish": {
+      "domain": "Hinglish",
+      "prompt": "Call stack overflow error kyu hota hai recursion me? Ek simple analogy ke sath explain karo.",
+      "output": "**Dr. Aarav Mehta**  \n*Principal AI Mentor, MentorMaze*\n\n---\n\n**Socratic Question:**  \n\"Imagine you're climbing a staircase where each step is exactly one foot high. You start at the ground floor (step 0) and want to reach the 10th floor. If you take one step at a time, you'll reach the 10th floor in 10 steps. But what if you decide to take two steps at a time? Then you'll reach the 10th floor in 5 steps. If you take three steps at a time, it takes 3 steps. If you take four steps at a",
+      "tokens_generated": 140,
+      "latency_sec": 6.93,
+      "tokens_per_sec": 20.2
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "curation_run_date": "2026-11-18T10:20:00Z",
+  "target_model": "MentorMaze-2B",
+  "curator": "Principal AI Architecture & Dataset Intelligence Unit",
+  "source_datasets": [
+    {
+      "name": "MentorMaze Socratic Pedagogy Corpus",
+      "publisher": "AI Tathastu Pedagogical Research Board",
+      "license": "Proprietary Commercial",
+      "commercial_permission": true,
+      "input_file": "training/datasets/raw/mentormaze_socratic_pedagogy.jsonl",
+      "action": "De-biased uniform Socratic affirmations; normalized turns."
+    },
+    {
+      "name": "m-a-p/CodeFeedback-Filtered-Instruction",
+      "publisher": "Multimodal Art Projection (M-A-P)",
+      "license": "Apache 2.0",
+      "commercial_permission": true,
+      "input_file": "training/datasets/raw/codefeedback_technical.jsonl",
+      "action": "Retained technical debugging & code review pairs; verified unit cases."
+    },
+    {
+      "name": "MentorMaze Curated Indian Tech Job Descriptions",
+      "publisher": "MentorMaze Career Intelligence Unit",
+      "license": "Proprietary Curated OER / CC-BY 4.0",
+      "commercial_permission": true,
+      "input_file": "training/datasets/raw/naukri_jds.jsonl",
+      "action": "Diversified career roadmap templates; stripped recruiter PII."
+    },
+    {
+      "name": "MentorMaze STAR Behavioral Interview Corpus",
+      "publisher": "MentorMaze Technical Interview Board",
+      "license": "Proprietary Commercial",
+      "commercial_permission": true,
+      "input_file": "training/datasets/raw/star_behavioral_coaching.jsonl",
+      "action": "Varied behavioral feedback headers and evaluation styles."
+    },
+    {
+      "name": "Progression.fyi Engineering Competency Frameworks",
+      "publisher": "Open Engineering Ladder Initiative (Monzo / Deliveroo)",
+      "license": "CC-BY-SA 4.0",
+      "commercial_permission": true,
+      "input_file": "training/datasets/raw/progression_leveling.jsonl",
+      "action": "De-biased leveling headers across Junior through Principal tiers."
+    },
+    {
+      "name": "MentorMaze Original Gold Benchmarks & Tutoring",
+      "publisher": "AI Tathastu Algorithm Research",
+      "license": "Proprietary Commercial",
+      "commercial_permission": true,
+      "input_file": "IN_MEMORY_SYNTHESIZED",
+      "action": "Injected multi-turn Hindi/Hinglish and zero-fabrication resume modules."
+    }
+  ]
+}

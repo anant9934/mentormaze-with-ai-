@@ -1,0 +1,87 @@
+{
+  "audit_timestamp": "2026-11-18T10:20:00Z",
+  "compliance_verdict": "APPROVED FOR COMMERCIAL WEIGHT TRAINING",
+  "licensing_policy": "Strict zero-tolerance policy against CC-BY-NC, unverified PII, and non-consented user chats.",
+  "audited_sources": [
+    {
+      "dataset_name": "m-a-p/CodeFeedback-Filtered-Instruction",
+      "source_type": "open_source_curated",
+      "declared_license": "Apache 2.0",
+      "commercial_use_permitted": true,
+      "attribution_required": true,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 2953
+    },
+    {
+      "dataset_name": "MentorMaze Socratic Pedagogy Corpus",
+      "source_type": "in_house_proprietary",
+      "declared_license": "Proprietary Commercial",
+      "commercial_use_permitted": true,
+      "attribution_required": false,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 1700
+    },
+    {
+      "dataset_name": "MentorMaze Curated Tech Job Descriptions",
+      "source_type": "curated_oer",
+      "declared_license": "CC-BY 4.0 / Open Data",
+      "commercial_use_permitted": true,
+      "attribution_required": true,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 2125
+    },
+    {
+      "dataset_name": "MentorMaze STAR Behavioral Interview Corpus",
+      "source_type": "in_house_proprietary",
+      "declared_license": "Proprietary Commercial",
+      "commercial_use_permitted": true,
+      "attribution_required": false,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 850
+    },
+    {
+      "dataset_name": "Progression.fyi Engineering Ladders",
+      "source_type": "open_source_curated",
+      "declared_license": "CC-BY-SA 4.0",
+      "commercial_use_permitted": true,
+      "attribution_required": true,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 850
+    },
+    {
+      "dataset_name": "MentorMaze Gold Tutoring Benchmarks",
+      "source_type": "in_house_proprietary",
+      "declared_license": "Proprietary Commercial",
+      "commercial_use_permitted": true,
+      "attribution_required": false,
+      "pii_scrubbed": true,
+      "status": "APPROVED",
+      "retained_records": 5
+    }
+  ],
+  "quarantined_or_rejected_sources": [
+    {
+      "dataset_name": "Kaggle Resume Dataset (snehaanbhawal)",
+      "license": "UNKNOWN / UNVERIFIED",
+      "reason": "Contains raw student contact information and lacks an explicit open-source license grant.",
+      "status": "REJECTED"
+    },
+    {
+      "dataset_name": "facebook/empathetic_dialogues",
+      "license": "CC-BY-NC 4.0",
+      "reason": "Non-commercial license clause prohibits model weight commercialization.",
+      "status": "QUARANTINED"
+    },
+    {
+      "dataset_name": "kamranahmedse/developer-roadmap",
+      "license": "CC-BY-NC-SA 4.0",
+      "reason": "Non-commercial restriction; restricted to runtime RAG search, excluded from training weights.",
+      "status": "RESTRICTED_RAG_ONLY"
+    }
+  ]
+}

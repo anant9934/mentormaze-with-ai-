@@ -1,0 +1,134 @@
+{
+  "evaluated_at": "2026-11-18T09:56:18Z",
+  "device": "mps",
+  "candidates": {
+    "A_base_qwen3_5_2b": {
+      "test-1-dsa": {
+        "prompt": "How can I solve the 3Sum problem in O(N^2) time and O(1) auxiliary space without duplicate triplets?",
+        "domain": "DSA",
+        "output": "Excellent question. This is a classic problem that tests both algorithmic thinking and careful implementation. Let's solve it step-by-step, focusing on the core logic and the pitfalls.\n\n### The Problem\nGiven an array `nums` of `n` integers, find all unique triplets in the array which sum to zero.\n\n**Constraints:**\n*   Time Complexity: O(N\u00b2)\n*   Space Complexity: O(1) auxiliary (excluding the output array)\n*   No duplicate triplets.\n\n---\n\n### Step-by-Step Solution\n\n#### 1. Sorting the Array\nThe first and most crucial step is to sort the array. Sorting allows us to use two",
+        "latency_sec": 6.83
+      },
+      "test-2-conceptual": {
+        "prompt": "Explain how epoll differs from select and poll in Linux kernel I/O multiplexing.",
+        "domain": "Conceptual",
+        "output": "Excellent question. This gets to the heart of Linux's I/O multiplexing design philosophy. Let's break it down.\n\n**Short Answer:**\n*   **Select/Poll:** Simple, fast, but **blocking**. They wait for *all* events to occur before returning.\n*   **Epoll:** Efficient, non-blocking, and **event-driven**. It uses a data structure to track *which* file descriptors are interested in *which* events, allowing it to wake up only when relevant events occur.\n\n---\n\n### 1. The Core Philosophy: Blocking vs. Event-Driven\n\n*   **Select/Poll:** They are **blocking** I/O multiplex",
+        "latency_sec": 6.936
+      },
+      "test-3-code-review": {
+        "prompt": "Review this function: def get_user_data(user_id): query = f'SELECT * FROM users WHERE id = {user_id}'; return db.execute(query)",
+        "domain": "Code Review",
+        "output": "**Review of `get_user_data(user_id)`**\n\nThis function attempts to retrieve user data from a database using a SQL query. However, it has several critical issues that would lead to runtime errors or security vulnerabilities in a real-world application.\n\n**Issues:**\n\n1. **SQL Injection Vulnerability**: The query is constructed using string formatting (`f'SELECT * FROM users WHERE id = {user_id}'`). This is extremely dangerous because:\n   - User input is directly concatenated into the SQL query\n   - An attacker could inject malicious SQL commands\n   - Example: If `user_id` is `'1' OR '1'='1'--`, the query becomes `",
+        "latency_sec": 7.294
+      },
+      "test-4-resume": {
+        "prompt": "Rewrite this resume bullet: 'Managed a team that migrated microservices to Kubernetes to improve system uptime.'",
+        "domain": "Resume",
+        "output": "**Rewritten Bullet:**\n\n*   Orchestrated the migration of a distributed microservices architecture to Kubernetes, reducing system downtime by 40% and improving overall service reliability through automated deployment pipelines and enhanced observability.",
+        "latency_sec": 2.614
+      },
+      "test-5-hinglish": {
+        "prompt": "Binary search algorithm kab use karte hain aur sorted array hona kyu zaroori hai? Socratic hint do.",
+        "domain": "Hinglish Socratic",
+        "output": "**Socratic Hint:**  \nAap soch rahe hain ki binary search kaise kaam karta hai, aur agar array nahi sorted hai toh kya hoga?\n\n**Answer:**  \nBinary search algorithm ko **sorted array** par use karna zaroori hai kyunki yeh algorithm **compare-based** hai. Iska core idea hai ki hum ek element ko compare karke data structure ko divide aur conquer karte hain. Agar array nahi sorted hai, toh humein ek element ko compare karne ke baad uska position determine karna padega, jo binary search ka fundamental step nahi hai.\n\n**Technical Explanation:**",
+        "latency_sec": 6.555
+      }
+    },
+    "B_mentormaze_2b_sft_v1": {
+      "test-1-dsa": {
+        "prompt": "How can I solve the 3Sum problem in O(N^2) time and O(1) auxiliary space without duplicate triplets?",
+        "domain": "DSA",
+        "output": "To solve the 3Sum problem in O(N^2) time and O(1) auxiliary space without duplicate triplets, follow these steps:\n\n1. **Sort the array**: Start by sorting the input array. This step is crucial for efficiently handling duplicates and ensuring the algorithm runs in O(N log N) time.\n\n2. **Iterate through the array**: Use a loop to iterate through the array. For each element at index `i`, treat it as the first element of the triplet.\n\n3. **Skip duplicates for the first element**: Before moving to the next iteration, skip over any duplicate elements at index `i`. This ensures that you don't generate duplicate triple",
+        "latency_sec": 6.952
+      },
+      "test-2-conceptual": {
+        "prompt": "Explain how epoll differs from select and poll in Linux kernel I/O multiplexing.",
+        "domain": "Conceptual",
+        "output": "### \ud83d\udcda Socratic Breakdown: Epoll vs. Select vs. Poll in Linux I/O Multiplexing\n\nLet's dissect the differences between these three I/O multiplexing mechanisms in the Linux kernel. We'll break down each one step by step to understand their unique characteristics and use cases.\n\n#### 1. **Select**\n- **How it works**: Select checks multiple file descriptors for readiness in a single call.\n- **Time complexity**: O(n) where n is the number of file descriptors.\n- **Use case**: Simple scenarios with a small number of file descriptors.\n\n#### 2. **Poll**\n- **How it works**: Poll checks",
+        "latency_sec": 6.988
+      },
+      "test-3-code-review": {
+        "prompt": "Review this function: def get_user_data(user_id): query = f'SELECT * FROM users WHERE id = {user_id}'; return db.execute(query)",
+        "domain": "Code Review",
+        "output": "Here's a breakdown of the function `get_user_data(user_id)`:\n\n- **Purpose**: This function retrieves data for a specific user from a database.\n- **Input**: `user_id` is the identifier of the user for whom data is being retrieved.\n- **SQL Query**: The function constructs an SQL query using string formatting to select all columns (`*`) from the `users` table where the `id` column matches the provided `user_id`.\n- **Return Value**: The function returns the result of executing the SQL query using the `db.execute` method.\n\nConsider edge cases such as invalid `user_id` values or database errors.",
+        "latency_sec": 6.894
+      },
+      "test-4-resume": {
+        "prompt": "Rewrite this resume bullet: 'Managed a team that migrated microservices to Kubernetes to improve system uptime.'",
+        "domain": "Resume",
+        "output": "You've got a great foundation here. Let's break down exactly what you're saying and how to make it even stronger.\n\n*   **What did you actually do?** You didn't just \"manage\" a team; you led a specific, measurable action.\n*   **What was the result?** The key is to quantify the impact.\n\nHere are a few ways to rewrite it, depending on what you want to emphasize:\n\n*   **Focus on the technical outcome:** \"Led the migration of 5 microservices to Kubernetes, resulting in a 20% increase in system uptime.\"\n*   **Focus on the team impact:** \"Directed a team of 3 engineers",
+        "latency_sec": 6.998
+      },
+      "test-5-hinglish": {
+        "prompt": "Binary search algorithm kab use karte hain aur sorted array hona kyu zaroori hai? Socratic hint do.",
+        "domain": "Hinglish Socratic",
+        "output": "Binary search algorithm ko sorted array par use karna zaroori hai kyunki isme elements ko exact order mein arrange kiya hai. Agar array unsorted hai toh binary search ka core logic break ho jayega.\n\nSocratic hint: Imagine you're searching for a specific book in a library. If books are randomly placed, how would you efficiently narrow down the search area?",
+        "latency_sec": 4.233
+      }
+    },
+    "C_mentormaze_2b_core_sft_v2": {
+      "test-1-dsa": {
+        "prompt": "How can I solve the 3Sum problem in O(N^2) time and O(1) auxiliary space without duplicate triplets?",
+        "domain": "DSA",
+        "output": "Excellent question. This is a classic problem that tests both algorithmic thinking and attention to detail. Let's solve it step-by-step, focusing on the core concepts.\n\n### The Problem\nGiven an array `nums` of `n` integers, find all unique triplets in the array which gives the sum of zero.\n\n**Constraints:**\n1.  Time Complexity: O(N\u00b2)\n2.  Auxiliary Space: O(1) (excluding the output array)\n3.  No duplicate triplets.\n\n---\n\n### Step-by-Step Solution\n\n#### Step 1: Sort the Array\nThe first and most crucial step is to sort the array. Sorting allows us",
+        "latency_sec": 7.391
+      },
+      "test-2-conceptual": {
+        "prompt": "Explain how epoll differs from select and poll in Linux kernel I/O multiplexing.",
+        "domain": "Conceptual",
+        "output": "Excellent question. This gets to the heart of Linux's I/O multiplexing design philosophy. Let's break down the differences between `select`, `poll`, and `epoll` through the lens of efficiency, scalability, and design intent.\n\n### The Core Problem: I/O Multiplexing\nAll three mechanisms allow a single process to monitor multiple file descriptors (e.g., sockets, pipes, devices) and be notified when *any* of them become readable, writable, or both. The fundamental challenge is: **How do we efficiently manage this state without blocking the process?**\n\n---\n\n### 1. `select()` - The Simple, But Inefficient, Solution\n**Design",
+        "latency_sec": 7.336
+      },
+      "test-3-code-review": {
+        "prompt": "Review this function: def get_user_data(user_id): query = f'SELECT * FROM users WHERE id = {user_id}'; return db.execute(query)",
+        "domain": "Code Review",
+        "output": "**Analysis of the function `get_user_data(user_id)`**\n\n**1. Function Purpose:**\nThis function retrieves user data from a database based on a user ID. It's a basic query function that fetches all columns (`*`) for a single user.\n\n**2. Technical Issues:**\n\n**a. SQL Injection Vulnerability:**\n- The function uses string formatting (`f'SELECT * FROM users WHERE id = {user_id}'`) to construct the SQL query.\n- This is a classic SQL injection vulnerability. If `user_id` contains malicious input (e.g., `' OR 1=1--`), the query could be manipulated to execute arbitrary SQL commands",
+        "latency_sec": 7.519
+      },
+      "test-4-resume": {
+        "prompt": "Rewrite this resume bullet: 'Managed a team that migrated microservices to Kubernetes to improve system uptime.'",
+        "domain": "Resume",
+        "output": "**Original:** Managed a team that migrated microservices to Kubernetes to improve system uptime.\n\n**Rewritten:** Orchestrated the migration of a microservices architecture to Kubernetes, resulting in a 20% increase in system availability and reduced downtime.",
+        "latency_sec": 3.092
+      },
+      "test-5-hinglish": {
+        "prompt": "Binary search algorithm kab use karte hain aur sorted array hona kyu zaroori hai? Socratic hint do.",
+        "domain": "Hinglish Socratic",
+        "output": "**Socratic hint:**  \n\"Imagine you're searching for a specific book in a library. If the books are arranged alphabetically, how would you narrow down the search space? What happens if the books are in a random order?\"\n\n---\n\n**Answer:**\n\n**Binary search** (binary search algorithm) is used to efficiently find an element in a **sorted array** by repeatedly dividing the search interval in half. It works by comparing the target value with the middle element of the array:\n\n1. If the target matches the middle element, the search is successful.\n2. If the target is less than the middle element, the search continues in the left half of the array.",
+        "latency_sec": 7.45
+      }
+    },
+    "D_mentormaze_2b_core_sft_v2_plus_rag": {
+      "test-1-dsa": {
+        "prompt": "How can I solve the 3Sum problem in O(N^2) time and O(1) auxiliary space without duplicate triplets?",
+        "domain": "DSA",
+        "output": "Excellent question. Let's solve the 3Sum problem in O(N\u00b2) time and O(1) auxiliary space.\n\nFirst, let's recall the standard 3Sum problem: Given an array `nums` of `n` integers, return all unique triplets `[nums[i], nums[j], nums[k]]` such that `i != j != k` and `nums[i] + nums[j] + nums[k] == 0`.\n\nThe standard solution uses a two-pointer technique after sorting the array, resulting in O(N\u00b2) time and O(1) auxiliary space (excluding the output array). However, it has a flaw: it can produce duplicate triplets.",
+        "latency_sec": 7.495
+      },
+      "test-2-conceptual": {
+        "prompt": "Explain how epoll differs from select and poll in Linux kernel I/O multiplexing.",
+        "domain": "Conceptual",
+        "output": "Excellent question. Let's dissect this with the precision of a Principal AI Mentor.\n\nFirst, recall the **3Sum optimal invariant**: we must sort the array first in O(N log N) time, then fix a pivot and perform a two-pointer scan in O(N). This is the foundation for efficient sorting.\n\nNow, let's address your question.\n\n**Epoll** is the kernel's primary mechanism for I/O multiplexing in Linux, designed for high-performance systems. Its key innovation is the **eventpoll** data structure, which is a **red-black tree** (O(log N) operations for insert/delete) that maps file descriptors to events. When an event occurs,",
+        "latency_sec": 7.133
+      },
+      "test-3-code-review": {
+        "prompt": "Review this function: def get_user_data(user_id): query = f'SELECT * FROM users WHERE id = {user_id}'; return db.execute(query)",
+        "domain": "Code Review",
+        "output": "Let's dissect this function step by step.\n\n**1. The Problem:**\nWe need to retrieve user data from a database based on a user ID. The current implementation uses string interpolation in a raw SQL query.\n\n**2. The Vulnerability:**\nThe function `get_user_data` constructs a SQL query using string interpolation: `f'SELECT * FROM users WHERE id = {user_id}'`. This is a classic SQL injection vulnerability. If `user_id` contains malicious input (e.g., `' OR 1=1--`), the query becomes:\n```sql\nSELECT * FROM users WHERE id = ' OR 1=1--'\n```\nThis",
+        "latency_sec": 7.145
+      },
+      "test-4-resume": {
+        "prompt": "Rewrite this resume bullet: 'Managed a team that migrated microservices to Kubernetes to improve system uptime.'",
+        "domain": "Resume",
+        "output": "**Student Question:** Rewrite this resume bullet: 'Managed a team that migrated microservices to Kubernetes to improve system uptime.'\n\n**Dr. Aarav Mehta's Response:**\n\nLet's dissect this bullet point using the principles of Socratic depth and technical rigor.\n\n**1. Deconstruct the Statement:**\nThe original bullet point is a statement of action, but it lacks specificity and measurable outcomes. It tells us *what* was done (managed a team, migrated microservices to Kubernetes) but not *how* or *why*.\n\n**2. Apply the 3Sum Optimal Invariant:**\nThe core of the migration is the transition from a monolithic or traditional deployment",
+        "latency_sec": 7.147
+      },
+      "test-5-hinglish": {
+        "prompt": "Binary search algorithm kab use karte hain aur sorted array hona kyu zaroori hai? Socratic hint do.",
+        "domain": "Hinglish Socratic",
+        "output": "**Socratic Inquiry:**\n\n1. **What is the fundamental property of binary search that makes it so efficient?**  \n   *Hint: Think about how the algorithm reduces the search space at each step.*\n\n2. **If the array were unsorted, what would be the worst-case time complexity of binary search?**  \n   *Hint: Consider how the algorithm would behave when the pivot is chosen poorly or when the array is already sorted.*\n\n3. **What is the role of the pivot in binary search?**  \n   *Hint: Think about how the pivot divides the array into two parts.*\n\n4. **Why is sorting the array necessary for binary search to work optimally?**",
+        "latency_sec": 7.149
+      }
+    }
+  }
+}

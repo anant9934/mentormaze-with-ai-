@@ -1,0 +1,15 @@
+{
+  "primary_domains": {
+    "behavioral_interviews": 850,
+    "career_guidance": 2975,
+    "coding_and_debugging": 2953,
+    "socratic_tutoring": 1700,
+    "null": 5
+  },
+  "languages": {
+    "english": 8480,
+    "hinglish": 2,
+    "hindi": 1
+  },
+  "total_approved_records": 8483
+}

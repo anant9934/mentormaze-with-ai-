@@ -1,0 +1,619 @@
+{
+  "audit_timestamp": "2026-11-18T10:15:00Z",
+  "train": {
+    "file": "training/datasets/manifests/train.jsonl",
+    "total_records": 8488,
+    "unique_records": 8488,
+    "exact_duplicates": 0,
+    "prompt_duplicates": 0,
+    "assistant_duplicates": 1627,
+    "near_duplicate_pairs_sampled": 230,
+    "user_length": {
+      "min": 49,
+      "mean": 464.7,
+      "median": 327.0,
+      "max": 4134,
+      "p95": 1366.3
+    },
+    "assistant_length": {
+      "min": 51,
+      "mean": 916.1,
+      "median": 502.0,
+      "max": 7224,
+      "p95": 2612.3
+    },
+    "total_length": {
+      "min": 396,
+      "mean": 1615.9,
+      "median": 1247.0,
+      "max": 8445
+    },
+    "turn_counts": {
+      "5": 1700,
+      "3": 6788
+    },
+    "languages": {
+      "english": 8487,
+      "hindi": 1
+    },
+    "domains": {
+      "socratic": 1700,
+      "technical": 2963,
+      "career": 2125,
+      "leveling": 850,
+      "behavioral": 850
+    },
+    "subdomains": {
+      "active_tutoring": 1700,
+      "code_review_and_dsa": 2963,
+      "job_description_analysis": 1118,
+      "engineering_progression": 850,
+      "esco_skill_taxonomy": 1007,
+      "star_interview_coaching": 850
+    },
+    "code_content_samples": 2425,
+    "code_content_pct": 28.57,
+    "math_content_samples": 1180,
+    "math_content_pct": 13.9,
+    "multi_turn_samples": 1700,
+    "single_turn_samples": 6788,
+    "empty_or_malformed": 0,
+    "truncated_samples": 319,
+    "top_25_opening_phrases": [
+      [
+        "### 🎙️ STAR Interview Coach Feedback - **Situation & Task**:",
+        850
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Database Indexing (Database",
+        206
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Container Orchestration (DevOps",
+        205
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Asynchronous I/O (Backend",
+        202
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Distributed Caching (Cloud",
+        199
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: High-Dimensional Search (AI",
+        195
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Staff Engineer **Core Responsibilities &",
+        172
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-1 (Junior) **Core Responsibilities &",
+        171
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Senior SDE **Core Responsibilities &",
+        171
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-2 (Mid-Level) **Core Responsibilities &",
+        170
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Principal Engineer **Core Responsibilities &",
+        166
+      ],
+      [
+        "Let's break down Deadlock four Coffman conditions methodically. Consider the",
+        39
+      ],
+      [
+        "Spot on! Exactly right. In Deadlock four Coffman conditions, explicitly",
+        39
+      ],
+      [
+        "Let's break down Floyd-Warshall all-pairs shortest paths methodically. Consider the",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In Floyd-Warshall all-pairs shortest paths, explicitly",
+        38
+      ],
+      [
+        "Let's break down Cross-Site Scripting CSP header defenses methodically. Consider",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In Cross-Site Scripting CSP header defenses,",
+        38
+      ],
+      [
+        "Let's break down Dijkstra failure on negative edge weights methodically.",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In Dijkstra failure on negative edge",
+        38
+      ],
+      [
+        "Let's break down JavaScript closure heap retention methodically. Consider the",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In JavaScript closure heap retention, explicitly",
+        38
+      ],
+      [
+        "Let's break down LRU Cache O(1) eviction methodically. Consider the",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In LRU Cache O(1) eviction, explicitly",
+        38
+      ],
+      [
+        "Let's break down TypeScript declaration merging vs union types methodically.",
+        38
+      ],
+      [
+        "Spot on! Exactly right. In TypeScript declaration merging vs union",
+        38
+      ]
+    ],
+    "top_10_first_words": [
+      [
+        "###",
+        3825
+      ],
+      [
+        "Let's",
+        1701
+      ],
+      [
+        "Spot",
+        1700
+      ],
+      [
+        "Here",
+        749
+      ],
+      [
+        "To",
+        571
+      ],
+      [
+        "Here's",
+        524
+      ],
+      [
+        "SELECT",
+        166
+      ],
+      [
+        "def",
+        153
+      ],
+      [
+        "import",
+        121
+      ],
+      [
+        "The",
+        90
+      ]
+    ]
+  },
+  "validation": {
+    "file": "training/datasets/manifests/valid.jsonl",
+    "total_records": 998,
+    "unique_records": 998,
+    "exact_duplicates": 0,
+    "prompt_duplicates": 0,
+    "assistant_duplicates": 132,
+    "near_duplicate_pairs_sampled": 172,
+    "user_length": {
+      "min": 91,
+      "mean": 458.7,
+      "median": 327.0,
+      "max": 3782,
+      "p95": 1386.4
+    },
+    "assistant_length": {
+      "min": 55,
+      "mean": 896.4,
+      "median": 501.0,
+      "max": 6360,
+      "p95": 2641.4
+    },
+    "total_length": {
+      "min": 531,
+      "mean": 1588.5,
+      "median": 1246.0,
+      "max": 8333
+    },
+    "turn_counts": {
+      "3": 798,
+      "5": 200
+    },
+    "languages": {
+      "english": 998
+    },
+    "domains": {
+      "technical": 348,
+      "socratic": 200,
+      "behavioral": 100,
+      "leveling": 100,
+      "career": 250
+    },
+    "subdomains": {
+      "code_review_and_dsa": 348,
+      "active_tutoring": 200,
+      "star_interview_coaching": 100,
+      "engineering_progression": 100,
+      "esco_skill_taxonomy": 132,
+      "job_description_analysis": 118
+    },
+    "code_content_samples": 283,
+    "code_content_pct": 28.36,
+    "math_content_samples": 133,
+    "math_content_pct": 13.33,
+    "multi_turn_samples": 200,
+    "single_turn_samples": 798,
+    "empty_or_malformed": 0,
+    "truncated_samples": 35,
+    "top_25_opening_phrases": [
+      [
+        "### 🎙️ STAR Interview Coach Feedback - **Situation & Task**:",
+        100
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: High-Dimensional Search (AI",
+        34
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Distributed Caching (Cloud",
+        30
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Container Orchestration (DevOps",
+        26
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Asynchronous I/O (Backend",
+        25
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Staff Engineer **Core Responsibilities &",
+        22
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Principal Engineer **Core Responsibilities &",
+        20
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Senior SDE **Core Responsibilities &",
+        20
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-2 (Mid-Level) **Core Responsibilities &",
+        20
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-1 (Junior) **Core Responsibilities &",
+        18
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Database Indexing (Database",
+        17
+      ],
+      [
+        "Let's break down Disjoint Set Union path compression methodically. Consider",
+        8
+      ],
+      [
+        "Spot on! Exactly right. In Disjoint Set Union path compression,",
+        8
+      ],
+      [
+        "Let's break down Min-heap array indexing invariants methodically. Consider the",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Min-heap array indexing invariants, explicitly",
+        7
+      ],
+      [
+        "Let's break down Two-Phase Commit distributed consensus methodically. Consider the",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Two-Phase Commit distributed consensus, explicitly",
+        7
+      ],
+      [
+        "Let's break down Rate limiting token bucket vs leaky bucket",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Rate limiting token bucket vs",
+        7
+      ],
+      [
+        "Let's break down Redis cluster slot hashing and resharding methodically.",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Redis cluster slot hashing and",
+        7
+      ],
+      [
+        "Let's break down Consistent hashing and virtual nodes methodically. Consider",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Consistent hashing and virtual nodes,",
+        7
+      ],
+      [
+        "Let's break down Array.includes quadratic nesting in loops methodically. Consider",
+        7
+      ],
+      [
+        "Spot on! Exactly right. In Array.includes quadratic nesting in loops,",
+        7
+      ]
+    ],
+    "top_10_first_words": [
+      [
+        "###",
+        450
+      ],
+      [
+        "Let's",
+        200
+      ],
+      [
+        "Spot",
+        200
+      ],
+      [
+        "Here",
+        97
+      ],
+      [
+        "Here's",
+        64
+      ],
+      [
+        "To",
+        61
+      ],
+      [
+        "SELECT",
+        19
+      ],
+      [
+        "def",
+        15
+      ],
+      [
+        "The",
+        13
+      ],
+      [
+        "import",
+        12
+      ]
+    ]
+  },
+  "test": {
+    "file": "training/datasets/manifests/test.jsonl",
+    "total_records": 501,
+    "unique_records": 501,
+    "exact_duplicates": 0,
+    "prompt_duplicates": 0,
+    "assistant_duplicates": 57,
+    "near_duplicate_pairs_sampled": 67,
+    "user_length": {
+      "min": 83,
+      "mean": 473.9,
+      "median": 327.0,
+      "max": 4240,
+      "p95": 1282.0
+    },
+    "assistant_length": {
+      "min": 104,
+      "mean": 912.5,
+      "median": 502.0,
+      "max": 5358,
+      "p95": 2480.0
+    },
+    "total_length": {
+      "min": 603,
+      "mean": 1621.9,
+      "median": 1248.0,
+      "max": 7475
+    },
+    "turn_counts": {
+      "3": 401,
+      "5": 100
+    },
+    "languages": {
+      "english": 501
+    },
+    "domains": {
+      "technical": 176,
+      "socratic": 100,
+      "leveling": 50,
+      "behavioral": 50,
+      "career": 125
+    },
+    "subdomains": {
+      "code_review_and_dsa": 176,
+      "active_tutoring": 100,
+      "engineering_progression": 50,
+      "star_interview_coaching": 50,
+      "job_description_analysis": 67,
+      "esco_skill_taxonomy": 58
+    },
+    "code_content_samples": 145,
+    "code_content_pct": 28.94,
+    "math_content_samples": 76,
+    "math_content_pct": 15.17,
+    "multi_turn_samples": 100,
+    "single_turn_samples": 401,
+    "empty_or_malformed": 0,
+    "truncated_samples": 24,
+    "top_25_opening_phrases": [
+      [
+        "### 🎙️ STAR Interview Coach Feedback - **Situation & Task**:",
+        50
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Database Indexing (Database",
+        17
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Principal Engineer **Core Responsibilities &",
+        14
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Asynchronous I/O (Backend",
+        12
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Distributed Caching (Cloud",
+        11
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-1 (Junior) **Core Responsibilities &",
+        11
+      ],
+      [
+        "### 📈 Engineering Career Calibration: SDE-2 (Mid-Level) **Core Responsibilities &",
+        10
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: High-Dimensional Search (AI",
+        10
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Senior SDE **Core Responsibilities &",
+        9
+      ],
+      [
+        "### 🎯 ESCO & Industry Competency Standard: Container Orchestration (DevOps",
+        8
+      ],
+      [
+        "### 📈 Engineering Career Calibration: Staff Engineer **Core Responsibilities &",
+        6
+      ],
+      [
+        "Let's break down HNSW vector proximity graph methodically. Consider the",
+        6
+      ],
+      [
+        "Spot on! Exactly right. In HNSW vector proximity graph, explicitly",
+        6
+      ],
+      [
+        "Let's break down Distributed mutex for cache stampede methodically. Consider",
+        5
+      ],
+      [
+        "Spot on! Exactly right. In Distributed mutex for cache stampede,",
+        5
+      ],
+      [
+        "Let's break down Segment tree range minimum queries methodically. Consider",
+        5
+      ],
+      [
+        "Spot on! Exactly right. In Segment tree range minimum queries,",
+        5
+      ],
+      [
+        "Let's break down Bellman-Ford negative cycle relaxation methodically. Consider the",
+        4
+      ],
+      [
+        "Spot on! Exactly right. In Bellman-Ford negative cycle relaxation, explicitly",
+        4
+      ],
+      [
+        "Let's break down QuickSelect linear median selection methodically. Consider the",
+        4
+      ],
+      [
+        "Spot on! Exactly right. In QuickSelect linear median selection, explicitly",
+        4
+      ],
+      [
+        "Let's break down TCP flow control vs congestion control methodically.",
+        4
+      ],
+      [
+        "Spot on! Exactly right. In TCP flow control vs congestion",
+        4
+      ],
+      [
+        "Let's break down PyTorch autograd graph memory leak methodically. Consider",
+        4
+      ],
+      [
+        "Spot on! Exactly right. In PyTorch autograd graph memory leak,",
+        4
+      ]
+    ],
+    "top_10_first_words": [
+      [
+        "###",
+        225
+      ],
+      [
+        "Let's",
+        100
+      ],
+      [
+        "Spot",
+        100
+      ],
+      [
+        "Here's",
+        42
+      ],
+      [
+        "Here",
+        40
+      ],
+      [
+        "To",
+        33
+      ],
+      [
+        "SELECT",
+        12
+      ],
+      [
+        "def",
+        10
+      ],
+      [
+        "import",
+        5
+      ],
+      [
+        "<!DOCTYPE",
+        4
+      ]
+    ]
+  },
+  "leakage": {
+    "train_valid_prompt_overlap": 0,
+    "train_test_prompt_overlap": 0,
+    "valid_test_prompt_overlap": 0,
+    "zero_leakage_verified": true
+  }
+}

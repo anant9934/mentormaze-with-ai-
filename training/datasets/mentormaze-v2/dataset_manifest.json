@@ -1,0 +1,34 @@
+{
+  "dataset_name": "mentormaze-v2",
+  "version": "2.0.0-phase7",
+  "created_at": "2026-11-18T10:20:00Z",
+  "total_records": 8483,
+  "splits": {
+    "train": {
+      "file": "train.jsonl",
+      "count": 7211,
+      "sha256": "164c3dc69e82d19e3cfa4f4570669a6743872564c6e0bd155ab3cdefb979eff1"
+    },
+    "validation": {
+      "file": "validation.jsonl",
+      "count": 848,
+      "sha256": "f7bc8722be52b383c4be33b653ac0b63e7c0cc6aaea3a2e8aeedfd3e051a8e8b"
+    },
+    "test": {
+      "file": "test.jsonl",
+      "count": 424,
+      "sha256": "685cb487bacd8b3b732debe9e4ebe6ffa913a5ebd37a1d8be708e1f1382d623c"
+    },
+    "quarantine": {
+      "file": "quarantine.jsonl",
+      "count": 10,
+      "sha256": "7b9e49f388e899c9839d323075c6c1ac0a42dbedcd93c5657c54115070ac2bf4"
+    }
+  },
+  "checksums": {
+    "train.jsonl": "164c3dc69e82d19e3cfa4f4570669a6743872564c6e0bd155ab3cdefb979eff1",
+    "validation.jsonl": "f7bc8722be52b383c4be33b653ac0b63e7c0cc6aaea3a2e8aeedfd3e051a8e8b",
+    "test.jsonl": "685cb487bacd8b3b732debe9e4ebe6ffa913a5ebd37a1d8be708e1f1382d623c",
+    "quarantine.jsonl": "7b9e49f388e899c9839d323075c6c1ac0a42dbedcd93c5657c54115070ac2bf4"
+  }
+}
