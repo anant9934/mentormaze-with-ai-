@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 /**
  * MentorMaze Booking Cancellation API
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
@@ -13,16 +14,24 @@ import { BookingStateMachine } from "@/lib/db/booking-state-machine";
 import { PolicyEngine } from "@/lib/policies/policy-engine";
 import { paymentGateway } from "@/lib/payments/adapter";
 import { notificationService } from "@/lib/notifications/service";
+import { requireAuth, verifyBookingOwnership } from "@/lib/auth/server-auth";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 0. Enforce server-side authentication
+    const auth = await requireAuth(req);
+    if (auth.errorResponse) {
+      return auth.errorResponse;
+    }
+    const user = auth.user;
+
     await initializeDatabaseSchema();
     const bookingId = params.id;
     const body = await req.json().catch(() => ({}));
-    const { reason = "Student requested cancellation", actorId, actorRole = "student" } = body;
+    const { reason = "User requested cancellation" } = body;
 
     const db = getDb();
 
@@ -42,6 +51,23 @@ export async function POST(
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
     }
 
+    // 1.1 Enforce strict resource ownership (Student owner, assigned Mentor, or Admin)
+    const ownership = verifyBookingOwnership(
+      {
+        student_user_id: booking.student_user_id,
+        mentor_user_id: booking.mentor_user_id,
+        mentor_profile_id: booking.mentor_profile_id,
+      },
+      user
+    );
+
+    if (!ownership.authorized) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to cancel this booking." },
+        { status: 403 }
+      );
+    }
+
     if (booking.status === "cancelled") {
       return NextResponse.json({ success: true, message: "Booking already cancelled." });
     }
@@ -52,10 +78,10 @@ export async function POST(
       booking.policy_version_id
     );
 
-    // 3. Perform cancellation transition in state machine
+    // 3. Perform cancellation transition in state machine using verified server identity
     const cancelTransition = await BookingStateMachine.transition(bookingId, "cancelled", {
-      actorId,
-      actorRole,
+      actorId: user.id,
+      actorRole: (user.role === "super_admin" ? "admin" : user.role) as "student" | "mentor" | "admin",
       reason: `${reason} (${policyEval.reasonNote})`,
       metadata: policyEval,
     });

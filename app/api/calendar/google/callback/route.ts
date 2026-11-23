@@ -3,6 +3,8 @@ import { getDb, schema, initializeDatabaseSchema } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { encryptToken } from "@/lib/calendar/crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     await initializeDatabaseSchema();

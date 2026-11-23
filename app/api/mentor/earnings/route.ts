@@ -9,6 +9,8 @@ import { resolveMentorProfileId } from "@/lib/calendar/types";
 import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     await initializeDatabaseSchema();

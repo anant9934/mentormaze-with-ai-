@@ -160,68 +160,95 @@ export class AvailabilityService {
     const db = getDb();
     const now = new Date();
 
-    // 1. Conflict Check: Retrieve all future confirmed bookings
-    const futureBookings = await db
-      .select({
-        id: schema.bookings.id,
-        startTimeUtc: schema.bookings.startTimeUtc,
-        endTimeUtc: schema.bookings.endTimeUtc,
-        serviceType: schema.bookings.serviceType,
-      })
-      .from(schema.bookings)
-      .where(
-        and(
-          eq(schema.bookings.mentorProfileId, mentorProfileId),
-          sql`${schema.bookings.status} != 'cancelled'`,
-          sql`${schema.bookings.startTimeUtc} >= ${now}`
-        )
-      );
+    return await db.transaction(async (tx: any) => {
+      // 1. Database-level lock on mentor profile row to serialize availability mutations
+      await tx.execute(sql`
+        SELECT id FROM mentor_profiles WHERE id = ${mentorProfileId} FOR UPDATE;
+      `);
 
-    // Check if any booking falls on a newly deactivated day
-    const conflicts: any[] = [];
-    if (!input.forceOverrideConflicts && futureBookings.length > 0) {
-      for (const booking of futureBookings) {
-        const bookingDate = new Date(booking.startTimeUtc);
-        const dayOfWeek = bookingDate.getUTCDay(); // UTC comparison or local timezone
-        const ruleForDay = input.rules.find((r) => r.dayOfWeek === dayOfWeek);
+      // 2. Conflict Check: Retrieve all future confirmed bookings within transaction
+      const futureBookingsQuery: any = await tx.execute(sql`
+        SELECT id, start_time_utc, end_time_utc, service_type
+        FROM bookings
+        WHERE mentor_profile_id = ${mentorProfileId}
+          AND status != 'cancelled'
+          AND start_time_utc >= ${now.toISOString()};
+      `);
+      const futureBookings = futureBookingsQuery.rows || futureBookingsQuery || [];
 
-        if (!ruleForDay || !ruleForDay.isActive || ruleForDay.windows.length === 0) {
-          conflicts.push({
-            bookingId: booking.id,
-            startTimeUtc: booking.startTimeUtc,
-            serviceType: booking.serviceType,
-            reason: `Session is booked on day ${dayOfWeek}, which is now marked unavailable.`,
-          });
+      // Check if any booking falls on a newly deactivated day
+      const conflicts: any[] = [];
+      if (futureBookings.length > 0) {
+        for (const booking of futureBookings) {
+          const bookingDate = new Date(booking.start_time_utc);
+          const dayOfWeek = bookingDate.getUTCDay();
+          const ruleForDay = input.rules.find((r) => r.dayOfWeek === dayOfWeek);
+
+          if (!ruleForDay || !ruleForDay.isActive || ruleForDay.windows.length === 0) {
+            conflicts.push({
+              bookingId: booking.id,
+              startTimeUtc: booking.start_time_utc,
+              serviceType: booking.service_type,
+              dayOfWeek,
+              reason: `Session is booked on day ${dayOfWeek}, which is now marked unavailable.`,
+            });
+          }
         }
       }
 
       if (conflicts.length > 0) {
-        return {
-          success: false,
-          hasConflicts: true,
-          conflicts,
-          error: `Cannot deactivate availability: ${conflicts.length} confirmed session(s) would be orphaned. Reschedule or cancel these sessions first, or confirm override.`,
-        };
-      }
-    }
+        if (!input.forceOverrideConflicts) {
+          return {
+            success: false,
+            hasConflicts: true,
+            conflicts,
+            error: `Cannot deactivate availability: ${conflicts.length} confirmed session(s) would be orphaned. Reschedule or cancel these sessions first, or confirm override.`,
+          };
+        }
 
-    // 2. Update Settings (Upsert)
-    await db
-      .insert(schema.mentorAvailabilitySettings)
-      .values({
-        mentorProfileId,
-        bufferTimeMinutes: input.settings.bufferTimeMinutes ?? 15,
-        minNoticeHours: input.settings.minNoticeHours ?? 2,
-        maxAdvanceDays: input.settings.maxAdvanceDays ?? 30,
-        dailySessionLimit: input.settings.dailySessionLimit ?? 4,
-        weeklySessionLimit: input.settings.weeklySessionLimit ?? 20,
-        customSessionDurations: input.settings.customSessionDurations ?? [15, 30, 45, 60],
-        timezone: input.settings.timezone ?? "Asia/Kolkata",
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: schema.mentorAvailabilitySettings.mentorProfileId,
-        set: {
+        // Administrative Override Path:
+        // Confirmed bookings are NOT silently orphaned or automatically cancelled/refunded.
+        // Instead, each affected booking generates an immutable audit record and outbox notification.
+        for (const conflict of conflicts) {
+          await tx.execute(sql`
+            INSERT INTO booking_events (
+              booking_id, event_type, from_status, to_status, actor_role, metadata
+            ) VALUES (
+              ${conflict.bookingId},
+              'admin_availability_override',
+              'confirmed',
+              'confirmed',
+              'admin',
+              ${JSON.stringify({
+                warning: "Administrator forced schedule update while booking remains confirmed",
+                dayOfWeek: conflict.dayOfWeek,
+                startTimeUtc: conflict.startTimeUtc,
+                serviceType: conflict.serviceType,
+              })}
+            );
+          `);
+
+          await tx.execute(sql`
+            INSERT INTO outbox_events (event_type, payload, status)
+            VALUES (
+              'availability.admin_override_conflict',
+              ${JSON.stringify({
+                mentorProfileId,
+                bookingId: conflict.bookingId,
+                startTimeUtc: conflict.startTimeUtc,
+                serviceType: conflict.serviceType,
+              })},
+              'pending'
+            );
+          `);
+        }
+      }
+
+      // 3. Update Settings (Upsert)
+      await tx
+        .insert(schema.mentorAvailabilitySettings)
+        .values({
+          mentorProfileId,
           bufferTimeMinutes: input.settings.bufferTimeMinutes ?? 15,
           minNoticeHours: input.settings.minNoticeHours ?? 2,
           maxAdvanceDays: input.settings.maxAdvanceDays ?? 30,
@@ -230,18 +257,27 @@ export class AvailabilityService {
           customSessionDurations: input.settings.customSessionDurations ?? [15, 30, 45, 60],
           timezone: input.settings.timezone ?? "Asia/Kolkata",
           updatedAt: new Date(),
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: schema.mentorAvailabilitySettings.mentorProfileId,
+          set: {
+            bufferTimeMinutes: input.settings.bufferTimeMinutes ?? 15,
+            minNoticeHours: input.settings.minNoticeHours ?? 2,
+            maxAdvanceDays: input.settings.maxAdvanceDays ?? 30,
+            dailySessionLimit: input.settings.dailySessionLimit ?? 4,
+            weeklySessionLimit: input.settings.weeklySessionLimit ?? 20,
+            customSessionDurations: input.settings.customSessionDurations ?? [15, 30, 45, 60],
+            timezone: input.settings.timezone ?? "Asia/Kolkata",
+            updatedAt: new Date(),
+          },
+        });
 
-    // 3. Atomically replace weekly rules
-    await db.transaction(async (tx: any) => {
-      // Delete existing rules
+      // 4. Atomically replace weekly rules
       await tx.execute(sql`
         DELETE FROM availability_rules
         WHERE mentor_profile_id = ${mentorProfileId};
       `);
 
-      // Insert new window rows
       for (const dayRule of input.rules) {
         if (!dayRule.isActive || !dayRule.windows || dayRule.windows.length === 0) continue;
 
@@ -264,9 +300,13 @@ export class AvailabilityService {
           `);
         }
       }
-    });
 
-    return { success: true };
+      return {
+        success: true,
+        hasConflicts: conflicts.length > 0,
+        overriddenConflictsCount: conflicts.length,
+      };
+    });
   }
 
   /**

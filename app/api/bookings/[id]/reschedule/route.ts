@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 /**
  * MentorMaze Booking Rescheduling API
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
@@ -11,16 +12,24 @@ import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { PolicyEngine } from "@/lib/policies/policy-engine";
 import { notificationService } from "@/lib/notifications/service";
+import { requireAuth, verifyBookingOwnership } from "@/lib/auth/server-auth";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 0. Enforce server-side authentication
+    const auth = await requireAuth(req);
+    if (auth.errorResponse) {
+      return auth.errorResponse;
+    }
+    const user = auth.user;
+
     await initializeDatabaseSchema();
     const bookingId = params.id;
     const body = await req.json();
-    const { newStartTimeUtc, newEndTimeUtc, actorId, actorRole = "student" } = body;
+    const { newStartTimeUtc, newEndTimeUtc } = body;
 
     if (!newStartTimeUtc || !newEndTimeUtc) {
       return NextResponse.json(
@@ -45,6 +54,23 @@ export async function POST(
     const booking = bookingQuery.rows?.[0] || bookingQuery?.[0];
     if (!booking) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    // 1.1 Enforce strict resource ownership (Student owner, assigned Mentor, or Admin)
+    const ownership = verifyBookingOwnership(
+      {
+        student_user_id: booking.student_user_id,
+        mentor_user_id: booking.mentor_user_id,
+        mentor_profile_id: booking.mentor_profile_id,
+      },
+      user
+    );
+
+    if (!ownership.authorized) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to reschedule this booking." },
+        { status: 403 }
+      );
     }
 
     if (booking.status !== "confirmed") {
@@ -105,8 +131,8 @@ export async function POST(
           'booking_rescheduled',
           'confirmed',
           'confirmed',
-          ${actorId || null},
-          ${actorRole},
+          ${user.id},
+          ${user.role},
           ${JSON.stringify({
             previousStartTimeUtc: booking.start_time_utc,
             previousEndTimeUtc: booking.end_time_utc,
