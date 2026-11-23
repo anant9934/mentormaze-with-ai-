@@ -17,6 +17,7 @@ import { PolicyEngine } from "@/lib/policies/policy-engine";
 export type BookingStatus =
   | "draft"
   | "held"
+  | "pending"
   | "pending_payment"
   | "confirmed"
   | "in_progress"
@@ -41,7 +42,8 @@ export interface StateTransitionContext {
  */
 export const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   draft: ["held", "cancelled"],
-  held: ["pending_payment", "confirmed", "expired", "cancelled"],
+  held: ["pending", "pending_payment", "confirmed", "expired", "cancelled"],
+  pending: ["confirmed", "cancelled", "expired"],
   pending_payment: ["confirmed", "expired", "cancelled"],
   confirmed: ["in_progress", "cancelled", "no_show", "rescheduled" as any],
   in_progress: ["completed", "disputed"],
