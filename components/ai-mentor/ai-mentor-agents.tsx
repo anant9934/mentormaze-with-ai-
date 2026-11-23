@@ -147,7 +147,7 @@ export function AIMentorAgents({ onSelectCapability }: AIMentorAgentsProps) {
           <h1 className="text-2xl sm:text-3xl font-serif text-[#17211E]">Internal Specialist Capabilities</h1>
         </div>
         <p className="text-xs sm:text-sm text-[#69756B] mt-1">
-          Dr. Aarav Mehta is a single unified mentor with 9 specialized analytical engines. Rather than multiple disconnected chatbots, you interact with one mentor who dynamically engages the right capability.
+          ASTRION is a single unified mentor with 8 specialized intelligence capabilities. Rather than multiple disconnected chatbots, you interact with one mentor who dynamically engages the right specialist capability.
         </p>
       </div>
 
@@ -207,3 +207,4 @@ export function AIMentorAgents({ onSelectCapability }: AIMentorAgentsProps) {
     </div>
   );
 }
+
