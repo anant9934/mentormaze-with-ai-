@@ -10,6 +10,8 @@ import {
   jsonb,
   time,
   date,
+  uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -356,6 +358,12 @@ export const sessionNotes = pgTable("session_notes", {
   sharedActionItems: jsonb("shared_action_items").$type<{ item: string; completed: boolean }[]>().default([]),
   studentVisibleSummary: text("student_visible_summary"),
   mentorPrivateNotes: text("mentor_private_notes"), // STRICTLY CONFIDENTIAL TO MENTOR & ADMIN
+  observedStrengths: jsonb("observed_strengths").default([]),
+  developmentGaps: jsonb("development_gaps").default([]),
+  recommendedActions: jsonb("recommended_actions").default([]),
+  agreedMilestones: jsonb("agreed_milestones").default([]),
+  followUpDate: varchar("follow_up_date", { length: 64 }),
+  nextSessionFocus: text("next_session_focus"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -620,20 +628,36 @@ export const userSessions = pgTable("user_sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const outboxEvents = pgTable("outbox_events", {
+export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
-  eventType: varchar("event_type", { length: 120 }).notNull(), // booking.created, session.reminder, mentor.application_updated
-  payload: jsonb("payload").notNull(),
-  status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, processing, completed, failed, dead_letter
-  retryCount: integer("retry_count").default(0).notNull(),
-  errorMessage: text("error_message"),
-  lockedAt: timestamp("locked_at", { withTimezone: true }),
-  lockedBy: varchar("locked_by", { length: 120 }),
-  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }).defaultNow(),
-  idempotencyKey: varchar("idempotency_key", { length: 255 }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  tokenHash: varchar("token_hash", { length: 255 }).unique().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
 });
+
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventType: varchar("event_type", { length: 120 }).notNull(), // booking.created, session.reminder, mentorship.outcomes.synced, student.consent.revoked
+    payload: jsonb("payload").notNull(),
+    status: varchar("status", { length: 32 }).default("pending").notNull(), // pending, processing, completed, failed, retrying, suppressed, dead_letter
+    retryCount: integer("retry_count").default(0).notNull(),
+    errorMessage: text("error_message"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: varchar("locked_by", { length: 120 }),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }).defaultNow(),
+    idempotencyKey: varchar("idempotency_key", { length: 255 }),
+    targetSystem: varchar("target_system", { length: 64 }).default("internal").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    idempotencyIdx: uniqueIndex("idx_outbox_events_idempotency_key").on(table.idempotencyKey),
+  })
+);
 
 export const consentGrants = pgTable("consent_grants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -834,4 +858,18 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
 
 // Re-export official AI Mentor Intelligence schemas
 export * from "./ai-mentor-schema";
+
+export const inboundEventLedger = pgTable("inbound_event_ledger", {
+  eventId: varchar("event_id", { length: 128 }).primaryKey(),
+  jti: varchar("jti", { length: 128 }),
+  sourceSystem: varchar("source_system", { length: 64 }).default("ai-tathastu").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const sharedRateLimits = pgTable("shared_rate_limits", {
+  key: varchar("key", { length: 255 }).primaryKey(),
+  count: integer("count").default(1).notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
 
