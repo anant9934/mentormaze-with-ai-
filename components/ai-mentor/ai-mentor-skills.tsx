@@ -13,7 +13,7 @@ import {
   Brain,
   RotateCw,
 } from "lucide-react";
-import { CANONICAL_TAXONOMY, SkillTaxonomyNode, StudentSkillRecord } from "@/lib/ai-mentor/student-skill-graph";
+import { CANONICAL_TAXONOMY, SkillTaxonomyNode, StudentSkillRecord } from "@/lib/ai-mentor/skills-constants";
 import { FocusArea } from "@/lib/ai-mentor/types";
 import { cn } from "@/lib/utils";
 
