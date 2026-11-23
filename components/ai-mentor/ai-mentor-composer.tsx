@@ -200,7 +200,7 @@ export function AIMentorComposer({
   const dynamicPlaceholder =
     placeholder ||
     selectedFocusDef?.placeholder ||
-    "Ask Dr. Aarav Mehta anything — conceptual questions, code review, system design, or career roadmap...";
+    "Ask ASTRION anything — conceptual questions, code review, system design, or career roadmap...";
 
   return (
     <div
@@ -279,10 +279,10 @@ export function AIMentorComposer({
               <div className="absolute left-0 bottom-full mb-2 w-64 sm:w-72 bg-white rounded-2xl shadow-2xl border border-[#DCE5D5] py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-3 py-1.5 border-b border-[#EDF3E8] flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#69756B]">
-                    Specialist Focus Area
+                    Specialist Intelligence
                   </span>
                   <span className="text-[10px] text-[#27875E] bg-[#E7F2DA] px-1.5 py-0.5 rounded-full font-medium">
-                    Dr. Aarav Mehta
+                    ASTRION CORE
                   </span>
                 </div>
                 <div className="max-h-64 overflow-y-auto p-1 space-y-0.5">
