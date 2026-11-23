@@ -1,17 +1,20 @@
 # MentorMaze — Deployment & Hosting Guide
 
-**Deployment Target:** Vercel / Cloudflare Pages / Containerized Node.js  
+**Deployment Target:** Vercel (Frontend / Edge) & Render (Backend / Outbox Worker) / Containerized Node.js  
 **Database:** Neon PostgreSQL Serverless  
 **Storage:** Cloudflare R2  
 **RTC Media:** LiveKit Cloud  
 
+> [!TIP]
+> For detailed instructions on deploying the frontend to **Vercel** and the backend API & worker daemon to **Render**, see the dedicated [RENDER_VERCEL_DEPLOYMENT_GUIDE.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/RENDER_VERCEL_DEPLOYMENT_GUIDE.md).
+
 ---
 
 ## 1. Hosting Architecture
-MentorMaze is built as a Next.js App Router modular monolith. It can be deployed with zero code modification to:
-- **Vercel** (Standard Next.js edge & node runtimes)
-- **Render / Railway / Fly.io** (Docker containerized)
-- **Cloudflare Pages / OpenNext**
+MentorMaze is built with a dual-role Next.js App Router modular architecture:
+- **Vercel:** Optimized for Frontend UI, edge caching, serverless actions, and CDN delivery.
+- **Render:** Optimized for persistent Backend Web APIs and 24/7 background worker daemons (`render.yaml`).
+- **Containerized / Docker:** Self-hosted via multi-stage `Dockerfile`.
 
 ---
 

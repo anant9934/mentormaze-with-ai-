@@ -1,0 +1,88 @@
+services:
+  # ==============================================================================
+  # 1. MENTORMAZE BACKEND WEB SERVICE
+  # Production Next.js server handling APIs, WebRTC tokens, and core backend logic
+  # ==============================================================================
+  - type: web
+    name: mentormaze-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_ROLE
+        value: backend
+      - key: NEXT_PUBLIC_APP_NAME
+        value: MentorMaze
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_KEY_ID
+        value: mentormaze-prod-key-1
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: hellomentormaze@gmail.com
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: "MentorMaze <hellomentormaze@gmail.com>"
+      - key: LIVEKIT_PRIMARY_PROVIDER_ID
+        value: meet-2uq83g48
+      - key: LIVEKIT_PRIMARY_URL
+        value: wss://meet-2uq83g48.livekit.cloud
+      - key: LIVEKIT_PRIMARY_API_KEY
+        value: APIjJRP4kUctuJB
+      - key: LIVEKIT_PRIMARY_API_SECRET
+        sync: false
+      - key: CLOUDFLARE_TURNSTILE_SITE_KEY
+        value: "0x4AAAAAAGPNIAKkr1sYRPY7"
+      - key: CLOUDFLARE_TURNSTILE_SECRET_KEY
+        sync: false
+
+  # ==============================================================================
+  # 2. MENTORMAZE OUTBOX BACKGROUND WORKER
+  # Persistent background worker daemon processing asynchronous events, emails,
+  # consent epoch deletion tombstones, and AI Tathastu integrations 24/7
+  # ==============================================================================
+  - type: worker
+    name: mentormaze-outbox-worker
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm run start:worker
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_ROLE
+        value: worker
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        value: hellomentormaze@gmail.com
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: "MentorMaze <hellomentormaze@gmail.com>"
