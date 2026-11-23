@@ -105,7 +105,7 @@ export function AIMentorProjects({ onReviewProject }: AIMentorProjectsProps) {
             <h1 className="text-2xl sm:text-3xl font-serif text-[#17211E]">Project Portfolio</h1>
           </div>
           <p className="text-xs sm:text-sm text-[#69756B] mt-1">
-            Track portfolio projects, audit system architecture with Dr. Aarav Mehta, and extract standout bullet points for top engineering recruiters.
+            Track portfolio projects, audit system architecture with ASTRION FORGE, and extract standout bullet points for top engineering recruiters.
           </p>
         </div>
 
