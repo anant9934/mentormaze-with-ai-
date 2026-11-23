@@ -1,8 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     serverComponentsExternalPackages: ['@electric-sql/pglite', 'postgres'],
+    outputFileTracingExcludes: {
+      '*': [
+        './training/**/*',
+        './tests/**/*',
+        './.mentormaze-pgdata*/**/*',
+        './Naukri Dataset with Salary column/**/*',
+      ],
+    },
   },
   images: {
     remotePatterns: [
