@@ -1,4 +1,4 @@
-# MentorMaze
+# mentormaze-with-ai- — MentorMaze
 
 > **Real People. Real Guidance. Grow Faster.**  
 > A production-minded human mentorship and mock interview platform under **AI Tathastu**.
