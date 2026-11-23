@@ -139,6 +139,161 @@ export async function processOutboxBatch(
           }));
           break;
 
+        case "mentorship.outcomes.synced": {
+          const studentUserId = payload.studentUserId || payload.studentId;
+          const { StudentConsentService } = await import("@/lib/ai-mentor/student-consent-service");
+
+          // 1. CONSENT REVALIDATION: Immediately before delivery
+          const consentRecord = await StudentConsentService.getConsentRecord(studentUserId, "ai_tathastu_sync");
+          if (!consentRecord || !consentRecord.isGranted || (consentRecord.expiresAt && new Date(consentRecord.expiresAt).getTime() <= Date.now())) {
+            await db.execute(sql`
+              UPDATE outbox_events
+              SET status = 'suppressed',
+                  error_message = 'Outbound delivery suppressed: student consent for ai_tathastu_sync was revoked prior to delivery',
+                  processed_at = now(),
+                  locked_at = null,
+                  locked_by = null
+              WHERE id = ${eventId};
+            `);
+            processed++;
+            continue;
+          }
+
+          // 2. EPOCH BINDING REVALIDATION: Outbound event must match active consent epoch
+          const eventEpoch = payload.consentEpoch;
+          const currentEpoch = consentRecord.consentEpoch || 1;
+          if (eventEpoch !== undefined && eventEpoch !== currentEpoch) {
+            await db.execute(sql`
+              UPDATE outbox_events
+              SET status = 'suppressed',
+                  error_message = ${`Outbound delivery suppressed: event consent epoch (${eventEpoch}) is stale. Current active epoch is ${currentEpoch}.`},
+                  processed_at = now(),
+                  locked_at = null,
+                  locked_by = null
+              WHERE id = ${eventId};
+            `);
+            processed++;
+            continue;
+          }
+
+          // 3. PRIOR DELETION OBLIGATION GATING: A fresh snapshot under a new consent epoch
+          // can only be delivered AFTER prior consent epoch deletion obligations are acknowledged!
+          const pendingTombstone: any = await db.execute(sql`
+            SELECT id FROM outbox_events
+            WHERE event_type = 'student.consent.revoked'
+              AND (payload->>'studentUserId' = ${studentUserId} OR payload->>'studentId' = ${studentUserId})
+              AND status IN ('pending', 'processing', 'failed')
+            LIMIT 1;
+          `);
+          if (pendingTombstone.rows && pendingTombstone.rows.length > 0) {
+            await db.execute(sql`
+              UPDATE outbox_events
+              SET status = 'pending',
+                  error_message = 'Awaiting prior consent epoch deletion tombstone acknowledgement from destination',
+                  locked_at = null,
+                  locked_by = null
+              WHERE id = ${eventId};
+            `);
+            processed++;
+            continue;
+          }
+
+          // External HTTP delivery (live or controlled mock)
+          const destinationUrl = process.env.AI_TATHASTU_API_URL || process.env.AITATHASTU_API_URL || process.env.MOCK_TATHASTU_API_URL;
+          const destinationKey = process.env.AI_TATHASTU_API_KEY || process.env.AITATHASTU_API_KEY || (process.env.MOCK_TATHASTU_API_URL ? "mock-key" : undefined);
+          const idempotencyKey = rawEvent.idempotency_key || rawEvent.idempotencyKey;
+
+          if (destinationUrl && destinationKey) {
+            const res = await fetch(`${destinationUrl}/v1/mentorship/outcomes`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${destinationKey}`,
+                ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const errBody = await res.text().catch(() => "");
+              throw new Error(`External destination returned HTTP ${res.status}: ${errBody}`);
+            }
+
+            const ackData = await res.json().catch(() => ({}));
+            console.info(JSON.stringify({
+              level: "info",
+              event: "tathastu_outcomes_delivered",
+              eventId,
+              consentEpoch: currentEpoch,
+              receiptId: ackData.receiptId || "ack-delivered",
+            }));
+          } else {
+            // Destination not configured: keep pending for future delivery
+            await db.execute(sql`
+              UPDATE outbox_events
+              SET status = 'pending',
+                  error_message = 'Awaiting external AI_TATHASTU_API_URL configuration',
+                  locked_at = null,
+                  locked_by = null
+              WHERE id = ${eventId};
+            `);
+            processed++;
+            continue;
+          }
+          break;
+        }
+
+        case "student.consent.revoked": {
+          const studentUserId = payload.studentUserId || payload.studentId;
+
+          // NARROWLY SCOPED AUTHORIZATION FOR DELETION TOMBSTONES:
+          // A deletion/revocation event is authorized strictly by the student's revocation action itself.
+          // It does NOT require active ai_tathastu_sync consent.
+          // A later re-grant MUST NOT suppress or cancel an already-created deletion obligation!
+          const destinationUrl = process.env.AI_TATHASTU_API_URL || process.env.AITATHASTU_API_URL || process.env.MOCK_TATHASTU_API_URL;
+          const destinationKey = process.env.AI_TATHASTU_API_KEY || process.env.AITATHASTU_API_KEY || (process.env.MOCK_TATHASTU_API_URL ? "mock-key" : undefined);
+          const idempotencyKey = rawEvent.idempotency_key || rawEvent.idempotencyKey;
+
+          if (destinationUrl && destinationKey) {
+            const res = await fetch(`${destinationUrl}/v1/students/revocation`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${destinationKey}`,
+                ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const errBody = await res.text().catch(() => "");
+              throw new Error(`External tombstone destination returned HTTP ${res.status}: ${errBody}`);
+            }
+
+            const ackData = await res.json().catch(() => ({}));
+            console.info(JSON.stringify({
+              level: "info",
+              event: "tathastu_revocation_delivered",
+              eventId,
+              revokedConsentEpoch: payload.revokedConsentEpoch,
+              receiptId: ackData.receiptId || "ack-revocation-delivered",
+            }));
+          } else {
+            // Destination not configured: keep pending for future delivery
+            await db.execute(sql`
+              UPDATE outbox_events
+              SET status = 'pending',
+                  error_message = 'Awaiting external AI_TATHASTU_API_URL configuration for tombstone delivery',
+                  locked_at = null,
+                  locked_by = null
+              WHERE id = ${eventId};
+            `);
+            processed++;
+            continue;
+          }
+          break;
+        }
+
         default:
           console.warn(JSON.stringify({
             level: "warn",
@@ -152,6 +307,7 @@ export async function processOutboxBatch(
       await db.execute(sql`
         UPDATE outbox_events
         SET status = 'completed',
+            error_message = null,
             processed_at = now(),
             locked_at = null,
             locked_by = null
