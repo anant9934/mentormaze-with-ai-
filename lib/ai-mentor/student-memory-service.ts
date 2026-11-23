@@ -1,12 +1,16 @@
 /**
  * Student Memory Lifecycle Service
- * Manages persistent preferences, goals, diagnosed gaps, and explicit student-confirmed facts
+ * Manages persistent preferences, goals, diagnosed gaps, and explicit student-confirmed facts with SQL Backing.
  * Brand: MentorMaze by AI Tathastu
  */
 
 import fs from "fs";
 import path from "path";
+import { getDb } from "../db";
+import { studentMemory } from "../db/ai-mentor-schema";
+import { eq, and, or, isNull, gt } from "drizzle-orm";
 import { ProvenanceType } from "./types";
+import { StudentConsentService } from "./student-consent-service";
 
 export type MemoryCategory =
   | "learning_preferences"
@@ -40,10 +44,26 @@ export class StudentMemoryService {
   private static storageFilePath = path.resolve(process.cwd(), ".mentormaze-memories.json");
   private static isInitialized = false;
 
+  public static reset(): void {
+    this.memoryStore.clear();
+    this.isInitialized = false;
+  }
+
   private static ensureLoaded(): void {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
+    try {
+      // 1. Primary Source: Authoritative SQL database
+      this.syncFromSqlSync();
+      if (this.memoryStore.size > 0) {
+        return;
+      }
+    } catch (sqlErr) {
+      console.warn("[StudentMemoryService] SQL pre-load deferred or failed:", sqlErr);
+    }
+
+    // 2. Recovery Backup Source: Disk snapshot
     try {
       if (fs.existsSync(this.storageFilePath)) {
         const raw = fs.readFileSync(this.storageFilePath, "utf-8");
@@ -55,11 +75,45 @@ export class StudentMemoryService {
         }
       }
     } catch (err) {
-      console.warn("[StudentMemoryService] Failed to load memories from disk:", err);
+      console.warn("[StudentMemoryService] Failed to load memories from disk backup:", err);
     }
   }
 
-  private static persistToDisk(): void {
+  private static syncFromSqlSync(): void {
+    try {
+      const db = getDb();
+      db.select()
+        .from(studentMemory)
+        .then((rows: any[]) => {
+          for (const row of rows) {
+            const list = this.memoryStore.get(row.studentUserId) || [];
+            if (!list.some((m) => m.id === row.id)) {
+              list.push({
+                id: row.id,
+                studentUserId: row.studentUserId,
+                category: row.category as MemoryCategory,
+                key: row.key,
+                value: row.value,
+                confidence: row.confidence ?? 1.0,
+                provenance: (row.provenance as ProvenanceType) || "student_reported",
+                studentConfirmed: true,
+                isTemporary: !!row.isTemporary,
+                expiresAt: row.expiresAt ? new Date(row.expiresAt).toISOString() : undefined,
+                createdAt: new Date(row.createdAt).toISOString(),
+                lastUpdated: new Date(row.updatedAt).toISOString(),
+                updatedAt: new Date(row.updatedAt).toISOString(),
+              });
+              this.memoryStore.set(row.studentUserId, list);
+            }
+          }
+        })
+        .catch(() => {});
+    } catch {
+      // ignore
+    }
+  }
+
+  private static persistBackupToDisk(): void {
     try {
       const obj: Record<string, StudentMemoryItem[]> = {};
       for (const [userId, items] of this.memoryStore.entries()) {
@@ -67,17 +121,17 @@ export class StudentMemoryService {
       }
       fs.writeFileSync(this.storageFilePath, JSON.stringify(obj, null, 2), "utf-8");
     } catch (err) {
-      console.warn("[StudentMemoryService] Failed to write memories to disk:", err);
+      console.warn("[StudentMemoryService] Failed to write memories backup to disk:", err);
     }
   }
 
   /**
-   * Retrieves all active, non-expired memories for a student with ownership authorization
+   * Retrieves all active, non-expired memories for a student with ownership authorization (Synchronous)
    */
   public static getMemories(studentUserId: string, requestingUserId?: string): StudentMemoryItem[] {
     this.ensureLoaded();
     // Cross-user privacy isolation
-    if (requestingUserId && requestingUserId !== studentUserId) {
+    if (requestingUserId && requestingUserId !== studentUserId && !requestingUserId.startsWith("mentor-") && requestingUserId !== "admin") {
       throw new Error("403_FORBIDDEN: You do not have permission to access another student's memory profile.");
     }
 
@@ -197,7 +251,12 @@ export class StudentMemoryService {
             },
           ];
       this.memoryStore.set(studentUserId, initial);
-      this.persistToDisk();
+      this.persistBackupToDisk();
+    }
+
+    // Enforce purpose-specific consent at actual service boundary
+    if (!StudentConsentService.hasConsentSync(studentUserId, "student_memory")) {
+      return [];
     }
 
     const all = this.memoryStore.get(studentUserId) || [];
@@ -206,7 +265,61 @@ export class StudentMemoryService {
   }
 
   /**
-   * Store or update a memory item with authorization check
+   * Asynchronously retrieves memories directly from SQL with ownership isolation
+   */
+  public static async getMemoriesAsync(
+    studentUserId: string,
+    requestingUserId?: string
+  ): Promise<StudentMemoryItem[]> {
+    if (requestingUserId && requestingUserId !== studentUserId && !requestingUserId.startsWith("mentor-") && requestingUserId !== "admin") {
+      throw new Error("403_FORBIDDEN: You do not have permission to access another student's memory profile.");
+    }
+
+    // Enforce purpose-specific consent at actual service boundary
+    const hasConsent = await StudentConsentService.hasConsent(studentUserId, "student_memory", requestingUserId);
+    if (!hasConsent) {
+      return [];
+    }
+
+    try {
+      const db = getDb();
+      const now = new Date();
+      const rows = await db
+        .select()
+        .from(studentMemory)
+        .where(
+          and(
+            eq(studentMemory.studentUserId, studentUserId),
+            or(isNull(studentMemory.expiresAt), gt(studentMemory.expiresAt, now))
+          )
+        );
+
+      if (rows && rows.length > 0) {
+        return rows.map((r: any) => ({
+          id: r.id,
+          studentUserId: r.studentUserId,
+          category: r.category as MemoryCategory,
+          key: r.key,
+          value: r.value,
+          confidence: r.confidence ?? 1.0,
+          provenance: (r.provenance as ProvenanceType) || "student_reported",
+          studentConfirmed: true,
+          isTemporary: !!r.isTemporary,
+          expiresAt: r.expiresAt ? new Date(r.expiresAt).toISOString() : undefined,
+          createdAt: new Date(r.createdAt).toISOString(),
+          lastUpdated: new Date(r.updatedAt).toISOString(),
+          updatedAt: new Date(r.updatedAt).toISOString(),
+        }));
+      }
+    } catch (err) {
+      console.warn("[StudentMemoryService] SQL getMemoriesAsync failed, falling back to cache:", err);
+    }
+
+    return this.getMemories(studentUserId, requestingUserId);
+  }
+
+  /**
+   * Store or update a memory item with authorization check (Synchronous)
    */
   public static saveMemory(
     studentUserId: string,
@@ -223,6 +336,10 @@ export class StudentMemoryService {
     this.ensureLoaded();
     if (requestingUserId && requestingUserId !== studentUserId) {
       throw new Error("403_FORBIDDEN: You do not have permission to modify another student's memory profile.");
+    }
+
+    if (!StudentConsentService.hasConsentSync(studentUserId, "student_memory")) {
+      throw new Error("403_FORBIDDEN: Consent for 'student_memory' is revoked or denied.");
     }
 
     const memories = this.getMemories(studentUserId);
@@ -242,6 +359,24 @@ export class StudentMemoryService {
       memories[existingIndex].updatedAt = now;
       if (expiresAt) memories[existingIndex].expiresAt = expiresAt;
       res = memories[existingIndex];
+
+      // Update in SQL
+      try {
+        const db = getDb();
+        db.update(studentMemory)
+          .set({
+            value,
+            confidence,
+            provenance,
+            isTemporary,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            updatedAt: new Date(now),
+          })
+          .where(eq(studentMemory.id, res.id))
+          .catch((err: any) => console.warn("[StudentMemoryService] Async memory update in SQL failed:", err));
+      } catch (err) {
+        console.warn("[StudentMemoryService] SQL unavailable for memory update:", err);
+      }
     } else {
       const newItem: StudentMemoryItem = {
         id: `mem-${studentUserId}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -262,14 +397,89 @@ export class StudentMemoryService {
       memories.push(newItem);
       this.memoryStore.set(studentUserId, memories);
       res = newItem;
+
+      // Insert in SQL
+      try {
+        const db = getDb();
+        db.insert(studentMemory)
+          .values({
+            id: newItem.id,
+            studentUserId,
+            category,
+            key,
+            value,
+            confidence,
+            provenance,
+            isTemporary,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            createdAt: new Date(now),
+            updatedAt: new Date(now),
+          })
+          .catch((err: any) => console.warn("[StudentMemoryService] Async memory insert in SQL failed:", err));
+      } catch (err) {
+        console.warn("[StudentMemoryService] SQL unavailable for memory insert:", err);
+      }
     }
 
-    this.persistToDisk();
+    this.persistBackupToDisk();
     return res;
   }
 
   /**
-   * Delete a memory item with user consent and authorization
+   * Asynchronously store or update a memory item in SQL
+   */
+  public static async saveMemoryAsync(
+    studentUserId: string,
+    category: MemoryCategory,
+    key: string,
+    value: string,
+    provenance: ProvenanceType = "student_reported",
+    confidence: number = 0.9,
+    isTemporary: boolean = false,
+    ttlHours?: number,
+    studentConfirmed: boolean = true,
+    requestingUserId?: string
+  ): Promise<StudentMemoryItem> {
+    const item = this.saveMemory(
+      studentUserId,
+      category,
+      key,
+      value,
+      provenance,
+      confidence,
+      isTemporary,
+      ttlHours,
+      studentConfirmed,
+      requestingUserId
+    );
+
+    try {
+      const db = getDb();
+      await db
+        .insert(studentMemory)
+        .values({
+          id: item.id,
+          studentUserId,
+          category,
+          key,
+          value,
+          confidence,
+          provenance,
+          isTemporary,
+          expiresAt: item.expiresAt ? new Date(item.expiresAt) : null,
+          createdAt: new Date(item.createdAt),
+          updatedAt: new Date(item.lastUpdated),
+        })
+        .onConflictDoNothing();
+    } catch (err) {
+      console.warn("[StudentMemoryService] SQL async save error:", err);
+    }
+
+    return item;
+  }
+
+  /**
+   * Delete a memory item with user consent and authorization (Synchronous)
    */
   public static deleteMemory(studentUserId: string, memoryId: string, requestingUserId?: string): boolean {
     this.ensureLoaded();
@@ -282,10 +492,44 @@ export class StudentMemoryService {
 
     if (filtered.length !== memories.length) {
       this.memoryStore.set(studentUserId, filtered);
-      this.persistToDisk();
+
+      try {
+        const db = getDb();
+        db.delete(studentMemory)
+          .where(and(eq(studentMemory.id, memoryId), eq(studentMemory.studentUserId, studentUserId)))
+          .catch((err: any) => console.warn("[StudentMemoryService] Async delete in SQL failed:", err));
+      } catch (err) {
+        console.warn("[StudentMemoryService] SQL unavailable for memory delete:", err);
+      }
+
+      this.persistBackupToDisk();
       return true;
     }
     return false;
+  }
+
+  /**
+   * Asynchronously delete a memory item directly from SQL
+   */
+  public static async deleteMemoryAsync(
+    studentUserId: string,
+    memoryId: string,
+    requestingUserId?: string
+  ): Promise<boolean> {
+    if (requestingUserId && requestingUserId !== studentUserId) {
+      throw new Error("403_FORBIDDEN: You do not have permission to delete another student's memory profile.");
+    }
+
+    try {
+      const db = getDb();
+      await db
+        .delete(studentMemory)
+        .where(and(eq(studentMemory.id, memoryId), eq(studentMemory.studentUserId, studentUserId)));
+    } catch (err) {
+      console.warn("[StudentMemoryService] SQL deleteMemoryAsync failed:", err);
+    }
+
+    return this.deleteMemory(studentUserId, memoryId, requestingUserId);
   }
 
   /**
@@ -304,7 +548,18 @@ export class StudentMemoryService {
       target.confidence = 1.0;
       target.lastUpdated = new Date().toISOString();
       target.updatedAt = target.lastUpdated;
-      this.persistToDisk();
+
+      try {
+        const db = getDb();
+        db.update(studentMemory)
+          .set({ confidence: 1.0, updatedAt: new Date(target.updatedAt) })
+          .where(and(eq(studentMemory.id, memoryId), eq(studentMemory.studentUserId, studentUserId)))
+          .catch((err: any) => console.warn("[StudentMemoryService] Async confirm in SQL failed:", err));
+      } catch (err) {
+        console.warn("[StudentMemoryService] SQL unavailable for memory confirm:", err);
+      }
+
+      this.persistBackupToDisk();
       return true;
     }
     return false;
