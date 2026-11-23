@@ -576,4 +576,8 @@ export class StudentConsentService {
   public static resetCache(): void {
     this.consentCache.clear();
   }
+
+  public static reset(): void {
+    this.resetCache();
+  }
 }

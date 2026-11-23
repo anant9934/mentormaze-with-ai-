@@ -16,7 +16,7 @@
 | 🟡 **HIGH** | Client-Side Mock Authentication Bypass | `lib/auth/context.tsx` uses localStorage role switching | UI can switch to admin without server-side validation |
 | 🟡 **HIGH** | Missing Rate Limiting on State Mutation Endpoints | 74 of 75 API routes lack rate limits | Vulnerable to brute-force, resource exhaustion, and spam |
 | 🟢 **LOW / MITIGATED** | SQL Injection | 0 raw string interpolations (Drizzle ORM parameterized queries) | Drizzle ORM provides reliable parameterized SQL defense |
-| 🟢 **LOW / MITIGATED** | Multi-purpose Consent Architecture | 7 independent consent purposes in `student_purpose_consents` | Compliant with DPDP Act & GDPR minimization principles |
+| 🟢 **LOW / MITIGATED** | Multi-purpose Consent Architecture | 7 independent consent purposes in `student_purpose_consents` | Privacy controls implemented aligning with DPDP Act & GDPR minimization principles |
 
 ---
 

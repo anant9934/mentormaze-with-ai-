@@ -19,7 +19,16 @@ import {
   SpecialistCapabilityInfo,
   MentorIdentity,
   UNIFIED_MENTOR_IDENTITY,
+  AdaptiveContextArea,
+  CanonicalMasteryLevel,
 } from "./types";
+import { SocraticTeachingEngine, SocraticDecisionResult, TOPIC_DECOMPOSITIONS } from "./socratic-teaching-engine";
+import { PersistentHintEscalator } from "./persistent-hint-escalator";
+import { BayesianKnowledgeTracer } from "./pedagogy/bkt-service";
+import { FSRSScheduler } from "./pedagogy/fsrs-service";
+import { AdaptiveActivityOrchestrator } from "./pedagogy/adaptive-activity-orchestrator";
+import { BloomLearningJourneyService } from "./learning-journey/bloom-journey-service";
+import { SocialCommunicationCoachService } from "./communication/social-coach-service";
 import { ModelProviderRouter } from "./model-provider-router";
 import { StudentContextBuilder } from "./student-context-builder";
 import { StudentSkillGraph } from "./student-skill-graph";
@@ -141,14 +150,35 @@ export class AIMentorOrchestrator {
     const studentSkills = StudentSkillGraph.getStudentSkills(input.studentUserId);
     const studentMemories = StudentMemoryService.getMemories(input.studentUserId);
 
-    // 4. Adaptive Pedagogical Strategy Selection
+    // 4. Socratic Teaching Engine & Pedagogical Strategy Selection
+    const socraticDecision = SocraticTeachingEngine.decide({
+      studentUserId: input.studentUserId,
+      userMessage: sanitizedMessage,
+      activeTopic: input.activeTopic,
+      currentHintLevel,
+      mode: rawMode,
+    });
+
     const pedagogyDecision = PedagogyEngine.decide(
       sanitizedMessage,
       rawMode,
       studentContext,
-      currentHintLevel,
+      socraticDecision.hintLevel ?? currentHintLevel,
       language
     );
+
+    // Align strategy with Socratic Engine
+    if (socraticDecision.command === "just_explain") {
+      pedagogyDecision.strategy = "conceptual_explanation";
+      pedagogyDecision.pedagogicalPromptDirective = socraticDecision.promptDirective;
+    } else if (socraticDecision.command === "give_hint" || socraticDecision.suggestedStrategy === "progressive_hint") {
+      pedagogyDecision.strategy = "progressive_hints";
+      pedagogyDecision.hintLevel = socraticDecision.hintLevel || currentHintLevel + 1;
+      pedagogyDecision.pedagogicalPromptDirective = socraticDecision.promptDirective;
+    } else if (socraticDecision.suggestedStrategy === "socratic_question") {
+      pedagogyDecision.strategy = "socratic_guidance";
+      pedagogyDecision.pedagogicalPromptDirective = socraticDecision.promptDirective;
+    }
 
     // 5. Knowledge Retrieval (RAG across verified collections)
     const ragPayload = KnowledgeRAGService.retrieve(sanitizedMessage, { limit: 3 });
@@ -185,6 +215,97 @@ export class AIMentorOrchestrator {
 
     const recommendedActions: RecommendedAction[] = [];
     const skillUpdates: SkillUpdate[] = [];
+
+    // Diagnostic Placement Handling (Jane Street Socratic Placement Loop)
+    let diagnosticOutputText: string | undefined = undefined;
+    if (socraticDecision.isInDiagnostic && socraticDecision.diagnosticState) {
+      const state = socraticDecision.diagnosticState;
+      const isTrigger =
+        !state.hasPresentedInitialQuestion &&
+        socraticDecision.intent === "teach_me" &&
+        state.currentQuestionIndex === 0 &&
+        state.evaluatedAnswers.length === 0;
+      const currentSub = state.subskills[state.currentQuestionIndex];
+
+      if (currentSub) {
+        if (!isTrigger) {
+          const isCorrect =
+            !sanitizedMessage.toLowerCase().includes("don't know") &&
+            !sanitizedMessage.toLowerCase().includes("not sure") &&
+            (sanitizedMessage.toLowerCase().includes(currentSub.diagnosticQuestion.sampleCorrectEvidence.split(" ")[0].toLowerCase()) ||
+              sanitizedMessage.length > 25);
+
+          const evalResult = SocraticTeachingEngine.evaluateDiagnosticAnswer({
+            studentUserId: input.studentUserId,
+            topicName: state.topic,
+            answerText: sanitizedMessage,
+            isCorrect,
+          });
+
+          // Record verified evidence into skill graph
+          StudentSkillGraph.recordEvidence(
+            input.studentUserId,
+            currentSub.id,
+            isCorrect ? 8.5 : 4.0,
+            "assessment_verified" as any
+          );
+
+          // Update BKT Latent Knowledge Probability
+          BayesianKnowledgeTracer.recordObservation({
+            studentUserId: input.studentUserId,
+            conceptId: currentSub.id,
+            outcome: isCorrect ? "independent_success" : "failed_attempt",
+            evidenceSource: "assessment_verified",
+          });
+
+          // Update FSRS Spaced Repetition Record
+          FSRSScheduler.recordReview({
+            studentUserId: input.studentUserId,
+            conceptId: currentSub.id,
+            rating: isCorrect ? 3 : 1,
+          });
+
+          if (evalResult.completed) {
+            const recommended = state.subskills.find((s) => s.id === evalResult.recommendedStartingSubskillId) || state.subskills[0];
+            diagnosticOutputText = `### 🎯 Diagnostic Complete: ${state.topicTitle}\n\n` +
+              `We have calibrated your baseline across the ${state.subskills.length} core subskills:\n` +
+              state.subskills.map((s) => `- **${s.name}**: ${(state.initialSkillMap[s.id] || 0) >= 3 ? "Demonstrated (Level 3)" : "Needs Foundation (Level 1)"}`).join("\n") +
+              `\n\n**Recommended Starting Concept:** **${recommended.name}**\n\n` +
+              `*Reason:* This concept sits directly in your Zone of Proximal Development (prerequisites met, target mastery needed).\n\n` +
+              `*You can start here or say 'override starting point to [subskill]' to adjust.*`;
+          } else {
+            const nextSub = state.subskills[state.currentQuestionIndex];
+            const qNum = state.currentQuestionIndex + 1;
+            diagnosticOutputText = `### 🧠 Diagnostic Placement: ${state.topicTitle} (Question ${qNum} of ${state.subskills.length})\n\n` +
+              `**Assessing Subskill:** ${nextSub.name}\n\n` +
+              `${nextSub.diagnosticQuestion.questionText}`;
+          }
+        } else {
+          state.hasPresentedInitialQuestion = true;
+          const qNum = state.currentQuestionIndex + 1;
+          diagnosticOutputText = `### 🧠 Diagnostic Placement: ${state.topicTitle} (Question ${qNum} of ${state.subskills.length})\n\n` +
+            `Before we begin learning, let's calibrate your starting point across the ${state.subskills.length} core subskills.\n\n` +
+            `**Assessing Subskill:** ${currentSub.name}\n\n` +
+            `${currentSub.diagnosticQuestion.questionText}`;
+        }
+      }
+    }
+
+    if (socraticDecision.command === "override_start") {
+      const matchSub = TOPIC_DECOMPOSITIONS[input.activeTopic || "dynamic_programming"]?.subskills.find(
+        (s) =>
+          sanitizedMessage.toLowerCase().includes(s.id.toLowerCase()) ||
+          sanitizedMessage.toLowerCase().includes(s.name.toLowerCase().split(" ")[0].toLowerCase())
+      );
+      if (matchSub) {
+        SocraticTeachingEngine.overrideStartingSubskill(
+          input.studentUserId,
+          input.activeTopic || "dynamic_programming",
+          matchSub.id
+        );
+        diagnosticOutputText = `Understood. I have updated your starting concept to **${matchSub.name}** as requested.\n\nLet's begin with guided practice on this subskill.`;
+      }
+    }
 
     // 8. Execution Path: Check if specialist requires deterministic domain engine or can use hybrid LLM router
     const isCodeSpecialist = focusArea === "coding_dsa" || Boolean(input.codeSnippet);
@@ -227,8 +348,13 @@ ${specialist.getSystemPromptEnrichment(specialistInput)}${
 Retrieved Knowledge Evidence:
 ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on verified CS curriculum standards."}`;
 
-    // If explicit code snippet or specialized domain, use the deterministic specialist module first, then LLM if appropriate
-    if (isCodeSpecialist && (input.codeSnippet || rawMode === "code_mentor" || sanitizedMessage.includes("```"))) {
+    // If diagnostic placement output generated, prioritize deterministic diagnostic question
+    if (diagnosticOutputText) {
+      responseText = diagnosticOutputText;
+      voiceText = "Let's calibrate your baseline with this diagnostic question.";
+      activeModelProvider = "tathastu-pedagogical-rules";
+      inferenceMode = "deterministic";
+    } else if (isCodeSpecialist && (input.codeSnippet || rawMode === "code_mentor" || sanitizedMessage.includes("```"))) {
       const detResult = specialist.executeDeterministic(specialistInput);
       responseText = detResult.responseText;
       voiceText = detResult.voiceText;
@@ -683,6 +809,76 @@ ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on ve
       ...citations.map((c) => c.sourceTitle),
     ];
 
+    const currentSkillRecord = studentSkills.find((s) => s.skillId === (input.activeTopic || "dynamic_programming"));
+    const demonstratedMasteryLevel = (currentSkillRecord?.masteryLevel ??
+      (currentSkillRecord?.masteryScore
+        ? currentSkillRecord.masteryScore >= 8.5 && currentSkillRecord.successCount >= 3
+          ? 5
+          : currentSkillRecord.masteryScore >= 7.0 && currentSkillRecord.successCount >= 2
+          ? 4
+          : currentSkillRecord.masteryScore >= 7.0
+          ? 3
+          : currentSkillRecord.masteryScore >= 5.0
+          ? 2
+          : 1
+        : 2)) as CanonicalMasteryLevel;
+
+    const masteryLabel = `Level ${demonstratedMasteryLevel} - ${
+      demonstratedMasteryLevel === 5
+        ? "Master (Can teach and handle edge cases)"
+        : demonstratedMasteryLevel === 4
+        ? "Can solve independently"
+        : demonstratedMasteryLevel === 3
+        ? "Can solve with assistance"
+        : demonstratedMasteryLevel === 2
+        ? "Can follow an explanation"
+        : demonstratedMasteryLevel === 1
+        ? "Familiar with concept"
+        : "Unaware"
+    }`;
+
+    const targetConceptId = currentSkillRecord?.skillId || socraticDecision.activeSubskillId || input.activeTopic || "dynamic_programming";
+    const bktConceptState = BayesianKnowledgeTracer.getConceptState(input.studentUserId, targetConceptId);
+    const fsrsConceptState = FSRSScheduler.getConceptRecord(input.studentUserId, targetConceptId);
+    const activityDecision = AdaptiveActivityOrchestrator.selectNextActivity({
+      studentUserId: input.studentUserId,
+      activeTopic: input.activeTopic,
+      activeSkillId: targetConceptId,
+      targetGoal: activeGoal ? { id: activeGoal.id, title: activeGoal.title } : undefined,
+      userMessage: sanitizedMessage,
+    });
+
+    const adaptiveContext: AdaptiveContextArea = {
+      currentLearningObjective: activeGoal?.title || activityDecision.expectedLearningObjective,
+      currentSkill: targetConceptId,
+      demonstratedMastery: masteryLabel,
+      masteryLevel: demonstratedMasteryLevel,
+      activeMisconception:
+        currentSkillRecord?.commonMisconceptions?.[0] ||
+        socraticDecision.diagnosticState?.evaluatedAnswers.find((a) => a.detectedMisconception)?.detectedMisconception,
+      currentActivity: socraticDecision.isInDiagnostic
+        ? `Diagnostic Placement (${(socraticDecision.diagnosticState?.currentQuestionIndex || 0) + 1}/${socraticDecision.diagnosticState?.questionsTotal || 5})`
+        : activityDecision.recommendedActivity,
+      nextReview: fsrsConceptState.nextReviewAt.split("T")[0],
+      reasonForRecommendation: socraticDecision.reasonForRecommendation || activityDecision.reasonForRecommendation,
+      supportingEvidence: currentSkillRecord?.lastAssessedAt
+        ? [`Last assessed: ${currentSkillRecord.lastAssessedAt}`, `Evidence source: ${currentSkillRecord.evidenceSource}`, ...activityDecision.supportingEvidence]
+        : activityDecision.supportingEvidence,
+      subskillMap: socraticDecision.diagnosticState
+        ? socraticDecision.diagnosticState.subskills.map((s) => ({
+            id: s.id,
+            name: s.name,
+            masteryLevel: socraticDecision.diagnosticState?.initialSkillMap[s.id] ?? 0,
+          }))
+        : undefined,
+      bktKnowledgeEstimate: bktConceptState.knowledgeProbability,
+      bktMasteryBand: bktConceptState.masteryBand,
+      fsrsRetrievability: fsrsConceptState.retrievability,
+      fsrsStabilityDays: fsrsConceptState.stability,
+      reviewQueueLength: activityDecision.reviewQueueLength,
+      learningPhase: activityDecision.learningPhase,
+    };
+
     return {
       requestId: lastRequestId,
       message: responseText,
@@ -719,6 +915,69 @@ ${ragPayload.retrievedEvidenceText || "No matching knowledge indexed; rely on ve
       requiresStudentConfirmation,
       confidence,
       evidenceReferences,
+      adaptiveContext,
     };
   }
+
+  // =========================================================================
+  // BLOOMTUTOR LEARNING JOURNEY FACADE
+  // =========================================================================
+
+  public static createLearningProgramme(params: Parameters<typeof BloomLearningJourneyService.createProgramme>[0]) {
+    return BloomLearningJourneyService.createProgramme(params);
+  }
+
+  public static getLearningProgramme(studentUserId: string, programmeId: string, requestingUserId?: string) {
+    return BloomLearningJourneyService.getProgramme(studentUserId, programmeId, requestingUserId);
+  }
+
+  public static submitLessonFeedback(params: Parameters<typeof BloomLearningJourneyService.submitLessonFeedback>[0]) {
+    return BloomLearningJourneyService.submitLessonFeedback(params);
+  }
+
+  public static evaluateLessonExercise(params: Parameters<typeof BloomLearningJourneyService.evaluateLessonExercise>[0]) {
+    return BloomLearningJourneyService.evaluateLessonExercise(params);
+  }
+
+  public static addProgrammeNote(params: Parameters<typeof BloomLearningJourneyService.addNote>[0]) {
+    return BloomLearningJourneyService.addNote(params);
+  }
+
+  public static addProgrammeAnnotation(params: Parameters<typeof BloomLearningJourneyService.addAnnotation>[0]) {
+    return BloomLearningJourneyService.addAnnotation(params);
+  }
+
+  public static completeProgrammeFinalAssessment(params: Parameters<typeof BloomLearningJourneyService.completeFinalAssessment>[0]) {
+    return BloomLearningJourneyService.completeFinalAssessment(params);
+  }
+
+  public static exportLearningSummary(studentUserId: string, programmeId: string, requestingUserId?: string) {
+    return BloomLearningJourneyService.exportLearningSummary(studentUserId, programmeId, requestingUserId);
+  }
+
+  // =========================================================================
+  // SOCIAL & COMMUNICATION COACH FACADE
+  // =========================================================================
+
+  public static startCommunicationSimulation(params: Parameters<typeof SocialCommunicationCoachService.startSession>[0]) {
+    return SocialCommunicationCoachService.startSession(params);
+  }
+
+  public static getCommunicationSimulation(studentUserId: string, sessionId: string, requestingUserId?: string) {
+    return SocialCommunicationCoachService.getSession(studentUserId, sessionId, requestingUserId);
+  }
+
+  public static processCommunicationTurn(params: Parameters<typeof SocialCommunicationCoachService.processTurn>[0]) {
+    return SocialCommunicationCoachService.processTurn(params);
+  }
+
+  public static evaluateCommunicationSimulation(params: Parameters<typeof SocialCommunicationCoachService.completeAndEvaluate>[0]) {
+    return SocialCommunicationCoachService.completeAndEvaluate(params);
+  }
+
+  public static retryCommunicationSimulation(params: Parameters<typeof SocialCommunicationCoachService.retrySession>[0]) {
+    return SocialCommunicationCoachService.retrySession(params);
+  }
 }
+
+export { AIMentorOrchestrator as AiMentorOrchestrator };

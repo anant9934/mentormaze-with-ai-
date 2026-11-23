@@ -76,6 +76,10 @@ export class StudentGoalService {
     this.goalsCache.clear();
   }
 
+  public static reset(): void {
+    this.resetCache();
+  }
+
   /**
    * Ownership / Cross-tenant privacy guard
    */
@@ -277,6 +281,21 @@ export class StudentGoalService {
     const goals = await this.getGoals(studentUserId, { status: "active" }, requestingUserId);
     const primary = goals.find((g) => g.importance === "primary");
     return primary || goals[0] || null;
+  }
+
+  /**
+   * Synchronously retrieve active primary goal from in-memory cache
+   */
+  public static getActivePrimaryGoalSync(
+    studentUserId: string,
+    requestingUserId?: string
+  ): StudentGoalRecord | null {
+    this.validateAccess(studentUserId, requestingUserId);
+    const userGoals = this.goalsCache.get(studentUserId);
+    if (!userGoals || userGoals.size === 0) return null;
+    const list = Array.from(userGoals.values()).filter((g) => g.status === "active");
+    const primary = list.find((g) => g.importance === "primary");
+    return primary || list[0] || null;
   }
 
   /**

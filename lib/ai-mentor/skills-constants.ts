@@ -1,4 +1,4 @@
-import { MasteryState } from "./types";
+import { MasteryState, CanonicalMasteryLevel } from "./types";
 
 export interface SkillTaxonomyNode {
   id: string;
@@ -14,10 +14,12 @@ export interface StudentSkillRecord {
   studentUserId: string;
   skillId: string;
   masteryState: MasteryState;
+  masteryLevel?: CanonicalMasteryLevel;
   masteryScore: number; // 0.0 to 10.0
   confidence: number;   // 0.0 to 1.0
   assessmentCount: number;
   successCount: number;
+  verifiedAssessmentIds?: string[];
   knownWeaknesses: string[];
   commonMisconceptions: string[];
   lastAssessedAt: string;

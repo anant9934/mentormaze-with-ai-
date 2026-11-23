@@ -19,11 +19,7 @@ async function resolveAuthenticatedUser(req: NextRequest): Promise<string | null
     return authUser;
   }
 
-  // Graceful student workspace fallback: support query param userId or standard demo student
-  const queryUserId = req.nextUrl.searchParams.get("userId");
-  if (queryUserId) return queryUserId;
-
-  return "usr-student-1";
+  return null;
 }
 
 export async function GET(req: NextRequest) {

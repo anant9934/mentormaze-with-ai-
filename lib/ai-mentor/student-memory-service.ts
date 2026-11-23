@@ -580,4 +580,24 @@ export class StudentMemoryService {
     }
     return false;
   }
+
+  /**
+   * Purge all memories for a student (privacy controls implemented; data deletion compliance)
+   */
+  public static purgeAllMemories(studentUserId: string, requestingUserId?: string): void {
+    this.ensureLoaded();
+    if (requestingUserId && requestingUserId !== studentUserId && !requestingUserId.startsWith("mentor-") && requestingUserId !== "admin") {
+      throw new Error("403_FORBIDDEN: You do not have permission to purge another student's memory profile.");
+    }
+    this.memoryStore.set(studentUserId, []);
+    try {
+      const db = getDb();
+      db.delete(studentMemory)
+        .where(eq(studentMemory.studentUserId, studentUserId))
+        .catch((err: any) => console.warn("[StudentMemoryService] Async purge in SQL failed:", err));
+    } catch {
+      // ignore
+    }
+    this.persistBackupToDisk();
+  }
 }

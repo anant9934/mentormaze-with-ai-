@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
                   requiresStudentConfirmation: result.requiresStudentConfirmation,
                   confidence: result.confidence,
                   evidenceReferences: result.evidenceReferences,
+                  adaptiveContext: result.adaptiveContext,
                 },
               })}\n\n`
             )
@@ -179,6 +180,7 @@ export async function POST(req: NextRequest) {
       requiresStudentConfirmation: result.requiresStudentConfirmation,
       confidence: result.confidence,
       evidenceReferences: result.evidenceReferences,
+      adaptiveContext: result.adaptiveContext,
     });
   } catch (error: any) {
     console.error("[API AI Mentor Error]:", error);

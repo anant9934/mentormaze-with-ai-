@@ -78,13 +78,39 @@ export type MasteryState =
   | "consistently_demonstrated"
   | "needs_reassessment";
 
+export type CanonicalMasteryLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
+export const MASTERY_LEVEL_TO_STATE: Record<CanonicalMasteryLevel, MasteryState> = {
+  0: "not_assessed",
+  1: "introduced",
+  2: "developing",
+  3: "developing",
+  4: "demonstrated",
+  5: "consistently_demonstrated",
+};
+
+export const MASTERY_STATE_TO_LEVEL: Record<MasteryState, CanonicalMasteryLevel> = {
+  not_assessed: 0,
+  introduced: 1,
+  developing: 2,
+  demonstrated: 4,
+  consistently_demonstrated: 5,
+  needs_reassessment: 1,
+};
+
 export type LanguageCode = "en" | "hi" | "hinglish";
 
 export type ProvenanceType =
   | "student_reported"
+  | "assessment_verified"
+  | "independently_verified"
+  | "project_demonstrated"
+  | "mentor_recorded"
+  | "transcript_extracted"
+  | "ai_inferred"
+  | "external_ecosystem"
   | "institution_provided"
   | "mentor_assessed"
-  | "ai_inferred"
   | "confirmed_evidence"
   | "extracted"
   | "system_inference";
@@ -232,6 +258,26 @@ export interface StructuredTurnResponse {
   requiresStudentConfirmation?: boolean;
   confidence?: number;
   evidenceReferences?: string[];
+  adaptiveContext?: AdaptiveContextArea;
+}
+
+export interface AdaptiveContextArea {
+  currentLearningObjective: string;
+  currentSkill: string;
+  demonstratedMastery: string;
+  masteryLevel: CanonicalMasteryLevel;
+  activeMisconception?: string;
+  currentActivity: string;
+  nextReview?: string;
+  reasonForRecommendation: string;
+  supportingEvidence?: string[];
+  subskillMap?: { id: string; name: string; masteryLevel: CanonicalMasteryLevel }[];
+  bktKnowledgeEstimate?: number;
+  bktMasteryBand?: BKTMasteryBand;
+  fsrsRetrievability?: number;
+  fsrsStabilityDays?: number;
+  reviewQueueLength?: number;
+  learningPhase?: LearningPhase;
 }
 
 export interface StudentProfileContext {
@@ -314,5 +360,246 @@ export interface ResumeMatchResult {
   }[];
   priorityPreparationTasks: string[];
   unverifiedClaimsRequiringConfirmation?: string[];
+}
+
+// ----------------------------------------------------------------------------
+// BKT & FSRS Pedagogical Intelligence Types (Tutor MCP Adaptation)
+// ----------------------------------------------------------------------------
+
+export type BKTInteractionOutcome =
+  | "independent_success"
+  | "hint_probing"
+  | "hint_property"
+  | "hint_worked_example"
+  | "solution_explained"
+  | "failed_attempt"
+  | "unprompted_delayed_retrieval"
+  | "transfer_assessment";
+
+export type BKTMasteryBand = "novice" | "developing" | "competent" | "proficient" | "mastered";
+
+export interface BKTConceptState {
+  conceptId: string;
+  studentUserId: string;
+  knowledgeProbability: number; // P(L_t) in [0, 1]
+  initialProbability: number;   // P(L_0), default 0.15
+  learnProbability: number;     // P(T), default 0.20
+  guessProbability: number;     // P(G), default 0.15
+  slipProbability: number;      // P(S), default 0.10
+  masteryBand: BKTMasteryBand;
+  canonicalMasteryLevel: CanonicalMasteryLevel;
+  independentChecksCount: number;
+  totalAttempts: number;
+  lastAssistanceLevel?: string;
+  lastOutcome?: BKTInteractionOutcome;
+  lastEvidenceSource: ProvenanceType;
+  lastUpdatedAt: string;
+}
+
+export type FSRSRating = 1 | 2 | 3 | 4; // 1: again, 2: hard, 3: good, 4: easy
+
+export type FSRSState = "new" | "learning" | "review" | "relearning";
+
+export interface FSRSConceptRecord {
+  conceptId: string;
+  studentUserId: string;
+  stability: number; // S (days)
+  difficulty: number; // D in [1, 10]
+  retrievability: number; // R in [0, 1]
+  lastReviewedAt: string;
+  nextReviewAt: string;
+  reps: number;
+  lapses: number;
+  state: FSRSState;
+  historicalRatings: {
+    rating: FSRSRating;
+    reviewedAt: string;
+    retrievabilityBefore: number;
+  }[];
+  lastUpdatedAt: string;
+}
+
+export type ReviewQueueCategory =
+  | "daily_review"
+  | "weak_concept_revision"
+  | "forgotten_concept_recovery"
+  | "prerequisite_reinforcement";
+
+export interface ReviewQueueItem {
+  conceptId: string;
+  conceptName: string;
+  category: ReviewQueueCategory;
+  retrievability: number;
+  stability: number;
+  difficulty: number;
+  dueDaysAgo: number;
+  priority: "high" | "medium" | "low";
+  reason: string;
+}
+
+export type LearningPhase =
+  | "1_diagnostic_placement"
+  | "2_initial_instruction"
+  | "3_guided_practice"
+  | "4_independent_practice"
+  | "5_transfer_challenge"
+  | "6_mastery_verification"
+  | "7_spaced_review";
+
+export interface AdaptiveActivityDecision {
+  recommendedSkillId: string;
+  recommendedSkillName: string;
+  recommendedActivity: string;
+  recommendedDifficulty: "introductory" | "developing" | "intermediate" | "advanced" | "rigorous";
+  learningPhase: LearningPhase;
+  teachingStrategy: TeachingStrategy;
+  expectedLearningObjective: string;
+  reasonForRecommendation: string;
+  supportingEvidence: string[];
+  reviewQueueLength: number;
+  bktKnowledgeEstimate: number;
+  bktMasteryBand: BKTMasteryBand;
+}
+
+// ----------------------------------------------------------------------------
+// BloomTutor Learning Journey Types
+// ----------------------------------------------------------------------------
+
+export interface ProgrammeLessonExercise {
+  id: string;
+  prompt: string;
+  starterCode?: string;
+  sampleSolution: string;
+  testCases?: { input: string; expected: string }[];
+  hintLevelAvailable: number;
+}
+
+export interface ProgrammeLessonFeedback {
+  rating: 1 | 2 | 3 | 4 | 5;
+  clarity: "clear" | "confusing" | "too_fast" | "too_slow";
+  comment?: string;
+  timestamp: string;
+}
+
+export interface ProgrammeLessonEvaluation {
+  score: number; // 0 - 10
+  isPassed: boolean;
+  demonstratedMastery: CanonicalMasteryLevel;
+  feedback: string;
+  evaluatedAt: string;
+}
+
+export interface ProgrammeLesson {
+  id: string;
+  subskillId: string;
+  order: number;
+  title: string;
+  conceptualOverview: string;
+  learningObjectives: string[];
+  prerequisites: string[];
+  exercise: ProgrammeLessonExercise;
+  status: "pending" | "in_progress" | "completed" | "needs_remediation";
+  studentFeedback?: ProgrammeLessonFeedback;
+  evaluation?: ProgrammeLessonEvaluation;
+}
+
+export interface StudentProgrammeNote {
+  id: string;
+  lessonId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentAnnotation {
+  id: string;
+  lessonId: string;
+  highlightedText: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface ProgrammeFinalAssessment {
+  id: string;
+  score: number;
+  overallMastery: CanonicalMasteryLevel;
+  passed: boolean;
+  assessedAt: string;
+  summary: string;
+}
+
+export interface LearningProgramme {
+  id: string;
+  studentUserId: string;
+  goalId: string;
+  roadmapId?: string;
+  title: string;
+  topic: string;
+  currentLessonIndex: number;
+  lessons: ProgrammeLesson[];
+  notes: StudentProgrammeNote[];
+  annotations: StudentAnnotation[];
+  status: "active" | "completed" | "paused" | "remediating";
+  remediationQueue: string[];
+  finalAssessment?: ProgrammeFinalAssessment;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ----------------------------------------------------------------------------
+// SocialCoach Communication Coach Types
+// ----------------------------------------------------------------------------
+
+export type CommunicationScenarioType =
+  | "salary_negotiation"
+  | "executive_status_update"
+  | "technical_disagreement"
+  | "behavioral_interview"
+  | "non_technical_explanation";
+
+export interface CounterpartPersona {
+  name: string;
+  role: string;
+  attitude: "skeptical" | "collaborative" | "demanding" | "neutral" | "supportive";
+  background: string;
+}
+
+export interface DialogueTurn {
+  turnIndex: number;
+  speaker: "counterpart" | "student" | "coach_whisper";
+  content: string;
+  timestamp: string;
+  coachingWhisper?: string;
+}
+
+export interface CommunicationRubricDimension {
+  score: number; // 1 to 10
+  feedback: string;
+}
+
+export interface CommunicationRubricEvaluation {
+  clarity: CommunicationRubricDimension;
+  structure: CommunicationRubricDimension;
+  toneAndEmotionalAwareness: CommunicationRubricDimension;
+  professionalPresence: CommunicationRubricDimension;
+  technicalAccuracy: CommunicationRubricDimension;
+  persuasiveness: CommunicationRubricDimension;
+  overallScore: number; // 1 to 10
+  concreteRevisionSuggestions: string[];
+  exemplaryRewrite: string;
+}
+
+export interface SocialSimulationSession {
+  id: string;
+  studentUserId: string;
+  scenarioType: CommunicationScenarioType;
+  scenarioTitle: string;
+  scenarioBriefing: string;
+  counterpartPersona: CounterpartPersona;
+  turns: DialogueTurn[];
+  status: "setup" | "in_progress" | "completed";
+  evaluation?: CommunicationRubricEvaluation;
+  createdAt: string;
+  updatedAt: string;
 }
 

@@ -23,7 +23,8 @@ export type EvidenceClassification =
   | "inferred"
   | "assessed"
   | "project_demonstrated"
-  | "independently_verified";
+  | "independently_verified"
+  | ProvenanceType;
 
 export interface SkillNodeWithEvidence {
   skillId: string;
@@ -90,11 +91,21 @@ export interface StudentIntelligenceGraphData {
 // Canonical Precedence Weights for Conflict Resolution
 export const EVIDENCE_PRECEDENCE_WEIGHTS: Record<EvidenceClassification, number> = {
   independently_verified: 1.0,
+  assessment_verified: 0.95,
   assessed: 0.9,
-  project_demonstrated: 0.8,
+  project_demonstrated: 0.85,
+  mentor_recorded: 0.85,
+  mentor_assessed: 0.85,
+  confirmed_evidence: 0.85,
+  institution_provided: 0.8,
   self_reported: 0.7,
+  student_reported: 0.7,
+  transcript_extracted: 0.65,
   extracted: 0.6,
+  external_ecosystem: 0.5,
   inferred: 0.4,
+  ai_inferred: 0.4,
+  system_inference: 0.4,
 };
 
 export class StudentIntelligenceGraph {

@@ -86,15 +86,20 @@ export class PermissionAwareContextBuilder {
     options: ContextBuildOptions = {}
   ): Promise<AuthorizedStudentContext> {
     const requestingUserId = options.requestingUserId || studentUserId;
-    const purpose: ConsentPurpose = options.purpose || "service_personalization";
+    const isMentorRequest = requestingUserId.startsWith("mentor-");
+    const purpose: ConsentPurpose = options.purpose || (isMentorRequest ? "mentor_sharing" : "service_personalization");
 
     // 1. Ownership & Tenant Privacy Check
-    if (requestingUserId !== studentUserId && !requestingUserId.startsWith("mentor-") && requestingUserId !== "admin") {
+    if (requestingUserId !== studentUserId && !isMentorRequest && requestingUserId !== "admin") {
       throw new Error("403_FORBIDDEN: You do not have permission to access another student's context.");
     }
 
-    // 2. Purpose Consent Resolution
+    // 2. Purpose Consent Resolution: Mentors strictly require mentor_sharing consent
     let hasPurposeConsent = await StudentConsentService.hasConsent(studentUserId, purpose, requestingUserId);
+    if (isMentorRequest) {
+      const hasMentorSharing = await StudentConsentService.hasConsent(studentUserId, "mentor_sharing", requestingUserId);
+      hasPurposeConsent = hasPurposeConsent && hasMentorSharing;
+    }
     if (options.consentOverride?.useForPersonalization !== undefined) {
       hasPurposeConsent = options.consentOverride.useForPersonalization;
     }
@@ -108,19 +113,18 @@ export class PermissionAwareContextBuilder {
 
     // If purpose consent is DENIED (e.g. personalization revoked or training denied)
     if (!hasPurposeConsent) {
-      const isStudent2 = studentUserId === "usr-student-2" || studentUserId === "user-student-2";
       return {
         studentUserId,
         displayName: this.sanitizeContextField(graph.displayName),
         email: this.sanitizeContextField(graph.email),
         academicProfile: {
-          institution: "Platform Student",
-          degree: "Computer Science",
-          graduationYear: 2026,
+          institution: graph.institution || "Platform Student",
+          degree: graph.degree || "Computer Science",
+          graduationYear: graph.graduationYear || 2026,
           currentLevel: "Undergraduate",
         },
-        targetRole: "Software Engineering Candidate",
-        preferredLanguage: graph.preferredLanguage || (isStudent2 ? "hinglish" : "en"),
+        targetRole: graph.career?.targetRole || "Software Engineering Candidate",
+        preferredLanguage: graph.preferredLanguage || "en",
         purpose,
         consentGranted: false,
         isPersonalized: false,
@@ -153,26 +157,32 @@ export class PermissionAwareContextBuilder {
       const summary = `${skill.skillName} [${skill.masteryState}, ${skill.masteryScore}/10]`;
       if (skill.evidenceType === "independently_verified") {
         confirmedFacts.push(summary + " (Independently Verified by Assessment)");
-      } else if (skill.evidenceType === "assessed" || skill.evidenceType === "project_demonstrated") {
+      } else if (skill.evidenceType === "assessed" || skill.evidenceType === "assessment_verified" || skill.evidenceType === "project_demonstrated" || (skill.evidenceType as any) === "mentor_recorded") {
         confirmedFacts.push(summary + ` (Evidence: ${skill.evidenceSource})`);
-      } else if (skill.evidenceType === "self_reported") {
+      } else if (skill.evidenceType === "self_reported" || skill.evidenceType === "student_reported") {
         studentReported.push(summary);
-      } else if (skill.evidenceType === "extracted") {
+      } else if (skill.evidenceType === "extracted" || (skill.evidenceType as any) === "transcript_extracted") {
         extractedEvidence.push(summary);
-      } else if (skill.evidenceType === "inferred") {
+      } else if (skill.evidenceType === "inferred" || (skill.evidenceType as any) === "ai_inferred") {
         systemInferences.push(summary);
+      } else {
+        extractedEvidence.push(summary);
       }
     }
 
     // Categorize Memories
     for (const mem of rawMemories) {
       const entry = `${mem.key}: ${mem.value}`;
-      if (mem.studentConfirmed || mem.confidence >= 0.95) {
+      // Rule: An AI inference must NEVER become a confirmed fact simply because its confidence is high.
+      const isAiInferred = mem.provenance === "ai_inferred" || mem.provenance === "system_inference";
+      if (!isAiInferred && (mem.studentConfirmed || mem.provenance === "independently_verified" || (mem.provenance as any) === "mentor_recorded" || mem.provenance === "confirmed_evidence")) {
         confirmedFacts.push(entry);
       } else if (mem.provenance === "student_reported") {
         studentReported.push(entry);
-      } else {
+      } else if (isAiInferred) {
         systemInferences.push(entry);
+      } else {
+        extractedEvidence.push(entry);
       }
     }
 

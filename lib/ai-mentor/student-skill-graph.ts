@@ -155,29 +155,82 @@ export class StudentSkillGraph {
   }
 
   /**
-   * Record new evidence and calibrate student mastery state
+   * Record new evidence and calibrate student mastery state with anti-gaming barriers
    */
   public static recordEvidence(
     studentUserId: string,
     skillId: string,
     score: number, // 0.0 to 10.0
     evidenceSource: StudentSkillRecord["evidenceSource"],
-    misconceptionDetected?: string
+    misconceptionDetectedOrOptions?: string | {
+      assessmentId?: string;
+      isAssisted?: boolean;
+      requestingUserId?: string;
+      misconceptionDetected?: string;
+    },
+    maybeOptions?: {
+      assessmentId?: string;
+      isAssisted?: boolean;
+      requestingUserId?: string;
+    }
   ): StudentSkillRecord {
+    // Normalize overloaded parameters
+    const misconceptionDetected = typeof misconceptionDetectedOrOptions === "string"
+      ? misconceptionDetectedOrOptions
+      : misconceptionDetectedOrOptions?.misconceptionDetected;
+
+    const options = typeof misconceptionDetectedOrOptions === "object"
+      ? misconceptionDetectedOrOptions
+      : maybeOptions || {};
+
+    const { assessmentId, isAssisted = false, requestingUserId } = options;
+
+    // 1. Cross-student authorization check
+    if (
+      requestingUserId &&
+      requestingUserId !== studentUserId &&
+      !requestingUserId.startsWith("mentor-") &&
+      requestingUserId !== "admin"
+    ) {
+      throw new Error("403_FORBIDDEN: You do not have permission to record skill evidence for another student.");
+    }
+
+    // 2. Score validation & boundary integrity
+    if (typeof score !== "number" || Number.isNaN(score) || score < 0.0 || score > 10.0) {
+      throw new Error("400_BAD_REQUEST: Assessment score must be a number between 0.0 and 10.0.");
+    }
+
     const skills = this.getStudentSkills(studentUserId);
     const userMap = this.userSkillStore.get(studentUserId)!;
     let record = userMap.get(skillId);
 
+    // Is this an independent, unassisted assessment eligible for Level 4/5 promotion?
+    const isEligibleForIndependentCheck =
+      score >= 7.0 &&
+      !isAssisted &&
+      evidenceSource !== "self_reported" &&
+      evidenceSource !== ("ai_inferred" as any);
+
     if (!record) {
+      const initialScore = score;
+      const initialSuccess = isEligibleForIndependentCheck ? 1 : 0;
+      let initialLevel: 0 | 1 | 2 | 3 | 4 | 5 = 1;
+      if (initialScore < 2.0) initialLevel = 0;
+      else if (initialScore < 5.0) initialLevel = 1;
+      else if (initialScore < 7.0) initialLevel = 2;
+      else initialLevel = isAssisted ? 3 : 3;
+
       record = {
         id: `sk-${studentUserId}-${skillId}`,
         studentUserId,
         skillId,
-        masteryState: "introduced",
+        masteryState: initialLevel >= 2 ? "developing" : initialLevel === 1 ? "introduced" : "not_assessed",
+        masteryLevel: initialLevel,
         masteryScore: score,
         confidence: 0.5,
         assessmentCount: 1,
-        successCount: score >= 7.0 ? 1 : 0,
+        successCount: initialSuccess,
+        verifiedAssessmentIds: assessmentId && isEligibleForIndependentCheck ? [assessmentId] : [],
         knownWeaknesses: [],
         commonMisconceptions: misconceptionDetected ? [misconceptionDetected] : [],
         lastAssessedAt: new Date().toISOString(),
@@ -185,7 +238,21 @@ export class StudentSkillGraph {
       };
     } else {
       record.assessmentCount += 1;
-      if (score >= 7.0) record.successCount += 1;
+      if (!record.verifiedAssessmentIds) {
+        record.verifiedAssessmentIds = [];
+      }
+
+      // 3. Retry Gaming Prevention:
+      // If assessmentId was already verified, this is a retry of the same question!
+      // Do NOT increment successCount again.
+      const isDuplicateAssessment = assessmentId ? record.verifiedAssessmentIds.includes(assessmentId) : false;
+
+      if (isEligibleForIndependentCheck && !isDuplicateAssessment) {
+        record.successCount += 1;
+        if (assessmentId) {
+          record.verifiedAssessmentIds.push(assessmentId);
+        }
+      }
 
       // Weight evidence based on rigour of evidence source
       const weight = evidenceSource === "code_execution" || evidenceSource === "mock_interview" ? 0.4 : 0.2;
@@ -198,15 +265,28 @@ export class StudentSkillGraph {
         record.commonMisconceptions.push(misconceptionDetected);
       }
 
-      // Update state transitions
-      if (record.successCount >= 3 && record.masteryScore >= 8.5) {
+      // 4. Update state transitions with strict 0-5 canonical mastery scale:
+      // Level 5 requires >= 3 DISTINCT independent checks with score >= 8.5
+      // Level 4 requires >= 2 DISTINCT independent checks with score >= 7.0
+      // AI inferences or assisted answers CANNOT advance to Level 4 or 5
+      if (record.successCount >= 3 && record.masteryScore >= 8.5 && !isAssisted) {
         record.masteryState = "consistently_demonstrated";
-      } else if (record.successCount >= 2 && record.masteryScore >= 7.0) {
+        record.masteryLevel = 5;
+      } else if (record.successCount >= 2 && record.masteryScore >= 7.0 && !isAssisted) {
         record.masteryState = "demonstrated";
+        record.masteryLevel = 4;
+      } else if (record.masteryScore >= 7.0) {
+        record.masteryState = "developing";
+        record.masteryLevel = 3;
       } else if (record.masteryScore >= 5.0) {
         record.masteryState = "developing";
-      } else {
+        record.masteryLevel = 2;
+      } else if (record.masteryScore >= 2.0) {
         record.masteryState = "introduced";
+        record.masteryLevel = 1;
+      } else {
+        record.masteryState = "not_assessed";
+        record.masteryLevel = 0;
       }
     }
 

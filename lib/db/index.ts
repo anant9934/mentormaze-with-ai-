@@ -1394,6 +1394,67 @@ export async function initializeDatabaseSchema() {
       created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
       updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS student_concept_bkt_state (
+      id VARCHAR(64) PRIMARY KEY,
+      student_user_id VARCHAR(64) NOT NULL,
+      concept_id VARCHAR(64) NOT NULL,
+      knowledge_probability REAL DEFAULT 0.15 NOT NULL,
+      initial_probability REAL DEFAULT 0.15 NOT NULL,
+      learn_probability REAL DEFAULT 0.20 NOT NULL,
+      guess_probability REAL DEFAULT 0.15 NOT NULL,
+      slip_probability REAL DEFAULT 0.10 NOT NULL,
+      mastery_band VARCHAR(32) DEFAULT 'novice' NOT NULL,
+      canonical_mastery_level INTEGER DEFAULT 0 NOT NULL,
+      independent_checks_count INTEGER DEFAULT 0 NOT NULL,
+      total_attempts INTEGER DEFAULT 0 NOT NULL,
+      last_assistance_level VARCHAR(64),
+      last_outcome VARCHAR(64),
+      last_evidence_source VARCHAR(64) DEFAULT 'student_reported' NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_bkt_student_concept ON student_concept_bkt_state (student_user_id, concept_id);
+
+    CREATE TABLE IF NOT EXISTS student_concept_fsrs_state (
+      id VARCHAR(64) PRIMARY KEY,
+      student_user_id VARCHAR(64) NOT NULL,
+      concept_id VARCHAR(64) NOT NULL,
+      stability REAL DEFAULT 1.0 NOT NULL,
+      difficulty REAL DEFAULT 5.0 NOT NULL,
+      retrievability REAL DEFAULT 1.0 NOT NULL,
+      reps INTEGER DEFAULT 0 NOT NULL,
+      lapses INTEGER DEFAULT 0 NOT NULL,
+      state VARCHAR(32) DEFAULT 'new' NOT NULL,
+      historical_ratings JSONB DEFAULT '[]'::jsonb,
+      last_reviewed_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      next_review_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_fsrs_student_concept ON student_concept_fsrs_state (student_user_id, concept_id);
+    CREATE INDEX IF NOT EXISTS idx_fsrs_next_review ON student_concept_fsrs_state (student_user_id, next_review_at);
+
+    CREATE TABLE IF NOT EXISTS student_hint_escalation_state (
+      id VARCHAR(64) PRIMARY KEY,
+      student_user_id VARCHAR(64) NOT NULL,
+      skill_id VARCHAR(64) NOT NULL,
+      exercise_id VARCHAR(64) NOT NULL,
+      topic VARCHAR(64) NOT NULL,
+      goal_id VARCHAR(64),
+      attempt_count INTEGER DEFAULT 0 NOT NULL,
+      incorrect_count INTEGER DEFAULT 0 NOT NULL,
+      current_hint_level INTEGER DEFAULT 1 NOT NULL,
+      hints_delivered JSONB DEFAULT '[]'::jsonb,
+      revealed_solution BOOLEAN DEFAULT false NOT NULL,
+      resolved_successfully BOOLEAN DEFAULT false NOT NULL,
+      was_independent_success BOOLEAN DEFAULT false NOT NULL,
+      repeated_misconceptions JSONB DEFAULT '[]'::jsonb,
+      last_attempt_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      last_successful_assessment_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_hint_student_exercise ON student_hint_escalation_state (student_user_id, exercise_id);
+    CREATE INDEX IF NOT EXISTS idx_hint_student_skill ON student_hint_escalation_state (student_user_id, skill_id);
   `;
 
   if (pgliteInstance) {

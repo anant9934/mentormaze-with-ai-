@@ -496,5 +496,86 @@ export const mentorshipBridgeShares = pgTable(
   })
 );
 
+// 25. Student Concept BKT State (Tutor MCP Adaptation)
+export const studentConceptBktState = pgTable(
+  "student_concept_bkt_state",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    studentUserId: varchar("student_user_id", { length: 64 }).notNull(),
+    conceptId: varchar("concept_id", { length: 64 }).notNull(),
+    knowledgeProbability: real("knowledge_probability").notNull().default(0.15),
+    initialProbability: real("initial_probability").notNull().default(0.15),
+    learnProbability: real("learn_probability").notNull().default(0.20),
+    guessProbability: real("guess_probability").notNull().default(0.15),
+    slipProbability: real("slip_probability").notNull().default(0.10),
+    masteryBand: varchar("mastery_band", { length: 32 }).notNull().default("novice"),
+    canonicalMasteryLevel: integer("canonical_mastery_level").notNull().default(0),
+    independentChecksCount: integer("independent_checks_count").notNull().default(0),
+    totalAttempts: integer("total_attempts").notNull().default(0),
+    lastAssistanceLevel: varchar("last_assistance_level", { length: 64 }),
+    lastOutcome: varchar("last_outcome", { length: 64 }),
+    lastEvidenceSource: varchar("last_evidence_source", { length: 64 }).notNull().default("student_reported"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    bktStudentConceptIdx: uniqueIndex("idx_bkt_student_concept").on(table.studentUserId, table.conceptId),
+  })
+);
+
+// 26. Student Concept FSRS State (Free Spaced Repetition Scheduler)
+export const studentConceptFsrsState = pgTable(
+  "student_concept_fsrs_state",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    studentUserId: varchar("student_user_id", { length: 64 }).notNull(),
+    conceptId: varchar("concept_id", { length: 64 }).notNull(),
+    stability: real("stability").notNull().default(1.0), // S in days
+    difficulty: real("difficulty").notNull().default(5.0), // D in [1, 10]
+    retrievability: real("retrievability").notNull().default(1.0), // R in [0, 1]
+    reps: integer("reps").notNull().default(0),
+    lapses: integer("lapses").notNull().default(0),
+    state: varchar("state", { length: 32 }).notNull().default("new"),
+    historicalRatings: jsonb("historical_ratings").default([]),
+    lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }).defaultNow().notNull(),
+    nextReviewAt: timestamp("next_review_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    fsrsStudentConceptIdx: uniqueIndex("idx_fsrs_student_concept").on(table.studentUserId, table.conceptId),
+    fsrsNextReviewIdx: index("idx_fsrs_next_review").on(table.studentUserId, table.nextReviewAt),
+  })
+);
+
+// 27. Student Exercise Hint Escalation State (Persistent Escalator)
+export const studentHintEscalationState = pgTable(
+  "student_hint_escalation_state",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    studentUserId: varchar("student_user_id", { length: 64 }).notNull(),
+    skillId: varchar("skill_id", { length: 64 }).notNull(),
+    exerciseId: varchar("exercise_id", { length: 64 }).notNull(),
+    topic: varchar("topic", { length: 64 }).notNull(),
+    goalId: varchar("goal_id", { length: 64 }),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    incorrectCount: integer("incorrect_count").notNull().default(0),
+    currentHintLevel: integer("current_hint_level").notNull().default(1),
+    hintsDelivered: jsonb("hints_delivered").default([]),
+    revealedSolution: boolean("revealed_solution").notNull().default(false),
+    resolvedSuccessfully: boolean("resolved_successfully").notNull().default(false),
+    wasIndependentSuccess: boolean("was_independent_success").notNull().default(false),
+    repeatedMisconceptions: jsonb("repeated_misconceptions").default([]),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+    lastSuccessfulAssessmentAt: timestamp("last_successful_assessment_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    studentExerciseIdx: uniqueIndex("idx_hint_student_exercise").on(table.studentUserId, table.exerciseId),
+    studentSkillIdx: index("idx_hint_student_skill").on(table.studentUserId, table.skillId),
+  })
+);
+
+
+
 
 
