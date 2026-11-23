@@ -4,6 +4,8 @@
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
  */
 
+import { StudentConsentService } from "./student-consent-service";
+
 export type ProviderErrorType =
   | "AUTH_ERROR"
   | "RATE_LIMIT"
@@ -52,6 +54,7 @@ export interface PromptPayload {
   maxTokens?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
+  studentUserId?: string;
 }
 
 export interface TokenUsage {
@@ -335,7 +338,7 @@ export class ModelProviderRouter {
       },
       gemini: {
         provider: "gemini",
-        modelName: "gemini-1.5-flash",
+        modelName: "gemini-2.5-flash",
         isAvailable: !!geminiKey,
         isConfigured: !!geminiKey,
         maskedKeyPreview: this.maskKey(geminiKey),
@@ -416,12 +419,21 @@ export class ModelProviderRouter {
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     let fallbackReason = "NO_API_KEYS_CONFIGURED";
 
+    // Check student consent for external cloud LLM processing
+    const hasExternalLlmConsent = payload.studentUserId
+      ? StudentConsentService.hasConsentSync(payload.studentUserId, "external_llm_processing")
+      : true;
+
+    if (!hasExternalLlmConsent) {
+      fallbackReason = "EXTERNAL_LLM_CONSENT_DENIED: Student has not consented to external_llm_processing. External cloud AI providers are blocked.";
+    }
+
     // 0. Check MentorMaze-2B Specialized Fine-Tuned Model (If requested or preferred)
     if (payload.preferredProvider === "mentormaze_2b" || process.env.MENTORMAZE_PREFER_LOCAL === "true") {
       const lifecycle = this.getModelLifecycleState();
-      const fallbackProvider = process.env.GEMINI_API_KEY
+      const fallbackProvider = (hasExternalLlmConsent && process.env.GEMINI_API_KEY)
         ? "gemini"
-        : process.env.GROQ_API_KEY
+        : (hasExternalLlmConsent && process.env.GROQ_API_KEY)
         ? "groq"
         : "local_pedagogical";
 
@@ -454,8 +466,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 0b. Explicit preferred provider routing for Groq or OpenRouter
-    if (payload.preferredProvider === "groq" && process.env.GROQ_API_KEY) {
+    // 0b. Explicit preferred provider routing for Groq or OpenRouter (Requires external LLM consent)
+    if (hasExternalLlmConsent && payload.preferredProvider === "groq" && process.env.GROQ_API_KEY) {
       try {
         const result = await this.callGroq(payload, requestId);
         this.logTelemetry({
@@ -475,7 +487,7 @@ export class ModelProviderRouter {
       }
     }
 
-    if (payload.preferredProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
+    if (hasExternalLlmConsent && payload.preferredProvider === "openrouter" && process.env.OPENROUTER_API_KEY) {
       try {
         const result = await this.callOpenRouter(payload, requestId);
         this.logTelemetry({
@@ -495,8 +507,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 1. Check Google Gemini (Primary for fast general & educational queries)
-    if (process.env.GEMINI_API_KEY) {
+    // 1. Check Google Gemini (Primary for fast general & educational queries - Requires external LLM consent)
+    if (hasExternalLlmConsent && process.env.GEMINI_API_KEY) {
       try {
         const result = await this.callGemini(payload, requestId);
         this.logTelemetry({
@@ -529,8 +541,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 1b. Check Groq LPU (Ultra-fast 16ms high-throughput inference)
-    if (process.env.GROQ_API_KEY) {
+    // 1b. Check Groq LPU (Ultra-fast 16ms high-throughput inference - Requires external LLM consent)
+    if (hasExternalLlmConsent && process.env.GROQ_API_KEY) {
       try {
         const result = await this.callGroq(payload, requestId);
         this.logTelemetry({
@@ -551,8 +563,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 1c. Check OpenRouter Multi-Model Gateway
-    if (process.env.OPENROUTER_API_KEY) {
+    // 1c. Check OpenRouter Multi-Model Gateway (Requires external LLM consent)
+    if (hasExternalLlmConsent && process.env.OPENROUTER_API_KEY) {
       try {
         const result = await this.callOpenRouter(payload, requestId);
         this.logTelemetry({
@@ -573,8 +585,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 2. Check OpenAI (Secondary or primary for coding & reasoning if configured)
-    if (process.env.OPENAI_API_KEY) {
+    // 2. Check OpenAI (Secondary or primary for coding & reasoning if configured - Requires external LLM consent)
+    if (hasExternalLlmConsent && process.env.OPENAI_API_KEY) {
       try {
         const result = await this.callOpenAI(payload, requestId);
         this.logTelemetry({
@@ -607,8 +619,8 @@ export class ModelProviderRouter {
       }
     }
 
-    // 3. Check Anthropic Claude
-    if (process.env.ANTHROPIC_API_KEY) {
+    // 3. Check Anthropic Claude (Requires external LLM consent)
+    if (hasExternalLlmConsent && process.env.ANTHROPIC_API_KEY) {
       try {
         const result = await this.callAnthropic(payload, requestId);
         this.logTelemetry({
@@ -672,8 +684,9 @@ export class ModelProviderRouter {
       estimatedCostUsd: 0.0,
       isFallback: true,
       fallbackReason,
-      fallbackNotice:
-        "Running on MentorMaze Local Pedagogical Rule-Engine (Deterministic Fallback Mode). Generative LLM provider keys (GEMINI_API_KEY, OPENAI_API_KEY) are not configured in the server environment.",
+      fallbackNotice: !hasExternalLlmConsent
+        ? "Running on MentorMaze Local Pedagogical Rule-Engine (Deterministic Fallback Mode). External cloud AI processing was bypassed in accordance with student privacy consent preferences."
+        : "Running on MentorMaze Local Pedagogical Rule-Engine (Deterministic Fallback Mode). Generative LLM provider keys (GEMINI_API_KEY, OPENAI_API_KEY) are not configured in the server environment.",
     };
 
     this.logTelemetry({
@@ -705,8 +718,8 @@ export class ModelProviderRouter {
 
     const apiKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)] || process.env.GEMINI_API_KEY!;
     const candidateModels = payload.taskCategory === "coding"
-      ? ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"]
-      : ["gemini-2.0-flash", "gemini-1.5-flash"];
+      ? ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest"]
+      : ["gemini-2.5-flash", "gemini-flash-latest"];
 
     let lastError: Error | null = null;
     for (const model of candidateModels) {
