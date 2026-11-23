@@ -50,3 +50,5 @@ training/datasets/processed/
 /references/
 
 
+.vercel
+.env*
