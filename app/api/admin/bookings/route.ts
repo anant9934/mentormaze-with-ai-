@@ -1,14 +1,19 @@
+export const dynamic = "force-dynamic";
 /**
  * MentorMaze Admin Bookings Management API
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { BookingStateMachine, BookingStatus } from "@/lib/db/booking-state-machine";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     await initializeDatabaseSchema();
     const db = getDb();
@@ -73,6 +78,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     await initializeDatabaseSchema();
     const body = await req.json();

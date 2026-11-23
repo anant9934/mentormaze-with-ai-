@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { emailService } from "@/lib/email/service";
 import { TEMPLATE_MAP } from "@/lib/email/templates/registry";
@@ -7,6 +8,9 @@ import { EmailCategory } from "@/lib/email/types";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     // Allow admin access
@@ -36,6 +40,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     if (session && session.role !== "admin" && session.role !== "super_admin") {
@@ -62,6 +69,9 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     if (session && session.role !== "admin" && session.role !== "super_admin") {

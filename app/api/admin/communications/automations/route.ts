@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { emailService } from "@/lib/email/service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     if (session && session.role !== "admin" && session.role !== "super_admin") {
@@ -19,6 +23,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     if (session && session.role !== "admin" && session.role !== "super_admin") {

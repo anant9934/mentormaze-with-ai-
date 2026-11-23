@@ -1,10 +1,15 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { AvailabilityService } from "@/lib/calendar/availability-service";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { getDb, schema } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const url = new URL(req.url);
     const startDate = url.searchParams.get("startDate") || undefined;

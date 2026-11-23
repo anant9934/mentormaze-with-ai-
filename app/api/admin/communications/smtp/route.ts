@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { verifySmtpConnection, getCachedSmtpStatus, sendEmailDirect } from "@/lib/email/transport";
 import { TEMPLATE_MAP } from "@/lib/email/templates/registry";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    const session = await getServerSession();
-    if (session && session.role !== "admin" && session.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
-    }
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
 
+  try {
     const status = getCachedSmtpStatus();
     return NextResponse.json({ success: true, status });
   } catch (err: any) {
@@ -20,6 +19,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     const session = await getServerSession();
     if (session && session.role !== "admin" && session.role !== "super_admin") {

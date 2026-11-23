@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { requireServerRole } from "@/lib/auth/server-auth";
 import { notificationService } from "@/lib/notifications/service";
 import { getDb, schema } from "@/lib/db";
@@ -7,8 +8,10 @@ import { desc } from "drizzle-orm";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const adminAuth = await requireAdmin(req);
+  if (adminAuth.errorResponse) return adminAuth.errorResponse;
+
   try {
-    const admin = await requireServerRole(["admin", "super_admin"]);
     const stats = await notificationService.getAdminStats();
     const db = getDb();
 
@@ -19,7 +22,7 @@ export async function GET(req: NextRequest) {
       .limit(30);
 
     return NextResponse.json({
-      admin: { id: admin.id, displayName: admin.displayName },
+      admin: { id: adminAuth.user.id, displayName: adminAuth.user.displayName },
       stats,
       announcements,
     });
@@ -30,8 +33,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const adminAuth = await requireAdmin(req);
+  if (adminAuth.errorResponse) return adminAuth.errorResponse;
+
   try {
-    const admin = await requireServerRole(["admin", "super_admin"]);
     const body = await req.json();
 
     if (!body.title || !body.content) {
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
       actionUrl: body.actionUrl,
       actionLabel: body.actionLabel,
       channels: body.channels || ["in_app", "push"],
-      publishedByUserId: admin.id,
+      publishedByUserId: adminAuth.user.id,
     });
 
     return NextResponse.json({
@@ -55,7 +60,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("POST /api/admin/communications/notifications error:", err);
-    return NextResponse.json({ error: err.message || "Unauthorized" }, { status: 403 });
+    return NextResponse.json({ error: err.message || "Failed to publish announcement" }, { status: 500 });
   }
 }
 

@@ -1,4 +1,6 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getServerSession } from "@/lib/auth/server-auth";
 import { livekitRegistry } from "@/lib/livekit/provider-registry";
 import { LiveKitHealthChecker } from "@/lib/livekit/health-checker";
@@ -8,6 +10,9 @@ import { LiveKitHealthChecker } from "@/lib/livekit/health-checker";
  * Requires server-side admin session authentication.
  */
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   const session = await getServerSession();
 
   // In production, strictly enforce admin role
@@ -28,6 +33,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   const session = await getServerSession();
 
   // In production, strictly enforce admin role

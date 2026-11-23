@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 /**
  * MentorMaze Financial Ledger Reconciliation Engine
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
@@ -7,10 +8,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (admin.errorResponse) return admin.errorResponse;
+
   try {
     await initializeDatabaseSchema();
     const db = getDb();
