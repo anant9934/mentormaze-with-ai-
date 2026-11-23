@@ -32,11 +32,11 @@ export const MENTORMAZE_TECHNICAL_GLOSSARY: Record<string, string> = {
 };
 
 export class TranslationAdapter {
-  private isMockMode: boolean;
+  private isTestMode: boolean;
   private customGlossary: Map<string, string>;
 
   constructor(customGlossary?: Record<string, string>) {
-    this.isMockMode = process.env.NODE_ENV === "test" || !process.env.OPENAI_API_KEY;
+    this.isTestMode = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
     this.customGlossary = new Map(Object.entries(MENTORMAZE_TECHNICAL_GLOSSARY));
     if (customGlossary) {
       for (const [k, v] of Object.entries(customGlossary)) {
@@ -47,6 +47,7 @@ export class TranslationAdapter {
 
   /**
    * Translates source text into target language while applying mentorship domain glossary.
+   * In non-test environments without cloud credentials, returns clean TRANSLATION_UNAVAILABLE notice.
    */
   public async translate(
     text: string,
@@ -56,8 +57,11 @@ export class TranslationAdapter {
     if (!text || text.trim() === "") return "";
     if (srcLang === dstLang) return text;
 
-    if (this.isMockMode) {
-      return this.mockTranslate(text, srcLang, dstLang);
+    if (!process.env.OPENAI_API_KEY) {
+      if (this.isTestMode) {
+        return this.mockTranslate(text, srcLang, dstLang);
+      }
+      return "[TRANSLATION_UNAVAILABLE: Cloud translation provider not configured]";
     }
 
     try {
@@ -81,14 +85,20 @@ Source text: "${text}"`;
       });
 
       if (!response.ok) {
-        return this.mockTranslate(text, srcLang, dstLang);
+        if (this.isTestMode) {
+          return this.mockTranslate(text, srcLang, dstLang);
+        }
+        return `[TRANSLATION_UNAVAILABLE: HTTP ${response.status}]`;
       }
 
       const json = await response.json();
       const translated = json.choices?.[0]?.message?.content?.trim() || text;
       return this.applyGlossaryPostProcessing(translated);
     } catch {
-      return this.mockTranslate(text, srcLang, dstLang);
+      if (this.isTestMode) {
+        return this.mockTranslate(text, srcLang, dstLang);
+      }
+      return "[TRANSLATION_UNAVAILABLE: Provider network error]";
     }
   }
 

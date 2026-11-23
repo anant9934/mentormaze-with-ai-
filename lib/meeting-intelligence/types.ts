@@ -18,7 +18,8 @@ export type SessionIntelligenceStatus =
   | "paused"
   | "processing"
   | "completed"
-  | "error";
+  | "error"
+  | "not_live_verified";
 
 export interface TranscriptSegment {
   id: string;                       // e.g. "seg-101-1"

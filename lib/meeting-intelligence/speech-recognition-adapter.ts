@@ -19,24 +19,31 @@ export interface SpeechRecognitionOptions {
 export class SpeechRecognitionAdapter {
   private apiKey?: string;
   private apiEndpoint: string;
-  private isMockMode: boolean;
+  private isTestMode: boolean;
 
   constructor(apiKey?: string, apiEndpoint: string = "https://api.openai.com/v1/audio/transcriptions") {
     this.apiKey = apiKey || process.env.OPENAI_API_KEY || process.env.WHISPER_API_KEY;
     this.apiEndpoint = apiEndpoint;
-    // Activate mock mode if running in unit tests or no API key is provided
-    this.isMockMode = process.env.NODE_ENV === "test" || !this.apiKey;
+    // Mock mode is strictly restricted to automated unit test environments.
+    // In production or development without API keys, synthetic text MUST NEVER be fabricated.
+    this.isTestMode = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
   }
 
   /**
    * Transcribes an audio segment envelope via Cloud STT API.
+   * If the cloud provider is not configured or unavailable in non-test environments,
+   * fails cleanly without fabricating synthetic conversations.
    */
   public async transcribe(
     segment: AudioSegmentEnvelope,
     options: SpeechRecognitionOptions = {}
   ): Promise<CloudHeard | null> {
-    if (this.isMockMode) {
-      return this.mockTranscribe(segment, options);
+    if (!this.apiKey) {
+      if (this.isTestMode) {
+        return this.mockTranscribe(segment, options);
+      }
+      console.warn("[SpeechRecognitionAdapter] PROVIDER_NOT_CONFIGURED: Missing Cloud STT API credentials.");
+      return null;
     }
 
     try {

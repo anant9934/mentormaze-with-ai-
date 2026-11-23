@@ -15,6 +15,7 @@ import { TranslationAdapter } from "./translation-adapter";
 import { TranscriptStore } from "./transcript-store";
 import { MeetingNotesEngine } from "./meeting-notes-engine";
 import { SessionIntelligenceStatus, TranscriptSegment, MeetingNotes } from "./types";
+import { StudentConsentService } from "@/lib/ai-mentor/student-consent-service";
 import { getDb } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
@@ -50,8 +51,18 @@ export class AudioSessionManager {
 
   /**
    * Starts live intelligence capture for the booking.
+   * Enforces verified student consent prior to activation.
    */
   public async startCapture(): Promise<void> {
+    // 1. Verify student consent before capturing
+    const hasConsent = await StudentConsentService.hasConsent(
+      this.bookingContext.studentUserId,
+      "student_memory"
+    );
+    if (!hasConsent) {
+      throw new Error("CONSENT_REQUIRED: Student consent is required before capturing meeting intelligence.");
+    }
+
     this.status = "capturing";
     this.startTimeSeconds = Date.now() / 1000;
 
@@ -77,20 +88,40 @@ export class AudioSessionManager {
   }
 
   /**
-   * Pauses intelligence capture.
+   * Pauses intelligence capture and updates database state.
    */
-  public pauseCapture(): void {
+  public async pauseCapture(): Promise<void> {
     if (this.status === "capturing") {
       this.status = "paused";
+      try {
+        const db = await getDb();
+        await db.execute(sql`
+          UPDATE meeting_intelligence_sessions
+          SET status = 'paused', updated_at = now()
+          WHERE booking_id = ${this.bookingContext.bookingId}::uuid;
+        `);
+      } catch (err: any) {
+        console.warn(`[AudioSessionManager] DB pause update notice: ${err?.message}`);
+      }
     }
   }
 
   /**
-   * Resumes intelligence capture.
+   * Resumes intelligence capture and updates database state.
    */
-  public resumeCapture(): void {
+  public async resumeCapture(): Promise<void> {
     if (this.status === "paused") {
       this.status = "capturing";
+      try {
+        const db = await getDb();
+        await db.execute(sql`
+          UPDATE meeting_intelligence_sessions
+          SET status = 'capturing', updated_at = now()
+          WHERE booking_id = ${this.bookingContext.bookingId}::uuid;
+        `);
+      } catch (err: any) {
+        console.warn(`[AudioSessionManager] DB resume update notice: ${err?.message}`);
+      }
     }
   }
 

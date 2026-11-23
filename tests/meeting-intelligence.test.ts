@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
-import { initializeDatabaseSchema } from "@/lib/db";
+import { getDb, initializeDatabaseSchema } from "@/lib/db";
+import { sql } from "drizzle-orm";
 import { AudioSegmenter } from "@/lib/meeting-intelligence/audio-segmenter";
 import { SpeakerAttributionAdapter } from "@/lib/meeting-intelligence/speaker-attribution-adapter";
 import { SpeechRecognitionAdapter } from "@/lib/meeting-intelligence/speech-recognition-adapter";
@@ -15,6 +16,7 @@ import { MeetingNotesEngine } from "@/lib/meeting-intelligence/meeting-notes-eng
 import { MeetingReportGenerator } from "@/lib/meeting-intelligence/meeting-report-generator";
 import { MentorshipBridgeAdapter } from "@/lib/meeting-intelligence/mentorship-bridge-adapter";
 import { TranscriptSegment, MeetingNotes } from "@/lib/meeting-intelligence/types";
+import { StudentConsentService } from "@/lib/ai-mentor/student-consent-service";
 
 describe("MentorMaze × Cicada Meeting Intelligence Subsystem", () => {
   const testBookingContext = {
@@ -27,6 +29,41 @@ describe("MentorMaze × Cicada Meeting Intelligence Subsystem", () => {
 
   beforeAll(async () => {
     await initializeDatabaseSchema();
+    const db = await getDb();
+
+    // Seed test users, mentor profile, and booking so foreign key constraints are satisfied
+    await db.execute(sql`
+      INSERT INTO users (id, email, password_hash, display_name, role, account_status)
+      VALUES 
+        (${testBookingContext.studentUserId}::uuid, 'anant_test_mi@example.com', 'hash', 'Anant Kumar', 'student', 'active'),
+        (${testBookingContext.mentorUserId}::uuid, 'shivam_test_mi@example.com', 'hash', 'Shivam Kumar Singh', 'mentor', 'active')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    const mpRes: any = await db.execute(sql`
+      INSERT INTO mentor_profiles (id, user_id, headline, bio, organization, "current_role", verification_status)
+      VALUES 
+        ('c0000000-0000-0000-0000-000000000001'::uuid, ${testBookingContext.mentorUserId}::uuid, 'Staff Eng', 'Expert', 'Google', 'Staff Engineer', 'approved')
+      ON CONFLICT (user_id) DO UPDATE SET verification_status = 'approved'
+      RETURNING id;
+    `);
+    const mpId = mpRes.rows?.[0]?.id || "c0000000-0000-0000-0000-000000000001";
+
+    await db.execute(sql`
+      INSERT INTO bookings (id, student_user_id, mentor_profile_id, service_type, start_time_utc, end_time_utc, status, price_inr, payment_status)
+      VALUES (
+        ${testBookingContext.bookingId}::uuid,
+        ${testBookingContext.studentUserId}::uuid,
+        ${mpId}::uuid,
+        '1on1_mentorship',
+        now(),
+        now() + interval '1 hour',
+        'confirmed',
+        299,
+        'paid'
+      )
+      ON CONFLICT (id) DO NOTHING;
+    `);
   });
 
   beforeEach(() => {
@@ -433,7 +470,7 @@ describe("MentorMaze × Cicada Meeting Intelligence Subsystem", () => {
   // 8. MENTORSHIP BRIDGE & OUTBOX SYNC
   // ==========================================
   describe("Mentorship Bridge & AI Tathastu Outbox Synchronization", () => {
-    it("should format 7-part deterministic outbox idempotency key", async () => {
+    it("should format 7-part deterministic outbox idempotency key and fail closed without consent", async () => {
       const mockReport = MeetingReportGenerator.generateReport(
         testBookingContext,
         {
@@ -451,11 +488,23 @@ describe("MentorMaze × Cicada Meeting Intelligence Subsystem", () => {
         []
       );
 
-      // Verify idempotency key format adheres to:
-      // targetSystem:eventType:studentId:sourceType:sourceId:consentEpoch:sourceVersion
+      // 1. Without consent, sync fails closed and returns null
+      const syncWithoutConsent = await MentorshipBridgeAdapter.syncToTathastuOutbox(mockReport);
+      expect(syncWithoutConsent).toBeNull();
+
+      // 2. Grant explicit consent
+      await StudentConsentService.grantConsent(
+        testBookingContext.studentUserId,
+        "ai_tathastu_sync",
+        "Test consent grant",
+        testBookingContext.studentUserId
+      );
+
+      // 3. With consent, sync generates the canonical 7-part key
       const expectedKeyPrefix = `ai-tathastu:meeting-intelligence-sync:${testBookingContext.studentUserId}:booking:${testBookingContext.bookingId}`;
       const idempotencyKey = await MentorshipBridgeAdapter.syncToTathastuOutbox(mockReport);
 
+      expect(idempotencyKey).not.toBeNull();
       if (idempotencyKey) {
         expect(idempotencyKey.startsWith(expectedKeyPrefix)).toBe(true);
         const parts = idempotencyKey.split(":");

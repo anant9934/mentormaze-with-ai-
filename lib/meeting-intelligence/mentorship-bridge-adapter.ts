@@ -98,25 +98,33 @@ export class MentorshipBridgeAdapter {
   /**
    * Prepares and enqueues outbox synchronization event for AI Tathastu ecosystem.
    * Strictly adheres to 7-part deterministic idempotency key and consent epoch verification.
+   * Fails closed: if consent record is missing from the database or revoked, sync is completely suppressed.
    */
   public static async syncToTathastuOutbox(report: MentorshipIntelligenceReport): Promise<string | null> {
     try {
-      // 1. Verify consent epoch
-      let consentEpoch = 1;
-      try {
-        const record = await StudentConsentService.getConsentRecord(report.studentUserId, "ai_tathastu_sync");
-        if (record && !record.isGranted) {
-          console.log(`[MentorshipBridgeAdapter] Student ${report.studentUserId} has revoked consent; suppressing sync.`);
-          return null;
-        }
-        if (record?.consentEpoch) {
-          consentEpoch = record.consentEpoch;
-        }
-      } catch {
-        consentEpoch = 1;
+      const db = await getDb();
+
+      // 1. Verify consent record in database with strict fail-closed enforcement
+      const rows: any = await db.execute(sql`
+        SELECT is_granted, consent_epoch, revoked_at FROM student_purpose_consents
+        WHERE student_user_id = ${report.studentUserId} AND purpose = 'ai_tathastu_sync'
+        LIMIT 1;
+      `);
+      const row = rows.rows?.[0] || rows?.[0];
+
+      if (!row || !row.is_granted || row.revoked_at) {
+        console.warn(`[MentorshipBridgeAdapter] Suppressing sync: No active ai_tathastu_sync consent on record for student ${report.studentUserId}`);
+        return null;
       }
 
-      // 2. Build 7-part deterministic idempotency key:
+      const rawEpoch = row.consent_epoch;
+      const consentEpoch = typeof rawEpoch === "number" ? rawEpoch : parseInt(rawEpoch || "0", 10);
+      if (!consentEpoch || consentEpoch < 1) {
+        console.warn(`[MentorshipBridgeAdapter] Suppressing sync: Missing or invalid consent epoch for student ${report.studentUserId}`);
+        return null;
+      }
+
+      // 2. Build canonical 7-part deterministic idempotency key:
       // targetSystem:eventType:studentId:sourceType:sourceId:consentEpoch:sourceVersion
       const idempotencyKey = `ai-tathastu:meeting-intelligence-sync:${report.studentUserId}:booking:${report.bookingId}:${consentEpoch}:1`;
 
@@ -133,7 +141,6 @@ export class MentorshipBridgeAdapter {
         syncedAt: new Date().toISOString(),
       };
 
-      const db = await getDb();
       await db.execute(sql`
         INSERT INTO outbox_events (
           id, event_type, target_system, idempotency_key, payload, status, created_at

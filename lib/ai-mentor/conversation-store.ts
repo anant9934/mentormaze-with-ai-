@@ -53,7 +53,23 @@ export class ConversationStore {
   // Durable SQL-backed repository with synchronized in-memory caching
   private static conversations: Map<string, DBConversationRecord> = new Map();
   private static messages: Map<string, DBMessageRecord[]> = new Map(); // conversationId -> messages
-  private static storageFilePath = path.resolve(process.cwd(), ".mentormaze-conversations.json");
+  private static get storageFilePath(): string {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+      const fixtureDir = path.resolve(process.cwd(), "tests", "fixtures");
+      if (!fs.existsSync(fixtureDir)) {
+        fs.mkdirSync(fixtureDir, { recursive: true });
+      }
+      const testFile = path.resolve(fixtureDir, ".test-conversations.json");
+      if (!fs.existsSync(testFile)) {
+        const rootFile = path.resolve(process.cwd(), ".mentormaze-conversations.json");
+        if (fs.existsSync(rootFile)) {
+          fs.copyFileSync(rootFile, testFile);
+        }
+      }
+      return testFile;
+    }
+    return path.resolve(process.cwd(), ".mentormaze-conversations.json");
+  }
   private static isInitialized = false;
 
   /**

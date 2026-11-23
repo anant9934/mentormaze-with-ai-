@@ -19,14 +19,16 @@ export class MeetingNotesEngine {
   private static readonly LIVE_MAX_TOPICS = 12;
   private static readonly EDITABLE_WINDOW_SIZE = 2;
 
-  private isMockMode: boolean;
+  private isTestMode: boolean;
 
   constructor() {
-    this.isMockMode = process.env.NODE_ENV === "test" || !process.env.OPENAI_API_KEY;
+    this.isTestMode = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
   }
 
   /**
    * Generates or incrementally updates meeting notes given existing notes and fresh transcript lines.
+   * In non-test environments, fails cleanly if cloud LLM credentials are unconfigured or fail,
+   * never fabricating fictitious notes or fishbone diagrams.
    */
   public async updateNotes(
     bookingId: string,
@@ -38,8 +40,11 @@ export class MeetingNotesEngine {
       return this.createEmptyNotes();
     }
 
-    if (this.isMockMode) {
-      return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+    if (!process.env.OPENAI_API_KEY) {
+      if (this.isTestMode) {
+        return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+      }
+      throw new Error("NOTES_GENERATION_FAILED: Cloud LLM provider credentials not configured.");
     }
 
     try {
@@ -121,7 +126,10 @@ Output MUST be valid JSON adhering to this structure:
       });
 
       if (!response.ok) {
-        return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+        if (this.isTestMode) {
+          return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+        }
+        throw new Error(`NOTES_GENERATION_FAILED: HTTP ${response.status}`);
       }
 
       const json = await response.json();
@@ -148,8 +156,11 @@ Output MUST be valid JSON adhering to this structure:
 
       await this.persistNotes(bookingId, notes);
       return notes;
-    } catch {
-      return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+    } catch (err: any) {
+      if (this.isTestMode) {
+        return this.mockGenerateNotes(existingNotes, allSegments, isFinalPass);
+      }
+      throw new Error(`NOTES_GENERATION_FAILED: ${err?.message || "LLM synthesis error"}`);
     }
   }
 

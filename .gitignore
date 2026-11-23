@@ -52,3 +52,5 @@ training/datasets/processed/
 
 .vercel
 .env*
+tests/fixtures/.test-*.json
+

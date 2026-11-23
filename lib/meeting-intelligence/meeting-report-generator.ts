@@ -32,7 +32,19 @@ export class MeetingReportGenerator {
   ): MentorshipIntelligenceReport {
     const startTimeUtc = sessionMetadata.startTimeUtc || new Date(Date.now() - 3600000).toISOString();
     const endTimeUtc = sessionMetadata.endTimeUtc || new Date().toISOString();
-    const durationMinutes = sessionMetadata.durationMinutes || 60;
+    
+    // Compute actual session duration from start and end timestamps
+    let calculatedDurationMinutes = 0;
+    try {
+      const diffMs = new Date(endTimeUtc).getTime() - new Date(startTimeUtc).getTime();
+      calculatedDurationMinutes = Math.max(1, Math.round(diffMs / 60000));
+    } catch {
+      calculatedDurationMinutes = sessionMetadata.durationMinutes || 30;
+    }
+    const durationMinutes =
+      sessionMetadata.durationMinutes && sessionMetadata.durationMinutes > 0
+        ? sessionMetadata.durationMinutes
+        : calculatedDurationMinutes;
 
     // 1. Student reported challenges from topics and fishbone diagrams
     const studentReportedChallenges = notes.topics.map((t) => ({
@@ -41,14 +53,27 @@ export class MeetingReportGenerator {
       provenance: "transcript_extracted" as ProvenanceBadge,
     }));
 
-    // 2. Topics discussed
-    const topicsDiscussed = notes.topics.map((t) => ({
-      topic: t.title,
-      summary: t.summary,
-      durationSeconds: 300,
-      evidenceLines: t.evidenceLines,
-      provenance: "transcript_extracted" as ProvenanceBadge,
-    }));
+    // 2. Topics discussed: derive duration from successive start timestamps or transcript timeline
+    const topicsDiscussed = notes.topics.map((t, index) => {
+      let topicDurationSeconds = 60;
+      if (index < notes.topics.length - 1) {
+        const nextStart = notes.topics[index + 1].startSeconds;
+        if (nextStart > t.startSeconds) {
+          topicDurationSeconds = Math.max(10, nextStart - t.startSeconds);
+        }
+      } else {
+        const lastSegmentTime =
+          transcript.length > 0 ? transcript[transcript.length - 1].endTimeSeconds : t.startSeconds + 60;
+        topicDurationSeconds = Math.max(10, Math.round(lastSegmentTime - t.startSeconds));
+      }
+      return {
+        topic: t.title,
+        summary: t.summary,
+        durationSeconds: topicDurationSeconds,
+        evidenceLines: t.evidenceLines,
+        provenance: "transcript_extracted" as ProvenanceBadge,
+      };
+    });
 
     // 3. Mentor guidance
     const mentorGuidanceAndExplanations = notes.topics.flatMap((t) =>
@@ -60,12 +85,12 @@ export class MeetingReportGenerator {
       }))
     );
 
-    // 4. Decisions made
+    // 4. Decisions made: attribution reflects evidence, not fabricated agreement
     const decisionsMade = notes.conclusions.map((c) => ({
       decision: c.text,
-      agreedBy: "Student & Mentor",
+      agreedBy: c.evidenceLines.length > 0 ? "Session Consensus" : "Discussed in Session",
       evidenceLines: c.evidenceLines,
-      provenance: "mentor_recorded" as ProvenanceBadge,
+      provenance: "transcript_extracted" as ProvenanceBadge,
     }));
 
     // 5. Action items
@@ -75,14 +100,14 @@ export class MeetingReportGenerator {
       ownerRole: (todo.owner === "mentor" ? "mentor" : "student") as "student" | "mentor",
       deadline: todo.deadline || undefined,
       evidenceLines: todo.evidenceLines,
-      provenance: "mentor_recorded" as ProvenanceBadge,
+      provenance: "transcript_extracted" as ProvenanceBadge,
     }));
 
-    // 6. Agreed milestones
+    // 6. Agreed milestones: deadlines default to TBD unless spoken; provenance ai_inferred
     const agreedMilestones = notes.conclusions.slice(0, 2).map((c) => ({
       milestone: c.text,
-      targetDate: "Next 14 Days",
-      provenance: "assessment_verified" as ProvenanceBadge,
+      targetDate: "TBD",
+      provenance: "ai_inferred" as ProvenanceBadge,
     }));
 
     // 7. Unresolved questions
@@ -98,7 +123,7 @@ export class MeetingReportGenerator {
       provenance: "ai_inferred" as ProvenanceBadge,
     }));
 
-    // 9. Verified resources
+    // 9. Verified resources: marked ai_inferred until formally reviewed
     const verifiedResourcesRecommended = notes.terms.map((t) => ({
       title: `${t.name} Concept & Implementation Guide`,
       url: `https://mentormaze.aitathastu.com/resources/${encodeURIComponent(t.name.toLowerCase())}`,

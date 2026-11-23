@@ -16,62 +16,79 @@ export class TranscriptStore {
   private static memoryStore = new Map<string, TranscriptSegment[]>();
 
   /**
-   * Appends a new finalized segment with guaranteed monotonic line indexing.
+   * Appends a new finalized segment with guaranteed atomic database monotonic line indexing.
    */
   public static async appendSegment(
     bookingId: string,
     segment: Omit<TranscriptSegment, "lineIndex">
   ): Promise<TranscriptSegment> {
-    const existing = this.memoryStore.get(bookingId) || [];
-    const nextLineIndex = existing.length + 1;
+    const db = await getDb();
 
-    const fullSegment: TranscriptSegment = {
-      ...segment,
-      sessionId: bookingId,
-      lineIndex: nextLineIndex,
-    };
+    // Atomic PostgreSQL insert with subquery computing next monotonic line_index
+    const insertResult: any = await db.execute(sql`
+      INSERT INTO meeting_transcript_segments (
+        id, booking_id, line_index, participant_id, speaker_role, speaker_name,
+        start_time_seconds, end_time_seconds, src, src_lang, dst, dst_lang,
+        is_final, confidence, processing_provider, provenance, created_at
+      ) VALUES (
+        gen_random_uuid(),
+        ${bookingId}::uuid,
+        (SELECT COALESCE(MAX(line_index), 0) + 1 FROM meeting_transcript_segments WHERE booking_id = ${bookingId}::uuid),
+        ${segment.participantId}::uuid,
+        ${segment.speakerRole},
+        ${segment.speakerName},
+        ${segment.startTimeSeconds},
+        ${segment.endTimeSeconds},
+        ${segment.src},
+        ${segment.srcLang},
+        ${segment.dst || null},
+        ${segment.dstLang || null},
+        ${segment.isFinal},
+        ${segment.confidence},
+        ${segment.processingProvider},
+        ${segment.provenance},
+        now()
+      )
+      RETURNING 
+        id, booking_id as "sessionId", line_index as "lineIndex",
+        participant_id as "participantId", speaker_role as "speakerRole",
+        speaker_name as "speakerName", start_time_seconds as "startTimeSeconds",
+        end_time_seconds as "endTimeSeconds", src, src_lang as "srcLang",
+        dst, dst_lang as "dstLang", is_final as "isFinal", confidence,
+        processing_provider as "processingProvider", provenance, created_at as "createdAt";
+    `);
 
-    existing.push(fullSegment);
-    this.memoryStore.set(bookingId, existing);
-
-    // Persist to database asynchronously
-    try {
-      const db = await getDb();
-      await db.execute(sql`
-        INSERT INTO meeting_transcript_segments (
-          id, booking_id, line_index, participant_id, speaker_role, speaker_name,
-          start_time_seconds, end_time_seconds, src, src_lang, dst, dst_lang,
-          is_final, confidence, processing_provider, provenance, created_at
-        ) VALUES (
-          gen_random_uuid(),
-          ${bookingId}::uuid,
-          ${nextLineIndex},
-          ${fullSegment.participantId}::uuid,
-          ${fullSegment.speakerRole},
-          ${fullSegment.speakerName},
-          ${fullSegment.startTimeSeconds},
-          ${fullSegment.endTimeSeconds},
-          ${fullSegment.src},
-          ${fullSegment.srcLang},
-          ${fullSegment.dst || null},
-          ${fullSegment.dstLang || null},
-          ${fullSegment.isFinal},
-          ${fullSegment.confidence},
-          ${fullSegment.processingProvider},
-          ${fullSegment.provenance},
-          ${fullSegment.createdAt}
-        )
-        ON CONFLICT (booking_id, line_index) DO UPDATE SET
-          src = EXCLUDED.src,
-          dst = EXCLUDED.dst,
-          is_final = EXCLUDED.is_final;
-      `);
-    } catch (err: any) {
-      // In-memory fallback ensures resilience if DB write experiences transient latency
-      console.warn(`[TranscriptStore] Async DB write warning for booking ${bookingId}: ${err?.message}`);
+    const row = insertResult.rows?.[0] || insertResult?.[0];
+    if (!row) {
+      throw new Error(`Failed to append transcript segment atomically for booking ${bookingId}`);
     }
 
-    return fullSegment;
+    const savedSegment: TranscriptSegment = {
+      id: String(row.id),
+      sessionId: String(row.sessionId),
+      lineIndex: Number(row.lineIndex),
+      participantId: String(row.participantId),
+      speakerRole: row.speakerRole,
+      speakerName: String(row.speakerName),
+      startTimeSeconds: Number(row.startTimeSeconds),
+      endTimeSeconds: Number(row.endTimeSeconds),
+      src: String(row.src),
+      srcLang: String(row.srcLang),
+      dst: row.dst ? String(row.dst) : undefined,
+      dstLang: row.dstLang ? String(row.dstLang) : undefined,
+      isFinal: Boolean(row.isFinal),
+      confidence: Number(row.confidence),
+      processingProvider: String(row.processingProvider),
+      provenance: row.provenance,
+      createdAt: new Date(row.createdAt).toISOString(),
+    };
+
+    // Synchronize cache
+    const existing = this.memoryStore.get(bookingId) || [];
+    existing.push(savedSegment);
+    this.memoryStore.set(bookingId, existing);
+
+    return savedSegment;
   }
 
   /**
@@ -129,23 +146,15 @@ export class TranscriptStore {
   }
 
   /**
-   * Redacts specific line indices or PII keywords upon student request.
+   * Redacts specific line indices upon authorized participant request.
+   * Executes atomic database UPDATE and clears memory cache.
    */
   public static async redactLines(
     bookingId: string,
     lineIndices: number[],
     reason: string = "student_requested_redaction"
   ): Promise<void> {
-    const segments = await this.getTranscript(bookingId);
-    for (const segment of segments) {
-      if (lineIndices.includes(segment.lineIndex)) {
-        segment.src = "[REDACTED BY PARTICIPANT]";
-        if (segment.dst) {
-          segment.dst = "[REDACTED BY PARTICIPANT]";
-        }
-      }
-    }
-    this.memoryStore.set(bookingId, segments);
+    if (!lineIndices || lineIndices.length === 0) return;
 
     try {
       const db = await getDb();
@@ -154,13 +163,17 @@ export class TranscriptStore {
           UPDATE meeting_transcript_segments
           SET 
             src = '[REDACTED BY PARTICIPANT]',
-            dst = CASE WHEN dst IS NOT NULL THEN '[REDACTED BY PARTICIPANT]' ELSE NULL END
+            dst = '[REDACTED BY PARTICIPANT]'
           WHERE booking_id = ${bookingId}::uuid AND line_index = ${lineIndex};
         `);
       }
     } catch (err: any) {
       console.warn(`[TranscriptStore] DB redaction error: ${err?.message}`);
+      throw new Error(`Database redaction failed: ${err?.message}`);
     }
+
+    // Refresh cached segments
+    this.memoryStore.delete(bookingId);
   }
 
   /**

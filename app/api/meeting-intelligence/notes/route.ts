@@ -2,13 +2,20 @@
  * MentorMaze Meeting Intelligence Notes API
  * Adapted from Cicada (Apache-2.0 License - https://github.com/wquguru/cicada)
  * Official Platform: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ *
+ * Implements:
+ * 1. Server-side feature gate (503 when disabled).
+ * 2. Participant authorization on every request (401 / 403 / 404).
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, initializeDatabaseSchema } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { MeetingNotesEngine } from "@/lib/meeting-intelligence/meeting-notes-engine";
-import { TranscriptStore } from "@/lib/meeting-intelligence/transcript-store";
+import {
+  authorizeMeetingParticipant,
+  MeetingNotesEngine,
+  TranscriptStore,
+} from "@/lib/meeting-intelligence";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +23,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const bookingId = searchParams.get("bookingId");
 
-    if (!bookingId) {
-      return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
+    const auth = await authorizeMeetingParticipant(req, bookingId);
+    if (auth.errorResponse) {
+      return auth.errorResponse;
     }
 
     const db = await getDb();
@@ -61,7 +69,10 @@ export async function GET(req: NextRequest) {
         conclusions: typeof row.conclusions === "string" ? JSON.parse(row.conclusions) : row.conclusions,
         todos: typeof row.todos === "string" ? JSON.parse(row.todos) : row.todos,
         terms: typeof row.terms === "string" ? JSON.parse(row.terms) : row.terms,
-        unresolvedQuestions: typeof row.unresolvedQuestions === "string" ? JSON.parse(row.unresolvedQuestions) : row.unresolvedQuestions,
+        unresolvedQuestions:
+          typeof row.unresolvedQuestions === "string"
+            ? JSON.parse(row.unresolvedQuestions)
+            : row.unresolvedQuestions,
         coveredLineCount: row.coveredLineCount,
         updatedAt: row.updatedAt,
         isFinal: row.isFinal,
@@ -78,8 +89,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { bookingId, isFinalPass } = body;
 
-    if (!bookingId) {
-      return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
+    const auth = await authorizeMeetingParticipant(req, bookingId);
+    if (auth.errorResponse) {
+      return auth.errorResponse;
     }
 
     const segments = await TranscriptStore.getTranscript(bookingId);

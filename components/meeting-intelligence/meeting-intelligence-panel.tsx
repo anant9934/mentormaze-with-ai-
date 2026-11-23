@@ -48,6 +48,8 @@ export function MeetingIntelligencePanel({
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [notes, setNotes] = useState<MeetingNotes | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [isFeatureDisabled, setIsFeatureDisabled] = useState<boolean>(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [selectedLinesForRedaction, setSelectedLinesForRedaction] = useState<number[]>([]);
   const transcriptBottomRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +64,13 @@ export function MeetingIntelligencePanel({
           fetch(`/api/meeting-intelligence/notes?bookingId=${bookingId}`),
           fetch(`/api/meeting-intelligence/session?bookingId=${bookingId}`),
         ]);
+
+        if (transRes.status === 503 || sessRes.status === 503) {
+          if (isMounted) {
+            setIsFeatureDisabled(true);
+          }
+          return;
+        }
 
         if (transRes.ok && isMounted) {
           const tData = await transRes.json();
@@ -104,6 +113,8 @@ export function MeetingIntelligencePanel({
   }, [transcript.length, activeTab]);
 
   const handleToggleCapture = async () => {
+    if (isFeatureDisabled) return;
+    setConsentError(null);
     const nextAction = sessionStatus === "capturing" ? "pause" : sessionStatus === "paused" ? "resume" : "start";
     setIsUpdating(true);
     try {
@@ -113,15 +124,21 @@ export function MeetingIntelligencePanel({
         body: JSON.stringify({
           bookingId,
           action: nextAction,
-          studentUserId,
-          studentName,
-          mentorUserId,
-          mentorName,
           targetLanguage,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (res.status === 503) {
+        setIsFeatureDisabled(true);
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.code === "CONSENT_REQUIRED") {
+          setConsentError("Student consent is required before starting audio capture. Please enable student memory consent in your privacy settings.");
+        }
+        return;
+      }
+      if (data.status) {
         setSessionStatus(data.status);
       }
     } finally {
@@ -205,16 +222,24 @@ export function MeetingIntelligencePanel({
         <div className="flex items-center gap-2">
           <button
             onClick={handleToggleCapture}
-            disabled={isUpdating}
-            className="p-1.5 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-300 transition-colors border border-stone-700"
+            disabled={isUpdating || isFeatureDisabled}
+            className={`p-1.5 rounded-md transition-colors border ${
+              isFeatureDisabled
+                ? "bg-stone-900 text-stone-600 border-stone-800 cursor-not-allowed"
+                : "bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700"
+            }`}
             title={sessionStatus === "capturing" ? "Pause Capture" : "Resume Capture"}
           >
             {sessionStatus === "capturing" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
           <button
             onClick={handleTriggerManualNotes}
-            disabled={isUpdating}
-            className="p-1.5 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-300 transition-colors border border-stone-700"
+            disabled={isUpdating || isFeatureDisabled}
+            className={`p-1.5 rounded-md transition-colors border ${
+              isFeatureDisabled
+                ? "bg-stone-900 text-stone-600 border-stone-800 cursor-not-allowed"
+                : "bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700"
+            }`}
             title="Refresh Notes"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? "animate-spin" : ""}`} />
@@ -222,7 +247,12 @@ export function MeetingIntelligencePanel({
           {onOpenReportModal && (
             <button
               onClick={onOpenReportModal}
-              className="px-2 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1 transition-colors"
+              disabled={isFeatureDisabled}
+              className={`px-2 py-1 text-xs rounded font-medium flex items-center gap-1 transition-colors ${
+                isFeatureDisabled
+                  ? "bg-stone-800 text-stone-500 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
+              }`}
             >
               <FileText className="w-3 h-3" />
               <span>Report</span>
@@ -230,6 +260,27 @@ export function MeetingIntelligencePanel({
           )}
         </div>
       </div>
+
+      {/* Feature Gate Disabled Notice */}
+      {isFeatureDisabled && (
+        <div className="m-3 p-3 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-semibold text-amber-300">Meeting Intelligence Temporarily Unavailable</div>
+            <div className="text-amber-200/80 text-[11px] mt-0.5">
+              Live transcription, translation, and automated notes are temporarily paused while security and runtime updates are being completed.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Consent Required Notice */}
+      {consentError && (
+        <div className="m-3 p-3 rounded-lg bg-red-950/60 border border-red-500/40 text-red-200 text-xs flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="text-xs">{consentError}</div>
+        </div>
+      )}
 
       {/* Subsystem Navigation Tabs */}
       <div className="grid grid-cols-4 bg-[#14171c] border-b border-stone-800 text-xs font-medium">
@@ -342,7 +393,7 @@ export function MeetingIntelligencePanel({
                           <AlertCircle className="w-3 h-3" />
                           <span>Pedagogical Root Cause Analysis (Fishbone)</span>
                         </div>
-                        <p className="text-[10px] text-stone-300 italic mb-2">"{topic.fishbone.question}"</p>
+                        <p className="text-[10px] text-stone-300 italic mb-2">&ldquo;{topic.fishbone.question}&rdquo;</p>
                         <div className="grid grid-cols-2 gap-1.5">
                           {topic.fishbone.branches.map((b, bIdx) => (
                             <div key={bIdx} className="p-1.5 rounded bg-stone-800/80 border border-stone-700/40">
@@ -562,7 +613,7 @@ export function MeetingIntelligencePanel({
                     {seg.srcLang} → {seg.dstLang || targetLanguage}
                   </span>
                 </div>
-                <p className="text-stone-400 text-[11px] italic">"{seg.src}"</p>
+                <p className="text-stone-400 text-[11px] italic">&ldquo;{seg.src}&rdquo;</p>
                 <p className="text-emerald-300 font-medium leading-relaxed">
                   {seg.dst || "[Translating...]"}
                 </p>

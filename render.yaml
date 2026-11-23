@@ -6,7 +6,7 @@ services:
   - type: web
     name: mentormaze-backend
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -15,6 +15,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: ENABLE_MEETING_INTELLIGENCE
+        value: "false"
       - key: SERVICE_ROLE
         value: backend
       - key: NEXT_PUBLIC_APP_NAME

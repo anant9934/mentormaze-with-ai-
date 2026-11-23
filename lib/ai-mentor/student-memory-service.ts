@@ -41,7 +41,23 @@ export interface StudentMemoryItem {
 
 export class StudentMemoryService {
   private static memoryStore: Map<string, StudentMemoryItem[]> = new Map();
-  private static storageFilePath = path.resolve(process.cwd(), ".mentormaze-memories.json");
+  private static get storageFilePath(): string {
+    if (process.env.NODE_ENV === "test" || process.env.VITEST) {
+      const fixtureDir = path.resolve(process.cwd(), "tests", "fixtures");
+      if (!fs.existsSync(fixtureDir)) {
+        fs.mkdirSync(fixtureDir, { recursive: true });
+      }
+      const testFile = path.resolve(fixtureDir, ".test-memories.json");
+      if (!fs.existsSync(testFile)) {
+        const rootFile = path.resolve(process.cwd(), ".mentormaze-memories.json");
+        if (fs.existsSync(rootFile)) {
+          fs.copyFileSync(rootFile, testFile);
+        }
+      }
+      return testFile;
+    }
+    return path.resolve(process.cwd(), ".mentormaze-memories.json");
+  }
   private static isInitialized = false;
 
   public static reset(): void {

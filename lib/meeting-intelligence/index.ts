@@ -14,3 +14,6 @@ export * from "./meeting-notes-engine";
 export * from "./audio-session-manager";
 export * from "./meeting-report-generator";
 export * from "./mentorship-bridge-adapter";
+export * from "./feature-gate";
+export * from "./auth-guard";
+export * from "./livekit-audio-pipeline";
