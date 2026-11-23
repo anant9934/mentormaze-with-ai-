@@ -42,7 +42,7 @@ export function AIMentorPersonalization({ section }: AIMentorPersonalizationProp
           </h1>
         </div>
         <p className="text-xs sm:text-sm text-[#69756B] mt-1">
-          Customize how Dr. Aarav Mehta structures explanations, selects practice problems, and calibrates difficulty.
+          Customize how ASTRION structures explanations, selects practice problems, and calibrates difficulty.
         </p>
       </div>
 

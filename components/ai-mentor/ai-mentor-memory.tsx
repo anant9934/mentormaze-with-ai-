@@ -66,7 +66,7 @@ export function AIMentorMemory({ userId }: AIMentorMemoryProps) {
   };
 
   const handleDelete = async (memoryId: string) => {
-    if (!confirm("Are you sure you want Dr. Aarav Mehta to forget this detail?")) return;
+    if (!confirm("Are you sure you want ASTRION to forget this detail?")) return;
     try {
       const res = await fetch(`/api/ai-mentor/memory?memoryId=${memoryId}`, {
         method: "DELETE",
@@ -117,7 +117,7 @@ export function AIMentorMemory({ userId }: AIMentorMemoryProps) {
             <h1 className="text-2xl sm:text-3xl font-serif text-[#17211E]">Student Memory & Consent</h1>
           </div>
           <p className="text-xs sm:text-sm text-[#69756B] mt-1">
-            Dr. Aarav Mehta preserves verified context about your learning goals, background, and misconceptions. You have complete transparency and delete authority over your profile.
+            ASTRION preserves verified context about your learning goals, background, and misconceptions. You have complete transparency and delete authority over your profile.
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export function AIMentorMemory({ userId }: AIMentorMemoryProps) {
           <ShieldCheck className="w-8 h-8 text-[#69756B] mx-auto mb-2 opacity-50" />
           <h3 className="text-sm font-semibold text-[#17211E]">No memory items stored</h3>
           <p className="text-xs text-[#69756B] mt-1 max-w-sm mx-auto">
-            As you learn, Dr. Aarav Mehta will note your target roles, strong concepts, and preferred pacing. You can also explicitly add learning preferences.
+            As you learn, ASTRION will note your target roles, strong concepts, and preferred pacing. You can also explicitly add learning preferences.
           </p>
         </div>
       ) : (
