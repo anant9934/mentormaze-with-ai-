@@ -9,7 +9,7 @@ export async function seedDatabase() {
     return;
   }
 
-  const db = await initializeDatabaseSchema();
+  const db = getDb();
 
   const studentPasswordHash = await bcrypt.hash("student123", 10);
   const mentorPasswordHash = await bcrypt.hash("mentor123", 10);
@@ -93,5 +93,80 @@ export async function seedDatabase() {
       ('payments', '{"commissionPercent": 15.0, "environment": "TEST", "currency": "INR"}', 'Marketplace economics and Cashfree settings'),
       ('matching_weights', '{"careerGoalAlignment": 0.30, "skillGapAlignment": 0.25, "domainExpertise": 0.20, "academicRelevance": 0.10, "availability": 0.10, "studentPreference": 0.05}', 'Explainable mentor recommendation weights')
     ON CONFLICT (key) DO NOTHING;
+  `);
+
+  // Insert Bookings (Active today session and pending request)
+  await db.execute(sql`
+    INSERT INTO bookings (
+      id, student_user_id, mentor_profile_id, service_type, session_duration_minutes,
+      start_time_utc, end_time_utc, user_timezone, status, price_inr, amount_paise,
+      currency, is_free_session, payment_status, student_discussion_points, meeting_room_id
+    ) VALUES 
+      (
+        '60000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000001',
+        '30000000-0000-0000-0000-000000000001',
+        '1on1_mentorship',
+        45,
+        now() + interval '30 minutes',
+        now() + interval '75 minutes',
+        'Asia/Kolkata',
+        'confirmed',
+        249,
+        24900,
+        'INR',
+        false,
+        'paid',
+        'Distributed systems architecture, rate limiter trade-offs, and behavioral mock review.',
+        'room-60000000-0000-0000-0000-000000000001'
+      ),
+      (
+        '60000000-0000-0000-0000-000000000002',
+        '00000000-0000-0000-0000-000000000001',
+        '30000000-0000-0000-0000-000000000001',
+        '1on1_mentorship',
+        30,
+        now() + interval '2 days',
+        now() + interval '2 days 30 minutes',
+        'Asia/Kolkata',
+        'pending',
+        249,
+        24900,
+        'INR',
+        false,
+        'unpaid',
+        'System design for distributed rate limiter and mock interview prep',
+        NULL
+      )
+    ON CONFLICT (id) DO NOTHING;
+  `);
+
+  // Insert Shared Mentorship Bridge Briefing for Priya Sharma
+  await db.execute(sql`
+    INSERT INTO mentorship_bridge_shares (
+      id, student_user_id, mentor_profile_id, booking_id, timeframe,
+      student_background, mentoring_history, current_challenges, progress_and_evidence,
+      development_areas, mentoring_objectives, questions_for_mentor, student_note,
+      status, share_purpose, consent_reference, shared_at, expires_at
+    ) VALUES (
+      '70000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000001',
+      '60000000-0000-0000-0000-000000000001',
+      'last_30_days',
+      '{"targetRole": "Software Engineer", "degree": "B.Tech CSE", "graduationYear": 2027}'::jsonb,
+      '[{"topic": "System Architecture", "summary": "Discussed partition tolerance, caching layers, and database sharding.", "provenance": "assessment_verified"}]'::jsonb,
+      '["Handling high concurrency in sliding-window rate limiters", "Designing resilient circuit breakers"]'::jsonb,
+      '[{"milestoneTitle": "Rate Limiter Core Algorithm", "status": "completed", "completionEvidence": "Token bucket and sliding log implementations verified.", "provenance": "assessment_verified"}]'::jsonb,
+      '[{"area": "Distributed Locking & Redis Consensus", "type": "measured_evidence", "details": "Redlock algorithm and failover scenarios.", "provenance": "assessment_verified"}]'::jsonb,
+      '["Review system design for distributed rate limiter", "Discuss interview trade-offs at hyperscale"]'::jsonb,
+      '["How do production systems at Microsoft handle clock drift with sliding windows?", "What are the common pitfalls when scaling Redis clusters for rate limiting?"]'::jsonb,
+      'Looking forward to our session! I have prepared my rate limiter architecture diagrams and want your feedback on failure mode recovery.',
+      'shared',
+      'session_preparation',
+      'explicit_student_grant',
+      now(),
+      now() + interval '7 days'
+    ) ON CONFLICT (id) DO NOTHING;
   `);
 }
