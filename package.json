@@ -2,6 +2,9 @@
   "name": "mentormaze",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Production-minded human mentorship and mock interview platform under AI Tathastu",
   "scripts": {
     "dev": "next dev",
