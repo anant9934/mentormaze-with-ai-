@@ -223,8 +223,9 @@ class LiveKitProviderRegistry {
    */
   public getPublicProviders(): LiveKitProviderPublic[] {
     return Array.from(this.providers.values()).map((p) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { apiKey, apiSecret, ...safe } = p;
+      const safe = { ...p };
+      delete (safe as any).apiKey;
+      delete (safe as any).apiSecret;
       return safe;
     });
   }
