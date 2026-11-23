@@ -12,6 +12,7 @@ import {
   date,
   uniqueIndex,
   index,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -872,4 +873,87 @@ export const sharedRateLimits = pgTable("shared_rate_limits", {
   resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ==========================================
+// 12. MEETING INTELLIGENCE SUBSYSTEM (CICADA)
+// ==========================================
+
+export const meetingIntelligenceSessions = pgTable("meeting_intelligence_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).unique().notNull(),
+  status: varchar("status", { length: 32 }).default("idle").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  durationSeconds: integer("duration_seconds").default(0).notNull(),
+  activeLanguages: jsonb("active_languages").default('["en", "hi"]').notNull(),
+  totalSegments: integer("total_segments").default(0).notNull(),
+  totalWords: integer("total_words").default(0).notNull(),
+  metadata: jsonb("metadata").default("{}").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const meetingTranscriptSegments = pgTable(
+  "meeting_transcript_segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).notNull(),
+    lineIndex: integer("line_index").notNull(),
+    participantId: uuid("participant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    speakerRole: varchar("speaker_role", { length: 32 }).notNull(),
+    speakerName: varchar("speaker_name", { length: 160 }).notNull(),
+    startTimeSeconds: real("start_time_seconds").notNull(),
+    endTimeSeconds: real("end_time_seconds").notNull(),
+    src: text("src").notNull(),
+    srcLang: varchar("src_lang", { length: 16 }).notNull(),
+    dst: text("dst"),
+    dstLang: varchar("dst_lang", { length: 16 }),
+    isFinal: boolean("is_final").default(true).notNull(),
+    confidence: real("confidence").default(1.0).notNull(),
+    processingProvider: varchar("processing_provider", { length: 64 }).default("cloud_stt").notNull(),
+    provenance: varchar("provenance", { length: 32 }).default("transcript_extracted").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uqBookingLine: uniqueIndex("uq_meeting_segments_booking_line").on(table.bookingId, table.lineIndex),
+    idxBookingId: index("idx_meeting_segments_booking_id").on(table.bookingId),
+    idxParticipant: index("idx_meeting_segments_participant").on(table.participantId),
+  })
+);
+
+export const meetingNotesRecords = pgTable("meeting_notes_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).unique().notNull(),
+  title: varchar("title", { length: 255 }),
+  summary: text("summary").default("").notNull(),
+  topics: jsonb("topics").default("[]").notNull(),
+  conclusions: jsonb("conclusions").default("[]").notNull(),
+  todos: jsonb("todos").default("[]").notNull(),
+  terms: jsonb("terms").default("[]").notNull(),
+  unresolvedQuestions: jsonb("unresolved_questions").default("[]").notNull(),
+  coveredLineCount: integer("covered_line_count").default(0).notNull(),
+  isFinal: boolean("is_final").default(false).notNull(),
+  approvedByStudentAt: timestamp("approved_by_student_at", { withTimezone: true }),
+  approvedByMentorAt: timestamp("approved_by_mentor_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const mentorshipIntelligenceReports = pgTable("mentorship_intelligence_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "cascade" }).unique().notNull(),
+  studentUserId: uuid("student_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  mentorProfileId: uuid("mentor_profile_id").references(() => mentorProfiles.id, { onDelete: "cascade" }).notNull(),
+  reportJson: jsonb("report_json").notNull(),
+  reportMarkdown: text("report_markdown").notNull(),
+  reviewStatus: varchar("review_status", { length: 32 }).default("pending_review").notNull(),
+  studentCorrections: text("student_corrections"),
+  mentorCorrections: text("mentor_corrections"),
+  injectedIntoAstrion: boolean("injected_into_astrion").default(false).notNull(),
+  syncedToTathastu: boolean("synced_to_tathastu").default(false).notNull(),
+  tathastuSyncIdempotencyKey: varchar("tathastu_sync_idempotency_key", { length: 160 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 

@@ -1879,6 +1879,46 @@
       "languagePreference": "en",
       "createdAt": "2026-11-23T18:08:46.082Z",
       "updatedAt": "2026-11-23T18:08:46.083Z"
+    },
+    "conv-usr-phase2-persist-test-1795459500265-ic6l": {
+      "id": "conv-usr-phase2-persist-test-1795459500265-ic6l",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-23T18:45:00.265Z",
+      "updatedAt": "2026-11-23T18:45:00.267Z"
+    },
+    "conv-usr-test-student-A-phase1-1795459509032-h1r2": {
+      "id": "conv-usr-test-student-A-phase1-1795459509032-h1r2",
+      "studentUserId": "usr-test-student-A-phase1",
+      "title": "Student A Private Session",
+      "mode": "learn",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-23T18:45:09.032Z",
+      "updatedAt": "2026-11-23T18:45:09.033Z"
+    },
+    "conv-usr-phase2-persist-test-1795464600494-7v01": {
+      "id": "conv-usr-phase2-persist-test-1795464600494-7v01",
+      "studentUserId": "usr-phase2-persist-test",
+      "title": "DSA Dynamic Programming Session",
+      "mode": "practice",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-23T20:10:00.494Z",
+      "updatedAt": "2026-11-23T20:10:00.497Z"
+    },
+    "conv-usr-test-student-A-phase1-1795464609484-m1xk": {
+      "id": "conv-usr-test-student-A-phase1-1795464609484-m1xk",
+      "studentUserId": "usr-test-student-A-phase1",
+      "title": "Student A Private Session",
+      "mode": "learn",
+      "activeTopic": "general",
+      "languagePreference": "en",
+      "createdAt": "2026-11-23T20:10:09.484Z",
+      "updatedAt": "2026-11-23T20:10:09.485Z"
     }
   },
   "messages": {
@@ -5564,6 +5604,68 @@
         "role": "user",
         "content": "Confidential research plan",
         "createdAt": "2026-11-23T18:08:46.083Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1795459500265-ic6l": [
+      {
+        "id": "msg-1795459500267-zgmix",
+        "conversationId": "conv-usr-phase2-persist-test-1795459500265-ic6l",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-23T18:45:00.267Z"
+      },
+      {
+        "id": "msg-1795459500267-44keu",
+        "conversationId": "conv-usr-phase2-persist-test-1795459500265-ic6l",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-23T18:45:00.267Z"
+      }
+    ],
+    "conv-usr-test-student-A-phase1-1795459509032-h1r2": [
+      {
+        "id": "msg-1795459509033-4o16t",
+        "conversationId": "conv-usr-test-student-A-phase1-1795459509032-h1r2",
+        "studentUserId": "usr-test-student-A-phase1",
+        "role": "user",
+        "content": "Confidential research plan",
+        "createdAt": "2026-11-23T18:45:09.033Z"
+      }
+    ],
+    "conv-usr-phase2-persist-test-1795464600494-7v01": [
+      {
+        "id": "msg-1795464600496-tp5pf",
+        "conversationId": "conv-usr-phase2-persist-test-1795464600494-7v01",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "user",
+        "content": "How do I approach 0/1 knapsack?",
+        "createdAt": "2026-11-23T20:10:00.496Z"
+      },
+      {
+        "id": "msg-1795464600497-c5lnz",
+        "conversationId": "conv-usr-phase2-persist-test-1795464600494-7v01",
+        "studentUserId": "usr-phase2-persist-test",
+        "role": "assistant",
+        "content": "Consider whether to include item i or exclude it.",
+        "teachingStrategy": "socratic_hint",
+        "modelProvider": "tathastu-pedagogy-v1",
+        "inferenceMode": "deterministic",
+        "createdAt": "2026-11-23T20:10:00.497Z"
+      }
+    ],
+    "conv-usr-test-student-A-phase1-1795464609484-m1xk": [
+      {
+        "id": "msg-1795464609485-ifcw1",
+        "conversationId": "conv-usr-test-student-A-phase1-1795464609484-m1xk",
+        "studentUserId": "usr-test-student-A-phase1",
+        "role": "user",
+        "content": "Confidential research plan",
+        "createdAt": "2026-11-23T20:10:09.485Z"
       }
     ]
   }

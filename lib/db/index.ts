@@ -1321,6 +1321,79 @@ export async function initializeDatabaseSchema() {
       updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_shared_rate_limits_reset ON shared_rate_limits (reset_at);
+
+    CREATE TABLE IF NOT EXISTS meeting_intelligence_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE UNIQUE,
+      status VARCHAR(32) NOT NULL DEFAULT 'idle',
+      started_at TIMESTAMPTZ,
+      ended_at TIMESTAMPTZ,
+      duration_seconds INTEGER DEFAULT 0 NOT NULL,
+      active_languages JSONB DEFAULT '["en", "hi"]'::jsonb NOT NULL,
+      total_segments INTEGER DEFAULT 0 NOT NULL,
+      total_words INTEGER DEFAULT 0 NOT NULL,
+      metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS meeting_transcript_segments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+      line_index INTEGER NOT NULL,
+      participant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      speaker_role VARCHAR(32) NOT NULL,
+      speaker_name VARCHAR(160) NOT NULL,
+      start_time_seconds REAL NOT NULL,
+      end_time_seconds REAL NOT NULL,
+      src TEXT NOT NULL,
+      src_lang VARCHAR(16) NOT NULL,
+      dst TEXT,
+      dst_lang VARCHAR(16),
+      is_final BOOLEAN DEFAULT true NOT NULL,
+      confidence REAL DEFAULT 1.0 NOT NULL,
+      processing_provider VARCHAR(64) DEFAULT 'cloud_stt' NOT NULL,
+      provenance VARCHAR(32) DEFAULT 'transcript_extracted' NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      CONSTRAINT uq_meeting_segments_booking_line UNIQUE (booking_id, line_index)
+    );
+    CREATE INDEX IF NOT EXISTS idx_meeting_segments_booking_id ON meeting_transcript_segments(booking_id);
+    CREATE INDEX IF NOT EXISTS idx_meeting_segments_participant ON meeting_transcript_segments(participant_id);
+
+    CREATE TABLE IF NOT EXISTS meeting_notes_records (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE UNIQUE,
+      title VARCHAR(255),
+      summary TEXT NOT NULL DEFAULT '',
+      topics JSONB DEFAULT '[]'::jsonb NOT NULL,
+      conclusions JSONB DEFAULT '[]'::jsonb NOT NULL,
+      todos JSONB DEFAULT '[]'::jsonb NOT NULL,
+      terms JSONB DEFAULT '[]'::jsonb NOT NULL,
+      unresolved_questions JSONB DEFAULT '[]'::jsonb NOT NULL,
+      covered_line_count INTEGER DEFAULT 0 NOT NULL,
+      is_final BOOLEAN DEFAULT false NOT NULL,
+      approved_by_student_at TIMESTAMPTZ,
+      approved_by_mentor_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mentorship_intelligence_reports (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE UNIQUE,
+      student_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      mentor_profile_id UUID NOT NULL REFERENCES mentor_profiles(id) ON DELETE CASCADE,
+      report_json JSONB NOT NULL,
+      report_markdown TEXT NOT NULL,
+      review_status VARCHAR(32) DEFAULT 'pending_review' NOT NULL,
+      student_corrections TEXT,
+      mentor_corrections TEXT,
+      injected_into_astrion BOOLEAN DEFAULT false NOT NULL,
+      synced_to_tathastu BOOLEAN DEFAULT false NOT NULL,
+      tathastu_sync_idempotency_key VARCHAR(160),
+      created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+    );
   `;
 
   if (pgliteInstance) {
