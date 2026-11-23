@@ -109,7 +109,7 @@ export function AIMentorHistory({
         <div>
           <h1 className="text-2xl sm:text-3xl font-serif text-[#17211E]">Session History</h1>
           <p className="text-xs sm:text-sm text-[#69756B] mt-1">
-            Search, resume, or manage past mentorship conversations with Dr. Aarav Mehta.
+            Search, resume, or manage past mentorship conversations with ASTRION.
           </p>
         </div>
         <div className="flex items-center gap-2">
