@@ -444,52 +444,52 @@ export default function MentorAvailabilityPage() {
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-border gap-2">
+        {/* Navigation Tabs (scrollable on mobile) */}
+        <div className="flex overflow-x-auto no-scrollbar whitespace-nowrap border-b border-border gap-1.5 sm:gap-2 pb-1 sm:pb-0">
           <button
             type="button"
             onClick={() => setActiveTab("weekly")}
-            className={`py-2.5 px-4 rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 ${
+            className={`py-2.5 px-3.5 sm:px-4 min-h-[44px] rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 flex-shrink-0 ${
               activeTab === "weekly"
                 ? "bg-white text-forest-900 border-forest-900 shadow-sm"
                 : "text-ink-700 border-transparent hover:text-ink-950"
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Weekly Recurring Schedule</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("exceptions")}
-            className={`py-2.5 px-4 rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 ${
+            className={`py-2.5 px-3.5 sm:px-4 min-h-[44px] rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 flex-shrink-0 ${
               activeTab === "exceptions"
                 ? "bg-white text-forest-900 border-forest-900 shadow-sm"
                 : "text-ink-700 border-transparent hover:text-ink-950"
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
+            <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Date Exceptions ({exceptions.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("settings")}
-            className={`py-2.5 px-4 rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 ${
+            className={`py-2.5 px-3.5 sm:px-4 min-h-[44px] rounded-t-2xl text-xs font-bold transition-all flex items-center gap-2 border-b-2 flex-shrink-0 ${
               activeTab === "settings"
                 ? "bg-white text-forest-900 border-forest-900 shadow-sm"
                 : "text-ink-700 border-transparent hover:text-ink-950"
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <Sliders className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Scheduling Rules</span>
           </button>
         </div>
 
         {/* TAB 1: WEEKLY RECURRING SCHEDULE */}
         {activeTab === "weekly" && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-card border border-border space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-border">
+          <div className="bg-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-card border border-border space-y-5 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
               <div>
                 <h3 className="text-sm font-bold text-ink-950">Set Weekly Availability Windows</h3>
                 <p className="text-xs text-ink-700 mt-0.5">
@@ -501,7 +501,7 @@ export default function MentorAvailabilityPage() {
                 type="button"
                 onClick={() => handleSaveSchedule(false)}
                 disabled={saving}
-                className="py-2 px-5 rounded-2xl bg-forest-900 hover:bg-forest-800 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+                className="py-2.5 px-5 min-h-[44px] rounded-2xl bg-forest-900 hover:bg-forest-800 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 w-full sm:w-auto"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -549,23 +549,23 @@ export default function MentorAvailabilityPage() {
                       {day.isActive ? (
                         <div className="flex-1 space-y-2">
                           {day.windows.map((win, winIdx) => (
-                            <div key={winIdx} className="flex items-center gap-2">
+                            <div key={winIdx} className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
                               <input
                                 type="time"
                                 value={win.startTime}
                                 onChange={(e) =>
                                   updateWindow(day.dayOfWeek, winIdx, "startTime", e.target.value)
                                 }
-                                className="px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-semibold text-ink-950 focus:outline-none focus:ring-1 focus:ring-forest-700"
+                                className="px-2.5 sm:px-3 py-2 sm:py-1.5 min-h-[40px] rounded-xl border border-border bg-white text-sm sm:text-xs font-semibold text-ink-950 focus:outline-none focus:ring-1 focus:ring-forest-700 flex-1 sm:flex-none"
                               />
-                              <span className="text-xs text-ink-700 font-bold">to</span>
+                              <span className="text-xs text-ink-700 font-bold px-1">to</span>
                               <input
                                 type="time"
                                 value={win.endTime}
                                 onChange={(e) =>
                                   updateWindow(day.dayOfWeek, winIdx, "endTime", e.target.value)
                                 }
-                                className="px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-semibold text-ink-950 focus:outline-none focus:ring-1 focus:ring-forest-700"
+                                className="px-2.5 sm:px-3 py-2 sm:py-1.5 min-h-[40px] rounded-xl border border-border bg-white text-sm sm:text-xs font-semibold text-ink-950 focus:outline-none focus:ring-1 focus:ring-forest-700 flex-1 sm:flex-none"
                               />
 
                               {/* Remove Window Button */}
@@ -573,8 +573,9 @@ export default function MentorAvailabilityPage() {
                                 <button
                                   type="button"
                                   onClick={() => removeWindow(day.dayOfWeek, winIdx)}
-                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                                  className="p-2 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
                                   title="Remove window"
+                                  aria-label="Remove window"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -591,7 +592,7 @@ export default function MentorAvailabilityPage() {
                         <button
                           type="button"
                           onClick={() => addWindow(day.dayOfWeek)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-forest-700 hover:text-forest-900 bg-sage-100/60 hover:bg-sage-100 px-2.5 py-1 rounded-xl transition-all"
+                          className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-forest-700 hover:text-forest-900 bg-sage-100/60 hover:bg-sage-100 px-3 py-1.5 min-h-[38px] rounded-xl transition-all self-start sm:self-auto"
                         >
                           <Plus className="w-3 h-3" />
                           <span>Add Shift</span>

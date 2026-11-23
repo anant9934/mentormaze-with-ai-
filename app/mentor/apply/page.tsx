@@ -1,57 +1,176 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { useAuth } from "@/lib/auth/context";
-import { store } from "@/lib/data/store";
 import {
   Briefcase,
   ShieldCheck,
   FileCheck2,
-  Upload,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Users,
   Award,
+  AlertCircle,
+  Loader2,
+  LogIn,
 } from "lucide-react";
 
 export default function MentorApplicationPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
 
   // Form Fields
-  const [fullName, setFullName] = useState("Rahul Mehta");
-  const [currentRole, setCurrentRole] = useState("Data Scientist");
-  const [organization, setOrganization] = useState("Google");
-  const [domain, setDomain] = useState("Data Science");
-  const [yearsExperience, setYearsExperience] = useState(5);
-  const [skills, setSkills] = useState(["Python", "Machine Learning", "System Design"]);
-  const [linkedinUrl, setLinkedinUrl] = useState("https://linkedin.com/in/rahul-mehta-mock");
-  const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [currentRole, setCurrentRole] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [domain, setDomain] = useState("Software Engineering");
+  const [yearsExperience, setYearsExperience] = useState(1);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [linkedinUrl, setLinkedinUrl] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Submission & status states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submittedData, setSubmittedData] = useState<any | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkExistingApplication() {
+      if (authLoading) return;
+      if (!user) {
+        setInitialLoading(false);
+        return;
+      }
+
+      setFullName(user.displayName || "");
+
+      try {
+        const res = await fetch("/api/mentor/applications");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.success && data.hasApplication && data.application) {
+            setSubmittedData(data.application);
+            if (data.application.currentRole) setCurrentRole(data.application.currentRole);
+            if (data.application.organization) setOrganization(data.application.organization);
+            if (data.application.domain) setDomain(data.application.domain);
+            if (data.application.yearsExperience) setYearsExperience(data.application.yearsExperience);
+            if (data.application.skills) setSkills(data.application.skills);
+            if (data.application.linkedinUrl) setLinkedinUrl(data.application.linkedinUrl);
+          }
+        }
+      } catch (err) {
+        console.error("Error checking existing mentor application:", err);
+      } finally {
+        if (isMounted) {
+          setInitialLoading(false);
+        }
+      }
+    }
+
+    checkExistingApplication();
+    return () => {
+      isMounted = false;
+    };
+  }, [user, authLoading]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    store.submitMentorApplication({
-      mentorProfileId: "mentor-rahul",
-      mentorName: fullName,
-      currentRole,
-      organization,
-      identityProofType: "Aadhaar / Passport",
-      identityProofVerified: true,
-      professionalProofType: "Google Corporate Email / LinkedIn",
-      professionalProofVerified: true,
-      resumeUrl: "/documents/Rahul_Mehta_Resume.pdf",
-      linkedinUrl,
-    });
-    setSubmittedSuccess(true);
+    if (!user) {
+      setSubmissionError("Please log in before submitting your mentor application.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmissionError(null);
+
+      const res = await fetch("/api/mentor/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          currentRole: currentRole.trim(),
+          organization: organization.trim(),
+          domain,
+          yearsExperience,
+          skills,
+          linkedinUrl: linkedinUrl.trim(),
+          identityProofType: "Aadhaar / Passport",
+          professionalProofType: `${organization} Corporate Email / LinkedIn`,
+          resumeUrl: "/documents/Resume.pdf",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to submit mentor application.");
+      }
+
+      setSubmittedData({
+        currentRole,
+        organization,
+        domain,
+        status: data.status || "submitted",
+        applicationId: data.applicationId,
+      });
+    } catch (err: any) {
+      console.error("Mentor application submission error:", err);
+      setSubmissionError(err.message || "An unexpected error occurred while submitting.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (submittedSuccess) {
+  if (authLoading || initialLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-cream-50">
+        <Navbar />
+        <main className="flex-1 max-w-xl mx-auto px-4 py-20 text-center flex flex-col items-center justify-center">
+          <Loader2 className="w-8 h-8 text-forest-800 animate-spin mb-4" />
+          <p className="text-xs text-ink-600 font-medium">Checking application status...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col bg-cream-50">
+        <Navbar />
+        <main className="flex-1 max-w-md mx-auto px-4 py-20 text-center">
+          <div className="card-warm bg-white p-8 rounded-3xl shadow-card">
+            <div className="w-12 h-12 rounded-full bg-forest-100 text-forest-900 mx-auto flex items-center justify-center mb-4">
+              <LogIn className="w-6 h-6" />
+            </div>
+            <h1 className="font-serif text-2xl font-bold text-ink-950 mb-2">Sign In to Apply</h1>
+            <p className="text-xs text-ink-600 mb-6">
+              You must be signed in with your MentorMaze account to submit credentials and apply as a mentor.
+            </p>
+            <Link
+              href="/login?redirect=/mentor/apply"
+              className="btn-primary text-xs py-2.5 px-6 inline-flex items-center gap-2"
+            >
+              <span>Sign In to Continue</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (submittedData) {
     return (
       <div className="min-h-screen flex flex-col bg-cream-50">
         <Navbar />
@@ -64,25 +183,31 @@ export default function MentorApplicationPage() {
               Application Submitted!
             </h1>
             <p className="text-sm text-ink-700 leading-relaxed mb-6">
-              Thank you, <strong>{fullName}</strong>. Your mentor application has entered the administrator verification queue. Our team reviews credentials within 24-48 hours.
+              Thank you, <strong>{user.displayName || fullName}</strong>. Your mentor application has entered the administrator verification queue. Our team reviews credentials within 24-48 hours.
             </p>
             <div className="p-4 rounded-2xl bg-cream-50 border border-border text-xs text-ink-700 mb-8 text-left space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-ink-500">Status:</span>
-                <span className="badge-sage font-bold">Submitted / Under Review</span>
+                <span className="badge-sage font-bold capitalize">
+                  {submittedData.status || "Submitted / Under Review"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-500">Role & Org:</span>
-                <span className="font-semibold text-ink-950">{currentRole} @ {organization}</span>
+                <span className="font-semibold text-ink-950">
+                  {submittedData.currentRole} @ {submittedData.organization}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-500">Target Domain:</span>
-                <span className="font-semibold text-ink-950">{domain}</span>
+                <span className="font-semibold text-ink-950">
+                  {submittedData.domain || "Software Engineering"}
+                </span>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/admin/verification" className="btn-secondary text-xs">
-                Inspect in Admin Queue
+              <Link href="/dashboard" className="btn-secondary text-xs">
+                Back to Dashboard
               </Link>
               <Link href="/" className="btn-primary text-xs">
                 Return to Home
@@ -108,6 +233,14 @@ export default function MentorApplicationPage() {
           </div>
           <span>Step {step} of 3</span>
         </div>
+
+        {/* Submission Error Banner */}
+        {submissionError && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-3 text-xs text-red-800">
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span>{submissionError}</span>
+          </div>
+        )}
 
         <div className="card-warm bg-white p-8 rounded-3xl shadow-card">
           {/* STEP 1: VALUE PROPOSITION */}
@@ -195,6 +328,7 @@ export default function MentorApplicationPage() {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Priya Sharma"
                     className="w-full p-3 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
                   />
                 </div>
@@ -220,7 +354,7 @@ export default function MentorApplicationPage() {
                       type="text"
                       value={organization}
                       onChange={(e) => setOrganization(e.target.value)}
-                      placeholder="e.g. Google, Microsoft"
+                      placeholder="e.g. Microsoft, Google"
                       className="w-full p-3 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
                     />
                   </div>
@@ -247,8 +381,10 @@ export default function MentorApplicationPage() {
                     </label>
                     <input
                       type="number"
+                      min={1}
+                      max={40}
                       value={yearsExperience}
-                      onChange={(e) => setYearsExperience(parseInt(e.target.value))}
+                      onChange={(e) => setYearsExperience(parseInt(e.target.value) || 1)}
                       className="w-full p-3 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
                     />
                   </div>
@@ -311,7 +447,7 @@ export default function MentorApplicationPage() {
                       <p className="text-[10px] text-ink-500">Government ID (Aadhaar / PAN / Passport)</p>
                     </div>
                   </div>
-                  <span className="badge-match text-[10px]">Verified ✓</span>
+                  <span className="badge-match text-[10px]">Ready to Verify ✓</span>
                 </div>
 
                 {/* Proof 2: Professional Proof */}
@@ -320,19 +456,19 @@ export default function MentorApplicationPage() {
                     <Briefcase className="w-5 h-5 text-forest-800" />
                     <div>
                       <h4 className="text-xs font-bold text-ink-950">Professional Proof</h4>
-                      <p className="text-[10px] text-ink-500">Work email (@google.com) + Employee ID</p>
+                      <p className="text-[10px] text-ink-500">{organization} Corporate Email / LinkedIn</p>
                     </div>
                   </div>
-                  <span className="badge-match text-[10px]">Verified ✓</span>
+                  <span className="badge-match text-[10px]">Ready to Verify ✓</span>
                 </div>
 
-                {/* Proof 3: Resume Upload */}
+                {/* Proof 3: Resume */}
                 <div className="p-4 rounded-2xl bg-cream-50 border border-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <FileCheck2 className="w-5 h-5 text-forest-800" />
                     <div>
                       <h4 className="text-xs font-bold text-ink-950">Resume / CV (PDF)</h4>
-                      <p className="text-[10px] text-ink-500">Rahul_Mehta_Resume.pdf (1.4 MB)</p>
+                      <p className="text-[10px] text-ink-500">Profile & Experience Document</p>
                     </div>
                   </div>
                   <span className="badge-sage text-[10px]">Attached</span>
@@ -341,13 +477,14 @@ export default function MentorApplicationPage() {
 
               <div className="p-4 rounded-2xl bg-sage-50 border border-sage-200 text-xs text-forest-900 mb-8 flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                <span>Your profile will be reviewed by our compliance team within 24–48 hours.</span>
+                <span>Your application will be reviewed by the compliance team within 24–48 hours.</span>
               </div>
 
               <div className="pt-4 border-t border-border flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setStep(2)}
+                  disabled={isSubmitting}
                   className="btn-secondary text-xs px-4 py-2 flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -356,10 +493,20 @@ export default function MentorApplicationPage() {
                 <button
                   type="button"
                   onClick={handleSubmit}
+                  disabled={isSubmitting}
                   className="btn-primary text-xs px-6 py-2.5 flex items-center gap-2"
                 >
-                  <span>Submit for Review</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit for Review</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -371,4 +518,3 @@ export default function MentorApplicationPage() {
     </div>
   );
 }
-

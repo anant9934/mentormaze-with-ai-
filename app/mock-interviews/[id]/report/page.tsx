@@ -34,11 +34,11 @@ export default function MockInterviewReportPage() {
         {/* Back Link */}
         <div className="mb-6 flex items-center justify-between">
           <Link
-            href="/dashboard/mock-interviews"
+            href="/dashboard/mentorship?tab=sessions"
             className="inline-flex items-center gap-2 text-xs font-semibold text-ink-700 hover:text-forest-900 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Mock Interviews</span>
+            <span>Back to Sessions</span>
           </Link>
 
           <button

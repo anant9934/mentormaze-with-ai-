@@ -351,9 +351,25 @@ export default function LiveSessionRoomPage() {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "speaker">("speaker");
-  const [activeTab, setActiveTab] = useState<"chat" | "code" | "plan" | "notes" | "private">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "code" | "plan" | "notes" | "private" | "briefing">("chat");
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
+
+  const [briefingData, setBriefingData] = useState<any | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "briefing" && !briefingData && bookingId) {
+      setBriefingLoading(true);
+      fetch(`/api/mentorship-bridge/mentor?bookingId=${bookingId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.briefing) setBriefingData(data.briefing);
+        })
+        .catch(() => {})
+        .finally(() => setBriefingLoading(false));
+    }
+  }, [activeTab, briefingData, bookingId]);
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -2459,6 +2475,21 @@ export default function LiveSessionRoomPage() {
                   <span>Private</span>
                 </button>
               )}
+
+              {/* Tab 6: Student Briefing (Mentor Only) */}
+              {isMentor && (
+                <button
+                  onClick={() => setActiveTab("briefing")}
+                  className={`flex items-center gap-1 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                    activeTab === "briefing"
+                      ? "text-emerald-400 border-emerald-400"
+                      : "text-emerald-400/60 border-transparent hover:text-emerald-300"
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  <span>Briefing</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -2829,6 +2860,124 @@ export default function LiveSessionRoomPage() {
                     placeholder="Record candid candidate assessment, strengths, gaps, and private leveling observations..."
                   />
                 </div>
+              </div>
+            )}
+
+            {/* TAB 6: STUDENT INTAKE BRIEFING (MENTOR ONLY) */}
+            {activeTab === "briefing" && isMentor && (
+              <div className="flex-1 flex flex-col min-h-0 space-y-3 overflow-y-auto pr-1">
+                <div className="flex items-center justify-between pb-1 border-b border-[#1E3F31]">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-emerald-300">
+                      Student Intake Briefing
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-mono">
+                    Bridge Verified
+                  </span>
+                </div>
+
+                {briefingLoading ? (
+                  <div className="flex-1 flex items-center justify-center p-8">
+                    <span className="text-xs text-[#A3B899] animate-pulse">
+                      Loading authorized student briefing...
+                    </span>
+                  </div>
+                ) : briefingData ? (
+                  <div className="space-y-3 text-xs">
+                    {/* Background */}
+                    <div className="p-3 rounded-xl bg-[#0E2018] border border-[#1E3F31] space-y-1">
+                      <span className="text-[10px] font-bold text-emerald-400 block uppercase tracking-wider">
+                        Student Background
+                      </span>
+                      <p className="text-[#E2E8F0] font-semibold text-xs">
+                        {briefingData.studentBackground?.displayName}
+                      </p>
+                      <p className="text-[11px] text-[#A3B899]">
+                        Target: {briefingData.studentBackground?.targetRole || "Software Engineer"}
+                      </p>
+                      {briefingData.studentBackground?.institution && (
+                        <p className="text-[10px] text-[#718096]">
+                          {briefingData.studentBackground.degree} · {briefingData.studentBackground.institution}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Mentoring Objectives */}
+                    {briefingData.mentoringObjectives?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-[#0E2018] border border-[#1E3F31] space-y-1.5">
+                        <span className="text-[10px] font-bold text-emerald-400 block uppercase tracking-wider">
+                          Session Objectives
+                        </span>
+                        <ul className="space-y-1">
+                          {briefingData.mentoringObjectives.map((obj: string, i: number) => (
+                            <li key={i} className="text-[11px] text-[#CBD5E1] flex items-start gap-1.5">
+                              <span className="text-emerald-400 font-bold">•</span>
+                              <span>{obj}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Questions for Mentor */}
+                    {briefingData.questionsForMentor?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 space-y-1.5">
+                        <span className="text-[10px] font-bold text-amber-300 block uppercase tracking-wider">
+                          Questions Prepared for You
+                        </span>
+                        <ul className="space-y-1">
+                          {briefingData.questionsForMentor.map((q: string, i: number) => (
+                            <li key={i} className="text-[11px] text-amber-100 flex items-start gap-1.5">
+                              <span className="text-amber-400 font-bold">Q{i + 1}:</span>
+                              <span>{q}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Current Challenges */}
+                    {briefingData.currentChallenges?.length > 0 && (
+                      <div className="p-3 rounded-xl bg-[#0E2018] border border-[#1E3F31] space-y-1.5">
+                        <span className="text-[10px] font-bold text-emerald-400 block uppercase tracking-wider">
+                          Current Focus & Challenges
+                        </span>
+                        <div className="space-y-1">
+                          {briefingData.currentChallenges.map((c: any, i: number) => (
+                            <div key={i} className="text-[11px] text-[#A3B899]">
+                              <p className="font-medium text-[#E2E8F0]">{c.challenge}</p>
+                              {c.evidence && (
+                                <p className="text-[10px] text-[#718096] italic mt-0.5">
+                                  Evidence: {c.evidence}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {briefingData.studentNote && (
+                      <div className="p-3 rounded-xl bg-[#0E2018] border border-[#1E3F31]">
+                        <span className="text-[10px] font-bold text-[#A3B899] block uppercase mb-1">
+                          Student Note
+                        </span>
+                        <p className="text-[11px] text-[#E2E8F0] italic">
+                          "{briefingData.studentNote}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-[#0E2018] border border-[#1E3F31] text-center text-xs text-[#A3B899] space-y-2">
+                    <p>No intake briefing shared for this session yet.</p>
+                    <p className="text-[10px] text-[#718096]">
+                      Student can generate and share an ASTRION-verified briefing anytime from My Mentorship.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

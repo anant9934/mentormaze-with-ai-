@@ -36,15 +36,15 @@ export default function LoginPage() {
     setSelectedScopes((prev) => ({ ...prev, [scope]: !prev[scope] }));
   };
 
-  const handleAITathastuLogin = () => {
+  const handleAITathastuLogin = async () => {
     // Authenticate with AI Tathastu context
-    login("anant@example.com", "student");
+    await login("anant@example.com", "password123", "student");
     switchRole("student");
     router.push("/dashboard");
   };
 
-  const handleOtherLogin = (role: "student" | "mentor" | "admin" = "student") => {
-    login(emailInput || "user@example.com", role);
+  const handleOtherLogin = async (role: "student" | "mentor" | "admin" = "student") => {
+    await login(emailInput || "user@example.com", "password123", role);
     switchRole(role);
     if (role === "admin") router.push("/admin");
     else if (role === "mentor") router.push("/mentor/dashboard");
