@@ -1,10 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
   MessageSquare,
+  Plus,
+  Search,
   Clock,
   Code2,
   Compass,
@@ -22,13 +24,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Shield,
-  Activity,
   X,
   Bot,
+  Trash2,
+  Edit2,
+  Check,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { NavSection, ModelProviderInfo } from "./ai-mentor-types";
+import { NavSection, ModelProviderInfo, ConversationSummary } from "./ai-mentor-types";
 import { UNIFIED_MENTOR_IDENTITY } from "@/lib/ai-mentor/types";
+import { cn } from "@/lib/utils";
 
 interface AIMentorSidebarProps {
   activeSection: NavSection;
@@ -39,6 +45,12 @@ interface AIMentorSidebarProps {
   onCloseMobile: () => void;
   providerInfo?: ModelProviderInfo;
   onOpenModelPanel: () => void;
+  conversations?: ConversationSummary[];
+  activeConversationId?: string | null;
+  onOpenConversation?: (id: string) => void;
+  onNewSession?: () => void;
+  onRenameConversation?: (id: string, newTitle: string) => Promise<void>;
+  onDeleteConversation?: (id: string) => Promise<void>;
 }
 
 export function AIMentorSidebar({
@@ -50,35 +62,91 @@ export function AIMentorSidebar({
   onCloseMobile,
   providerInfo,
   onOpenModelPanel,
+  conversations = [],
+  activeConversationId,
+  onOpenConversation,
+  onNewSession,
+  onRenameConversation,
+  onDeleteConversation,
 }: AIMentorSidebarProps) {
-  const mainNavItems = [
-    { id: "chat" as NavSection, label: "Chat", icon: MessageSquare },
-    { id: "history" as NavSection, label: "History", icon: Clock },
-    { id: "codework" as NavSection, label: "Codework", icon: Code2 },
-    { id: "discover" as NavSection, label: "Discover", icon: Compass },
-    { id: "projects" as NavSection, label: "Projects", icon: Layers },
-    { id: "agents" as NavSection, label: "Agents", icon: Bot },
-    { id: "memory" as NavSection, label: "Memory", icon: Database },
-    { id: "skills" as NavSection, label: "Skills", icon: Award },
-    { id: "progress" as NavSection, label: "Progress", icon: TrendingUp },
-  ];
+  const [chatSearch, setChatSearch] = useState("");
+  const [showToolsGroup, setShowToolsGroup] = useState(true);
+  const [editingConvId, setEditingConvId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
-  const personalizationNavItems = [
-    { id: "learning_profile" as NavSection, label: "Learning Profile", icon: UserCheck },
-    { id: "career_goals" as NavSection, label: "Career Goals", icon: Briefcase },
-    { id: "preferences" as NavSection, label: "Preferences", icon: Sliders },
-  ];
+  // Group conversations by date (ChatGPT style)
+  const groupedConversations = useMemo(() => {
+    const query = chatSearch.toLowerCase().trim();
+    const filtered = query
+      ? conversations.filter(
+          (c) =>
+            c.title.toLowerCase().includes(query) ||
+            String(c.mode).toLowerCase().includes(query)
+        )
+      : conversations;
 
-  const toolsNavItems = [
-    { id: "notifications" as NavSection, label: "Notifications", icon: Bell },
-    { id: "settings" as NavSection, label: "Settings", icon: Settings },
-    { id: "model_info" as NavSection, label: "Model Information", icon: Cpu },
-    { id: "report_issue" as NavSection, label: "Report Issue", icon: HelpCircle },
+    const today: ConversationSummary[] = [];
+    const yesterday: ConversationSummary[] = [];
+    const pastWeek: ConversationSummary[] = [];
+    const older: ConversationSummary[] = [];
+
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    filtered.forEach((c) => {
+      const time = new Date(c.updatedAt || c.createdAt).getTime();
+      const diff = now - time;
+      if (diff < oneDay) {
+        today.push(c);
+      } else if (diff < 2 * oneDay) {
+        yesterday.push(c);
+      } else if (diff < 7 * oneDay) {
+        pastWeek.push(c);
+      } else {
+        older.push(c);
+      }
+    });
+
+    return [
+      { label: "Today", items: today },
+      { label: "Yesterday", items: yesterday },
+      { label: "Previous 7 Days", items: pastWeek },
+      { label: "Older", items: older },
+    ].filter((g) => g.items.length > 0);
+  }, [conversations, chatSearch]);
+
+  const handleStartRename = (conv: ConversationSummary, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingConvId(conv.id);
+    setEditTitle(conv.title);
+  };
+
+  const handleSaveRename = async (convId: string, e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (editTitle.trim() && onRenameConversation) {
+      await onRenameConversation(convId, editTitle.trim());
+    }
+    setEditingConvId(null);
+  };
+
+  const handleDelete = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Delete this chat session permanently?")) {
+      await onDeleteConversation?.(convId);
+    }
+  };
+
+  const workspaceTools = [
+    { id: "progress" as NavSection, label: "Roadmap & Plan", icon: TrendingUp },
+    { id: "career_goals" as NavSection, label: "Mentorship Goals", icon: Briefcase },
+    { id: "learning_profile" as NavSection, label: "Assessment", icon: UserCheck },
+    { id: "skills" as NavSection, label: "Skills & Evidence", icon: Award },
+    { id: "memory" as NavSection, label: "Student Memory", icon: Database },
+    { id: "settings" as NavSection, label: "Settings & Consent", icon: Settings },
   ];
 
   const isConnected = providerInfo?.isAvailable ?? true;
-  const activeModelDisplay = providerInfo?.modelName || "Hybrid Qwen/Gemini";
-  const activeProviderDisplay = providerInfo?.provider || "Hybrid Cloud / Local";
+  const activeModelDisplay = providerInfo?.modelName || "Gemini 2.5 Flash / Local 2B";
   const modelMode: "Local" | "API" | "Hybrid" =
     providerInfo?.provider === "mentormaze_2b" && providerInfo?.isAvailable
       ? "Local"
@@ -94,249 +162,363 @@ export function AIMentorSidebar({
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 lg:hidden transition-opacity"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } ${
-          isCollapsed ? "lg:w-[76px]" : "lg:w-[280px]"
-        } w-[280px] h-full p-3 lg:p-4 select-none`}
+        className={cn(
+          "fixed lg:static top-0 bottom-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out select-none",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          isCollapsed ? "lg:w-[72px]" : "lg:w-[280px]",
+          "w-[280px] h-full p-2.5 sm:p-3"
+        )}
       >
-        <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-md border border-[#DCE5D5] rounded-3xl shadow-sm overflow-hidden">
-          {/* SIDEBAR HEADER */}
-          <div className="p-4 border-b border-[#DCE5D5]/80 flex items-center justify-between">
+        <div className="flex-1 flex flex-col bg-white/85 backdrop-blur-xl border border-[#DCE5D5] rounded-3xl shadow-sm overflow-hidden">
+          {/* 1. SIDEBAR HEADER: Logo & Collapse Button */}
+          <div className="p-3.5 border-b border-[#DCE5D5]/80 flex items-center justify-between gap-2">
             <Link
               href="/"
-              className={`flex items-center gap-2.5 transition-opacity ${
-                isCollapsed ? "lg:hidden" : "flex"
-              }`}
+              className={cn(
+                "flex items-center gap-2.5 transition-opacity min-w-0",
+                isCollapsed && "lg:hidden"
+              )}
             >
-              <div className="w-8 h-8 rounded-xl bg-[#123B2E] flex items-center justify-center text-white font-bold text-sm shadow-xs">
-                M
+              <div className="w-8 h-8 rounded-xl bg-[#123B2E] flex items-center justify-center text-white font-bold text-sm shadow-xs overflow-hidden shrink-0">
+                <Image
+                  src="/brand/astrion-icon.svg"
+                  alt="ASTRION"
+                  width={22}
+                  height={22}
+                  className="w-5.5 h-5.5 object-contain"
+                />
               </div>
-              <div>
+              <div className="truncate">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm tracking-tight text-[#123B2E]">MentorMaze</span>
+                  <span className="font-bold text-sm tracking-tight text-[#123B2E] font-serif">ASTRION</span>
                   <span className="px-1.5 py-0.2 rounded-md bg-[#E7F2DA] text-[#123B2E] text-[10px] font-bold uppercase tracking-wider border border-[#DCE5D5]">
                     AI
                   </span>
                 </div>
-                <p className="text-[10px] text-[#69756B] leading-none mt-0.5">Workspace v2.4</p>
+                <p className="text-[10px] text-[#69756B] truncate">Unified AI Mentorship</p>
               </div>
             </Link>
 
-            {/* Icon only for collapsed desktop */}
+            {/* Collapsed Logo */}
             {isCollapsed && (
-              <div className="hidden lg:flex w-8 h-8 rounded-xl bg-[#123B2E] items-center justify-center text-white font-bold text-sm mx-auto shadow-xs">
-                M
+              <div className="hidden lg:flex w-8 h-8 rounded-xl bg-[#123B2E] items-center justify-center text-white font-bold text-sm mx-auto shadow-xs shrink-0">
+                <Image
+                  src="/brand/astrion-icon.svg"
+                  alt="ASTRION"
+                  width={20}
+                  height={20}
+                  className="w-5 h-5 object-contain"
+                />
               </div>
             )}
 
-            {/* Collapse / Close Toggle */}
-            <div className="flex items-center gap-1">
+            {/* Collapse & Mobile Close Toggles */}
+            <div className="flex items-center gap-1 shrink-0">
               <button
+                type="button"
                 onClick={onToggleCollapse}
-                className="hidden lg:flex p-1.5 rounded-lg text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8] transition-colors"
+                className="hidden lg:flex p-1.5 rounded-xl text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8] transition-colors"
                 title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
                 {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
               </button>
               <button
+                type="button"
                 onClick={onCloseMobile}
-                className="lg:hidden p-1.5 rounded-lg text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8] transition-colors"
-                title="Close drawer"
+                className="lg:hidden p-1.5 rounded-xl text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8] transition-colors"
+                title="Close sidebar"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* MENTOR PROFILE BAR */}
-          <div
-            className={`p-3.5 border-b border-[#DCE5D5]/60 bg-[#FAFAF2]/60 flex items-center gap-3 ${
-              isCollapsed ? "lg:justify-center lg:p-2.5" : ""
-            }`}
-          >
-            <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#27875E]/30 flex-shrink-0 shadow-2xs">
-              <Image
-                src={UNIFIED_MENTOR_IDENTITY.avatarUrl}
-                alt={UNIFIED_MENTOR_IDENTITY.name}
-                fill
-                className="object-cover"
-              />
+          {/* 2. CHATGPT-STYLE "+ NEW CHAT" PRIMARY BUTTON */}
+          <div className="p-2.5 pb-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                onNewSession?.();
+                if (isMobileOpen) onCloseMobile();
+              }}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 rounded-2xl bg-[#174B39] hover:bg-[#123B2E] text-white font-semibold text-xs shadow-xs hover:shadow transition-all group",
+                isCollapsed ? "p-2.5" : "px-3.5 py-2.5"
+              )}
+              title="Start a new chat session"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform" />
+              {!isCollapsed && <span className="tracking-tight">New Chat</span>}
+            </button>
+          </div>
+
+          {/* 3. SEARCH CHATS FILTER (Expanded mode only) */}
+          {!isCollapsed && conversations.length > 3 && (
+            <div className="px-2.5 py-1">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-[#69756B] absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                  placeholder="Search chats..."
+                  className="w-full pl-8 pr-2.5 py-1.5 bg-[#FAFAF2] border border-[#DCE5D5] rounded-xl text-xs text-[#17211E] placeholder:text-[#69756B]/60 focus:outline-none focus:ring-1 focus:ring-[#27875E] transition-all"
+                />
+                {chatSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setChatSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#69756B] hover:text-[#17211E]"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-xs text-[#123B2E] truncate">{UNIFIED_MENTOR_IDENTITY.name}</p>
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isConnected ? "bg-[#27875E] animate-pulse" : "bg-[#D99B45]"
-                    }`}
-                  />
-                  <span className="text-[10px] text-[#69756B] font-medium truncate">
-                    {isConnected ? "Active Intelligence" : "Local Standby"}
-                  </span>
-                </div>
+          )}
+
+          {/* 4. CHAT HISTORY LIST (ChatGPT layout with date grouping) */}
+          <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-3 scrollbar-thin">
+            {!isCollapsed ? (
+              <>
+                {groupedConversations.length === 0 ? (
+                  <div className="text-center py-6 px-2">
+                    <p className="text-xs text-[#69756B]">
+                      {chatSearch ? "No matching chats found." : "No previous chats yet."}
+                    </p>
+                  </div>
+                ) : (
+                  groupedConversations.map((group) => (
+                    <div key={group.label} className="space-y-0.5">
+                      <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#69756B]/80 font-sans">
+                        {group.label}
+                      </p>
+                      <div className="space-y-0.5">
+                        {group.items.map((conv) => {
+                          const isActive =
+                            activeSection === "chat" && activeConversationId === conv.id;
+                          const isEditing = editingConvId === conv.id;
+
+                          return (
+                            <div
+                              key={conv.id}
+                              onClick={() => {
+                                onOpenConversation?.(conv.id);
+                                if (isMobileOpen) onCloseMobile();
+                              }}
+                              className={cn(
+                                "group relative w-full flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all",
+                                isActive
+                                  ? "bg-[#E7F2DA] text-[#123B2E] font-medium border border-[#DCE5D5] shadow-2xs"
+                                  : "text-[#17211E] hover:bg-[#EDF3E8]/70"
+                              )}
+                              title={conv.title}
+                            >
+                              {/* Left icon & Title or Edit Input */}
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <MessageSquare
+                                  className={cn(
+                                    "w-3.5 h-3.5 shrink-0",
+                                    isActive ? "text-[#174B39]" : "text-[#69756B]"
+                                  )}
+                                />
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSaveRename(conv.id, e);
+                                      if (e.key === "Escape") setEditingConvId(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    autoFocus
+                                    className="bg-white border border-[#27875E] rounded px-1.5 py-0.5 text-xs text-[#17211E] w-full focus:outline-none"
+                                  />
+                                ) : (
+                                  <span className="truncate text-xs leading-normal">
+                                    {conv.title || "Mentorship Session"}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Action buttons (Rename & Delete) on hover */}
+                              <div
+                                className={cn(
+                                  "flex items-center gap-0.5 shrink-0",
+                                  isEditing ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"
+                                )}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {isEditing ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleSaveRename(conv.id, e)}
+                                      className="p-1 hover:text-emerald-700 text-[#27875E]"
+                                      title="Save title"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingConvId(null)}
+                                      className="p-1 hover:text-red-600 text-[#69756B]"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleStartRename(conv, e)}
+                                      className="p-1 text-[#69756B] hover:text-[#17211E] hover:bg-white rounded transition-colors"
+                                      title="Rename chat"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleDelete(conv.id, e)}
+                                      className="p-1 text-[#69756B] hover:text-red-600 hover:bg-white rounded transition-colors"
+                                      title="Delete chat"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
+            ) : (
+              /* Collapsed state chat icon button */
+              <div className="flex flex-col items-center space-y-1.5 py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectSection("chat");
+                    onNewSession?.();
+                  }}
+                  className={cn(
+                    "p-2.5 rounded-xl transition-all",
+                    activeSection === "chat"
+                      ? "bg-[#E7F2DA] text-[#174B39]"
+                      : "text-[#69756B] hover:bg-[#EDF3E8]"
+                  )}
+                  title="Chats"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>
 
-          {/* SCROLLABLE NAVIGATION LIST */}
-          <nav className="flex-1 overflow-y-auto p-2.5 space-y-4 text-xs">
-            {/* GROUP 1: MAIN */}
-            <div>
-              {!isCollapsed && (
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#69756B]">
-                  Main
-                </p>
-              )}
-              <div className="space-y-0.5">
-                {mainNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onSelectSection(item.id);
-                        if (isMobileOpen) onCloseMobile();
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-                        isActive
-                          ? "bg-[#E7F2DA] text-[#123B2E] font-semibold border border-[#DCE5D5] shadow-2xs"
-                          : "text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8]/70"
-                      } ${isCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-                      title={item.label}
-                    >
-                      <Icon
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-[#123B2E]" : "text-[#69756B]"
-                        }`}
-                      />
-                      {!isCollapsed && <span className="truncate">{item.label}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* GROUP 2: PERSONALIZATION */}
-            <div>
-              {!isCollapsed && (
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#69756B]">
-                  Personalization
-                </p>
-              )}
-              <div className="space-y-0.5">
-                {personalizationNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onSelectSection(item.id);
-                        if (isMobileOpen) onCloseMobile();
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-                        isActive
-                          ? "bg-[#E7F2DA] text-[#123B2E] font-semibold border border-[#DCE5D5] shadow-2xs"
-                          : "text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8]/70"
-                      } ${isCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-                      title={item.label}
-                    >
-                      <Icon
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-[#123B2E]" : "text-[#69756B]"
-                        }`}
-                      />
-                      {!isCollapsed && <span className="truncate">{item.label}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* GROUP 3: TOOLS */}
-            <div>
-              {!isCollapsed && (
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#69756B]">
-                  Tools
-                </p>
-              )}
-              <div className="space-y-0.5">
-                {toolsNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        if (item.id === "model_info") {
-                          onOpenModelPanel();
-                        } else {
-                          onSelectSection(item.id);
-                        }
-                        if (isMobileOpen) onCloseMobile();
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-                        isActive
-                          ? "bg-[#E7F2DA] text-[#123B2E] font-semibold border border-[#DCE5D5] shadow-2xs"
-                          : "text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8]/70"
-                      } ${isCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-                      title={item.label}
-                    >
-                      <Icon
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-[#123B2E]" : "text-[#69756B]"
-                        }`}
-                      />
-                      {!isCollapsed && <span className="truncate">{item.label}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </nav>
-
-          {/* SIDEBAR FOOTER CARD */}
-          <div className="p-3 border-t border-[#DCE5D5]/80 bg-[#FAFAF2]/80">
+          {/* 5. WORKSPACE & MENTORSHIP TOOLS ACCORDION */}
+          <div className="border-t border-[#DCE5D5]/80 bg-[#FAFAF2]/60 p-2">
             {!isCollapsed ? (
-              <button
-                onClick={onOpenModelPanel}
-                className="w-full text-left p-2.5 rounded-2xl bg-white border border-[#DCE5D5] hover:border-[#123B2E]/30 transition-all shadow-2xs group"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#69756B] flex items-center gap-1">
-                    <Cpu className="w-3 h-3 text-[#27875E]" />
-                    <span>Model Engine</span>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowToolsGroup(!showToolsGroup)}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-[#69756B] hover:text-[#17211E] hover:bg-[#EDF3E8]/60 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-[#27875E]" />
+                    <span>Workspace Tools</span>
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-[#E7F2DA] text-[#123B2E] border border-[#DCE5D5]">
-                    {modelMode}
+                  {showToolsGroup ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                </button>
+
+                {showToolsGroup && (
+                  <div className="mt-1 space-y-0.5 animate-in fade-in duration-150">
+                    {workspaceTools.map((tool) => {
+                      const Icon = tool.icon;
+                      const isActive = activeSection === tool.id;
+                      return (
+                        <button
+                          key={tool.id}
+                          type="button"
+                          onClick={() => {
+                            onSelectSection(tool.id);
+                            if (isMobileOpen) onCloseMobile();
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs transition-colors",
+                            isActive
+                              ? "bg-[#E7F2DA] text-[#174B39] font-semibold border border-[#DCE5D5]"
+                              : "text-[#69756B] hover:text-[#17211E] hover:bg-[#EDF3E8]/60"
+                          )}
+                        >
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{tool.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-1">
+                {workspaceTools.slice(0, 3).map((tool) => {
+                  const Icon = tool.icon;
+                  const isActive = activeSection === tool.id;
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => onSelectSection(tool.id)}
+                      className={cn(
+                        "p-2 rounded-xl transition-colors",
+                        isActive ? "bg-[#E7F2DA] text-[#174B39]" : "text-[#69756B] hover:bg-[#EDF3E8]"
+                      )}
+                      title={tool.label}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 6. SIDEBAR FOOTER: UNIFIED MENTOR IDENTITY */}
+          <div className="p-2.5 border-t border-[#DCE5D5]/80 bg-white/60">
+            {!isCollapsed ? (
+              <div className="w-full p-2.5 rounded-2xl bg-[#FAFAF2] border border-[#DCE5D5] shadow-2xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-forest-900 flex items-center gap-1.5 font-mono">
+                    <Sparkles className="w-3.5 h-3.5 text-[#27875E]" />
+                    <span>ASTRION Mentoring</span>
+                  </span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold bg-[#E7F2DA] text-[#174B39] border border-[#DCE5D5]">
+                    Active
                   </span>
                 </div>
-                <p className="text-xs font-bold text-[#123B2E] truncate font-mono">
-                  {activeModelDisplay}
+                <p className="text-[11px] text-[#69756B] leading-tight">
+                  Continuous AI & Human Ecosystem
                 </p>
-                <p className="text-[10px] text-[#69756B] truncate mt-0.5">
-                  {activeProviderDisplay} · mentormaze-2b
-                </p>
-              </button>
+              </div>
             ) : (
-              <button
-                onClick={onOpenModelPanel}
-                className="w-full flex justify-center p-2 rounded-xl text-[#69756B] hover:text-[#123B2E] hover:bg-[#EDF3E8]"
-                title="Model status & details"
+              <div
+                className="w-full flex justify-center p-2 rounded-xl text-[#174B39]"
+                title="ASTRION Active"
               >
-                <Cpu className="w-4 h-4 text-[#27875E]" />
-              </button>
+                <Sparkles className="w-4 h-4 text-[#27875E]" />
+              </div>
             )}
           </div>
         </div>
@@ -344,4 +526,3 @@ export function AIMentorSidebar({
     </>
   );
 }
-

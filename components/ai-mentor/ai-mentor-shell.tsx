@@ -37,6 +37,11 @@ import { AIMentorPersonalization } from "./ai-mentor-personalization";
 import { AIMentorModelPanel } from "./ai-mentor-model-panel";
 import { AIMentorSettings } from "./ai-mentor-settings";
 import { AIMentorHelp } from "./ai-mentor-help";
+import { AIMentorGoalsManager, StudentGoal } from "./ai-mentor-goals-manager";
+import { AIMentorAssessmentView } from "./ai-mentor-assessment-view";
+import { AIMentorRoadmapWorkspace } from "./ai-mentor-roadmap-workspace";
+import { AIMentorCheckInModal } from "./ai-mentor-checkin-modal";
+import { PersonalizedRoadmapRecord, PersonalizedMilestone } from "@/lib/ai-mentor/roadmap/personalized-roadmap-service";
 import { cn } from "@/lib/utils";
 
 interface AIMentorShellProps {
@@ -62,6 +67,12 @@ export function AIMentorShell({
   const [currentFocusArea, setCurrentFocusArea] = useState<FocusArea>("learn");
   const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>("en");
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // Phase 4: Goal, Roadmap & Check-In State
+  const [activeGoal, setActiveGoal] = useState<StudentGoal | null>(null);
+  const [activeRoadmap, setActiveRoadmap] = useState<PersonalizedRoadmapRecord | null>(null);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [isLoadingMentorshipState, setIsLoadingMentorshipState] = useState(false);
 
   // Model & Network State
   const [modelInfo, setModelInfo] = useState<ModelProviderInfo>({
@@ -109,10 +120,43 @@ export function AIMentorShell({
     }
   }, []);
 
+  // 3. Phase 4: Fetch Active Goal and Active Roadmap
+  const loadGoalsAndRoadmap = useCallback(async () => {
+    setIsLoadingMentorshipState(true);
+    try {
+      const goalsRes = await fetch(`/api/ai-mentor/goals?userId=${initialUserId}`);
+      const goalsData = await goalsRes.json();
+      if (goalsData.success && Array.isArray(goalsData.goals)) {
+        const primary =
+          goalsData.goals.find((g: StudentGoal) => g.importance === "primary" && g.status === "active") ||
+          goalsData.goals.find((g: StudentGoal) => g.status === "active") ||
+          null;
+        setActiveGoal(primary);
+
+        if (primary) {
+          const rdmRes = await fetch(`/api/ai-mentor/roadmaps?userId=${initialUserId}&goalId=${primary.id}`);
+          const rdmData = await rdmRes.json();
+          if (rdmData.success && rdmData.roadmap) {
+            setActiveRoadmap(rdmData.roadmap);
+          } else {
+            setActiveRoadmap(null);
+          }
+        } else {
+          setActiveRoadmap(null);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load goals and roadmap:", err);
+    } finally {
+      setIsLoadingMentorshipState(false);
+    }
+  }, [initialUserId]);
+
   useEffect(() => {
     loadConversations();
     loadModelStatus();
-  }, [loadConversations, loadModelStatus]);
+    loadGoalsAndRoadmap();
+  }, [loadConversations, loadModelStatus, loadGoalsAndRoadmap]);
 
   // Switch to specific conversation
   const openConversation = useCallback(
@@ -197,13 +241,45 @@ export function AIMentorShell({
   // Send message with SSE streaming
   const handleSendMessage = async (
     content: string,
-    options?: { focusArea?: FocusArea; language?: LanguageCode; attachments?: string[] }
+    options?: {
+      focusArea?: FocusArea;
+      language?: LanguageCode;
+      attachments?: string[];
+      historyOverride?: ChatMessage[];
+    }
   ) => {
     const trimmed = content.trim();
     if (!trimmed) return;
 
     const focusToUse = options?.focusArea || currentFocusArea;
     const langToUse = options?.language || currentLanguage;
+    const baseHistory = options?.historyOverride || messages;
+
+    // Auto-create persistent conversation if none active yet
+    let convIdToUse = activeConversationId;
+    if (!convIdToUse) {
+      try {
+        const createRes = await fetch("/api/ai-mentor/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: initialUserId,
+            title: trimmed.slice(0, 48) || `Mentorship on ${focusToUse.toUpperCase()}`,
+            mode: focusToUse,
+            language: langToUse,
+          }),
+        });
+        const createData = await createRes.json();
+        if (createData.success && createData.conversation) {
+          convIdToUse = createData.conversation.id;
+          setActiveConversationId(convIdToUse);
+          setActiveConversationTitle(createData.conversation.title);
+          setConversations((prev) => [createData.conversation, ...prev]);
+        }
+      } catch (err) {
+        console.warn("Failed to auto-create conversation on fly:", err);
+      }
+    }
 
     // Create user message in UI
     const userMsgId = `usr-${Date.now()}`;
@@ -225,7 +301,7 @@ export function AIMentorShell({
       inferenceMode: "generative",
     };
 
-    setMessages((prev) => [...prev, userMsg, placeholderMentorMsg]);
+    setMessages([...baseHistory, userMsg, placeholderMentorMsg]);
     setIsStreaming(true);
 
     const abortController = new AbortController();
@@ -240,12 +316,12 @@ export function AIMentorShell({
         },
         body: JSON.stringify({
           studentUserId: initialUserId,
-          conversationId: activeConversationId,
+          conversationId: convIdToUse,
           userMessage: trimmed,
           focusArea: focusToUse,
           mode: focusToUse,
           languagePreference: langToUse,
-          conversationHistory: messages.slice(-6).map((m) => ({
+          conversationHistory: baseHistory.slice(-6).map((m) => ({
             role: m.sender === "user" ? "user" : "assistant",
             content: m.content,
           })),
@@ -323,6 +399,20 @@ export function AIMentorShell({
                   estimatedCostUsd: metadataReceived.estimatedCostUsd,
                   fallbackReason: metadataReceived.fallbackReason,
                   postInteractionCheck: metadataReceived.postInteractionCheck,
+                  studyPlan: metadataReceived.studyPlan,
+                  progressInsights: metadataReceived.progressInsights,
+                  resources: metadataReceived.resources,
+                  reminders: metadataReceived.reminders,
+                  mentorHandoff: metadataReceived.mentorHandoff,
+                  goalReference: metadataReceived.goalReference,
+                  assessment: metadataReceived.assessment,
+                  recommendedNextAction: metadataReceived.recommendedNextAction,
+                  roadmapUpdates: metadataReceived.roadmapUpdates,
+                  milestoneUpdates: metadataReceived.milestoneUpdates,
+                  followUpSuggestion: metadataReceived.followUpSuggestion,
+                  requiresStudentConfirmation: metadataReceived.requiresStudentConfirmation,
+                  confidence: metadataReceived.confidence,
+                  evidenceReferences: metadataReceived.evidenceReferences,
                 }
               : msg
           )
@@ -428,6 +518,41 @@ export function AIMentorShell({
     }
   };
 
+  // Handle editing user message (ChatGPT style: cuts history to this turn and resubmits)
+  const handleEditUserMessage = (msgIndex: number, newContent: string) => {
+    const truncatedHistory = messages.slice(0, msgIndex);
+    setMessages(truncatedHistory);
+    handleSendMessage(newContent, {
+      focusArea: currentFocusArea,
+      language: currentLanguage,
+      historyOverride: truncatedHistory,
+    });
+  };
+
+  // Handle regenerating mentor response (ChatGPT style: retries last user question)
+  const handleRegenerateResponse = (lastUserMessageIndex: number) => {
+    const userMsg = messages[lastUserMessageIndex];
+    if (!userMsg) return;
+    const truncatedHistory = messages.slice(0, lastUserMessageIndex);
+    setMessages(truncatedHistory);
+    handleSendMessage(userMsg.content, {
+      focusArea: currentFocusArea,
+      language: currentLanguage,
+      historyOverride: truncatedHistory,
+    });
+  };
+
+  // Handle user thumbs up / down feedback
+  const handleFeedback = (messageId: string, feedback: "like" | "dislike") => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, feedback: m.feedback === feedback ? undefined : feedback }
+          : m
+      )
+    );
+  };
+
   return (
     <div className="h-screen w-screen overflow-hidden flex bg-gradient-to-br from-[#EDF3E8] via-[#FAFAF2] to-[#DDEFEA] text-[#17211E] p-2 sm:p-3 gap-2 sm:gap-3">
       {/* 1. SIDEBAR (Desktop / Tablet / Mobile Drawer) */}
@@ -445,6 +570,12 @@ export function AIMentorShell({
         onCloseMobile={() => setMobileSidebarOpen(false)}
         providerInfo={modelInfo}
         onOpenModelPanel={() => setShowModelModal(true)}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onOpenConversation={openConversation}
+        onNewSession={handleBackToHome}
+        onRenameConversation={handleRenameConversation}
+        onDeleteConversation={handleDeleteConversation}
       />
 
       {/* 3. MAIN WORKSPACE CONTAINER */}
@@ -473,6 +604,7 @@ export function AIMentorShell({
           {activeSection === "chat" && (
             activeConversationId ? (
               <AIMentorConversation
+                userId={initialUserId}
                 conversationId={activeConversationId}
                 conversationTitle={activeConversationTitle}
                 messages={messages}
@@ -485,7 +617,10 @@ export function AIMentorShell({
                   handleRenameConversation(activeConversationId, newTitle)
                 }
                 onClearConversation={handleClearConversation}
+                onRegenerateResponse={handleRegenerateResponse}
+                onEditUserMessage={handleEditUserMessage}
                 onSaveNote={handleSaveNote}
+                onFeedback={handleFeedback}
                 currentFocusArea={currentFocusArea}
                 onFocusAreaChange={setCurrentFocusArea}
                 currentLanguage={currentLanguage}
@@ -502,6 +637,12 @@ export function AIMentorShell({
                 onDeleteConversation={handleDeleteConversation}
                 studentName={studentName}
                 isStreaming={isStreaming}
+                userId={initialUserId}
+                activeGoal={activeGoal}
+                activeRoadmap={activeRoadmap}
+                onNavigateToRoadmap={() => setActiveSection("progress")}
+                onNavigateToGoals={() => setActiveSection("career_goals")}
+                onOpenCheckIn={() => setShowCheckInModal(true)}
               />
             )
           )}
@@ -565,18 +706,49 @@ export function AIMentorShell({
           {activeSection === "memory" && <AIMentorMemory userId={initialUserId} />}
 
           {activeSection === "progress" && (
-            <AIMentorProgress
-              onContinueLearning={(topic, focusArea) => {
+            <AIMentorRoadmapWorkspace
+              userId={initialUserId}
+              activeGoalId={activeGoal?.id}
+              activeGoalTitle={activeGoal?.title}
+              onAskMentor={(milestone: PersonalizedMilestone) => {
                 setActiveSection("chat");
-                handleStartSession(topic, focusArea);
+                handleStartSession(
+                  `I am working on my milestone "${milestone.title}" (Week ${milestone.weekNumber}). Could you guide me on executing its key tasks and deliverables?`,
+                  "learn"
+                );
+              }}
+              onMilestoneCompleted={() => loadGoalsAndRoadmap()}
+            />
+          )}
+
+          {activeSection === "career_goals" && (
+            <AIMentorGoalsManager
+              userId={initialUserId}
+              onSelectGoal={(goal: StudentGoal) => {
+                setActiveGoal(goal);
+                loadGoalsAndRoadmap();
+              }}
+              onGoalUpdated={() => loadGoalsAndRoadmap()}
+            />
+          )}
+
+          {activeSection === "learning_profile" && (
+            <AIMentorAssessmentView
+              userId={initialUserId}
+              activeGoalId={activeGoal?.id}
+              activeGoalTitle={activeGoal?.title}
+              onStartPractice={(skill: string) => {
+                setActiveSection("chat");
+                handleStartSession(
+                  `I want to practice and verify my proficiency in: ${skill}`,
+                  "learn"
+                );
               }}
             />
           )}
 
-          {(activeSection === "learning_profile" ||
-            activeSection === "career_goals" ||
-            activeSection === "preferences") && (
-            <AIMentorPersonalization section={activeSection} />
+          {activeSection === "preferences" && (
+            <AIMentorPersonalization section="preferences" />
           )}
 
           {activeSection === "model_info" && <AIMentorModelPanel />}
@@ -589,9 +761,17 @@ export function AIMentorShell({
         </div>
       </main>
 
-      {/* 4. MODEL INFO MODAL (if triggered) */}
-      {showModelModal && (
-        <AIMentorModelPanel onClose={() => setShowModelModal(false)} isModal={true} />
+      {/* 4. Phase 4: DAILY / WEEKLY CHECK-IN MODAL */}
+      {showCheckInModal && (
+        <AIMentorCheckInModal
+          userId={initialUserId}
+          isOpen={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
+          activeGoalTitle={activeGoal?.title}
+          onCheckInSubmitted={() => {
+            loadGoalsAndRoadmap();
+          }}
+        />
       )}
     </div>
   );
