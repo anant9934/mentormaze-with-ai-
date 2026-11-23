@@ -1,29 +1,32 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Sparkles,
+  Target,
+  TrendingUp,
+  ArrowRight,
+  Clock,
+  CheckCircle2,
+  Calendar,
+  ShieldCheck,
+  Bell,
+  PlayCircle,
   BookOpen,
   Code2,
   Layers,
   FileText,
-  Target,
   Compass,
   Cpu,
-  Calendar,
-  MessageSquare,
-  ArrowRight,
-  Clock,
-  MoreVertical,
-  Trash2,
-  Edit2,
-  Check,
-  X,
+  HeartHandshake,
+  AlertTriangle,
 } from "lucide-react";
 import { FocusArea, LanguageCode } from "@/lib/ai-mentor/types";
 import { FOCUS_AREAS_CONFIG, ConversationSummary } from "./ai-mentor-types";
 import { AIMentorComposer } from "./ai-mentor-composer";
 import { cn } from "@/lib/utils";
+import { StudentGoal } from "./ai-mentor-goals-manager";
+import { PersonalizedRoadmapRecord } from "@/lib/ai-mentor/roadmap/personalized-roadmap-service";
 
 interface AIMentorHomeProps {
   onStartSession: (initialPrompt: string, focusArea?: FocusArea) => void;
@@ -34,18 +37,13 @@ interface AIMentorHomeProps {
   onDeleteConversation?: (conversationId: string) => Promise<void>;
   studentName?: string;
   isStreaming?: boolean;
+  userId?: string;
+  activeGoal?: StudentGoal | null;
+  activeRoadmap?: PersonalizedRoadmapRecord | null;
+  onNavigateToRoadmap?: () => void;
+  onNavigateToGoals?: () => void;
+  onOpenCheckIn?: () => void;
 }
-
-const ICON_MAP: Record<string, React.ElementType> = {
-  BookOpen,
-  Code2,
-  Layers,
-  FileText,
-  Target,
-  Compass,
-  Cpu,
-  Calendar,
-};
 
 export function AIMentorHome({
   onStartSession,
@@ -56,12 +54,21 @@ export function AIMentorHome({
   onDeleteConversation,
   studentName = "Student",
   isStreaming = false,
+  userId = "usr-student-1",
+  activeGoal: propActiveGoal,
+  activeRoadmap: propActiveRoadmap,
+  onNavigateToRoadmap,
+  onNavigateToGoals,
+  onOpenCheckIn,
 }: AIMentorHomeProps) {
   const [selectedFocus, setSelectedFocus] = useState<FocusArea>("learn");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>("en");
-  const [editingConvId, setEditingConvId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
+  // Local state for goals and roadmaps if not provided from parent shell
+  const [localGoal, setLocalGoal] = useState<StudentGoal | null>(null);
+  const [localRoadmap, setLocalRoadmap] = useState<PersonalizedRoadmapRecord | null>(null);
+  const [verifiedSkillsCount, setVerifiedSkillsCount] = useState<number>(0);
+  const [isLoadingState, setIsLoadingState] = useState(false);
 
   // Time-of-day greeting
   const greeting = useMemo(() => {
@@ -71,74 +78,337 @@ export function AIMentorHome({
     return "Good evening";
   }, []);
 
-  const handleChipClick = (focus: (typeof FOCUS_AREAS_CONFIG)[0]) => {
-    setSelectedFocus(focus.id);
-    onStartSession(focus.suggestionPrompt, focus.id);
-  };
+  const primaryGoal = propActiveGoal !== undefined ? propActiveGoal : localGoal;
+  const roadmap = propActiveRoadmap !== undefined ? propActiveRoadmap : localRoadmap;
 
-  const handleStartRename = (conv: ConversationSummary) => {
-    setEditingConvId(conv.id);
-    setEditTitle(conv.title);
-    setMenuOpenId(null);
-  };
-
-  const handleSaveRename = async (convId: string) => {
-    if (!editTitle.trim() || !onRenameConversation) {
-      setEditingConvId(null);
-      return;
-    }
-    await onRenameConversation(convId, editTitle.trim());
-    setEditingConvId(null);
-  };
-
-  const handleDelete = async (convId: string) => {
-    setMenuOpenId(null);
-    if (confirm("Are you sure you want to delete this session?")) {
-      await onDeleteConversation?.(convId);
-    }
-  };
-
-  // Format relative timestamp
-  const formatRelativeTime = (isoString: string) => {
+  // Fetch real goal & roadmap on mount if not supplied
+  const loadMentorshipState = useCallback(async () => {
+    if (propActiveGoal !== undefined) return;
+    setIsLoadingState(true);
     try {
-      const diffMs = Date.now() - new Date(isoString).getTime();
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `${diffHours}h ago`;
-      const diffDays = Math.floor(diffHours / 24);
-      if (diffDays === 1) return "Yesterday";
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return new Date(isoString).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    } catch {
-      return "Recent";
+      const goalsRes = await fetch(`/api/ai-mentor/goals?userId=${userId}`);
+      const goalsData = await goalsRes.json();
+      if (goalsData.success && Array.isArray(goalsData.goals)) {
+        const primary =
+          goalsData.goals.find((g: StudentGoal) => g.importance === "primary" && g.status === "active") ||
+          goalsData.goals.find((g: StudentGoal) => g.status === "active") ||
+          null;
+        setLocalGoal(primary);
+
+        if (primary) {
+          const rdmRes = await fetch(`/api/ai-mentor/roadmaps?userId=${userId}&goalId=${primary.id}`);
+          const rdmData = await rdmRes.json();
+          if (rdmData.success && rdmData.roadmap) {
+            setLocalRoadmap(rdmData.roadmap);
+          }
+        }
+      }
+
+      // Fetch verified skills count
+      const skillsRes = await fetch(`/api/ai-mentor/skills?userId=${userId}`);
+      const skillsData = await skillsRes.json();
+      if (skillsData.success && Array.isArray(skillsData.skills)) {
+        const verified = skillsData.skills.filter((s: any) => s.masteryState === "verified" || s.masteryScore >= 80);
+        setVerifiedSkillsCount(verified.length);
+      }
+    } catch (err) {
+      console.warn("Failed to load initial mentorship state on home:", err);
+    } finally {
+      setIsLoadingState(false);
     }
-  };
+  }, [userId, propActiveGoal]);
+
+  useEffect(() => {
+    loadMentorshipState();
+  }, [loadMentorshipState]);
+
+  // Derived Roadmap details
+  const completedMilestones = useMemo(() => {
+    return roadmap?.milestones?.filter((m) => m.status === "completed") || [];
+  }, [roadmap]);
+
+  const remainingMilestones = useMemo(() => {
+    return roadmap?.milestones?.filter((m) => m.status !== "completed") || [];
+  }, [roadmap]);
+
+  const currentMilestone = useMemo(() => {
+    if (!roadmap?.milestones) return null;
+    return (
+      roadmap.milestones.find((m) => m.status === "in_progress") ||
+      roadmap.milestones.find((m) => m.status === "pending") ||
+      roadmap.milestones[0] ||
+      null
+    );
+  }, [roadmap]);
+
+  const lastCompletedMilestone = useMemo(() => {
+    if (!completedMilestones.length) return null;
+    return completedMilestones[completedMilestones.length - 1];
+  }, [completedMilestones]);
+
+  const roadmapProgressPct = useMemo(() => {
+    if (!roadmap?.milestones?.length) return 0;
+    return Math.round((completedMilestones.length / roadmap.milestones.length) * 100);
+  }, [roadmap, completedMilestones]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col items-center">
-      {/* 1. Centered Welcome Composition */}
-      <div className="w-full text-center space-y-3 mb-6 sm:mb-8 animate-in fade-in duration-500">
-        {/* Subdued Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E7F2DA] border border-[#DCE5D5] text-[#174B39] text-xs font-semibold tracking-wide">
-          <Sparkles className="w-3.5 h-3.5 text-[#27875E]" />
-          <span>YOUR PERSONAL AI MENTOR</span>
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* ========================================================================= */}
+      {/* SECTION A: WELCOME FROM ASTRION (Context-Aware Greeting) */}
+      {/* ========================================================================= */}
+      <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FAFAF2] to-[#EDF3E8] border border-[#DCE5D5] shadow-xs space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E7F2DA] border border-[#27875E]/30 text-[#174B39] text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-[#27875E]" />
+            <span>ASTRION · UNIFIED AI MENTOR</span>
+          </div>
+
+          {onOpenCheckIn && (
+            <button
+              type="button"
+              onClick={onOpenCheckIn}
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#E7F2DA] text-[#174B39] border border-[#DCE5D5] font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+            >
+              <HeartHandshake className="w-3.5 h-3.5 text-[#27875E]" />
+              <span>Daily Check-In</span>
+            </button>
+          )}
         </div>
 
-        {/* Serif Editorial Heading */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-[#17211E] tracking-tight leading-tight">
-          What should we build or learn today?
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#17211E] tracking-tight leading-tight">
+          {greeting}, {studentName}.
         </h1>
 
-        {/* Supporting text */}
-        <p className="text-sm sm:text-base text-[#69756B] max-w-xl mx-auto font-sans leading-relaxed">
-          One clear ask is enough to begin.
+        <p className="text-xs sm:text-sm text-[#415349] max-w-2xl leading-relaxed">
+          {primaryGoal ? (
+            <>
+              Your active mentorship goal is <strong>{primaryGoal.title}</strong>.{" "}
+              {currentMilestone ? (
+                <>
+                  You are currently scheduled for <strong>Week {currentMilestone.weekNumber}: {currentMilestone.title}</strong>.{" "}
+                  {lastCompletedMilestone && `Your last milestone (${lastCompletedMilestone.title}) is verified and saved.`}
+                </>
+              ) : (
+                "Your personalized roadmap is ready to be structured and reviewed."
+              )}
+            </>
+          ) : (
+            "Welcome to MentorMaze. I am ASTRION, your personal AI mentor. Let's define your primary engineering or career goal to begin."
+          )}
         </p>
       </div>
 
-      {/* 2. Central Prompt Composer */}
-      <div className="w-full mb-8">
+      {/* ========================================================================= */}
+      {/* SECTION D: YOUR NEXT STEP (Most Important Action on the Page) */}
+      {/* ========================================================================= */}
+      <div className="p-5 rounded-3xl bg-[#174B39] text-white shadow-md space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-200 font-bold">
+            Recommended Next Step
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-800/80 text-emerald-100 border border-emerald-600">
+            Priority Action
+          </span>
+        </div>
+
+        {primaryGoal && currentMilestone ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-base sm:text-lg font-serif font-bold text-white leading-snug">
+                Week {currentMilestone.weekNumber}: {currentMilestone.title}
+              </h3>
+              <p className="text-xs text-emerald-100/90 line-clamp-2 max-w-xl">
+                {currentMilestone.description}
+              </p>
+              {currentMilestone.estimatedEffortHours && (
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-200 font-mono mt-1">
+                  <Clock className="w-3 h-3" />
+                  <span>Estimated effort: ~{currentMilestone.estimatedEffortHours} hours</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onStartSession(
+                    `ASTRION, let's work on my current milestone: Week ${currentMilestone.weekNumber} (${currentMilestone.title}). Can you mentor me through the first concept?`,
+                    "learn"
+                  );
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#E7F2DA] text-[#174B39] font-bold text-xs transition-all shadow-sm flex items-center gap-1.5"
+              >
+                <span>Execute with ASTRION</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              {onNavigateToRoadmap && (
+                <button
+                  type="button"
+                  onClick={onNavigateToRoadmap}
+                  className="px-3.5 py-2.5 rounded-2xl bg-emerald-800/80 hover:bg-emerald-700 text-white font-semibold text-xs border border-emerald-600 transition-colors"
+                >
+                  View Full Roadmap
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-serif font-bold text-white">Define your Primary Goal</h3>
+              <p className="text-xs text-emerald-100/90 mt-1">
+                Tell ASTRION what career milestone or engineering topic you want to master.
+              </p>
+            </div>
+            {onNavigateToGoals && (
+              <button
+                type="button"
+                onClick={onNavigateToGoals}
+                className="px-4 py-2.5 rounded-2xl bg-white text-[#174B39] font-bold text-xs hover:bg-[#E7F2DA] transition-all shadow-sm shrink-0"
+              >
+                Set Primary Goal
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION B & C: CURRENT PRIMARY GOAL & PROGRESS OVERVIEW */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* SECTION B: Current Primary Goal Card */}
+        <div className="p-5 rounded-3xl bg-white/90 border border-[#DCE5D5] shadow-xs space-y-3.5 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-[#27875E]" />
+              <h3 className="font-serif font-bold text-sm text-[#17211E]">Current Primary Goal</h3>
+            </div>
+            {onNavigateToGoals && (
+              <button
+                type="button"
+                onClick={onNavigateToGoals}
+                className="text-[11px] font-semibold text-[#174B39] hover:underline flex items-center gap-1"
+              >
+                <span>Manage All Goals</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {primaryGoal ? (
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#EDF3E8] text-[#174B39]">
+                    {primaryGoal.category}
+                  </span>
+                  <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Status: {primaryGoal.status}
+                  </span>
+                </div>
+                <h4 className="text-base font-serif font-bold text-[#17211E]">
+                  {primaryGoal.title}
+                </h4>
+                {primaryGoal.targetOutcome && (
+                  <p className="text-xs text-[#69756B] mt-1 line-clamp-2">
+                    {primaryGoal.targetOutcome}
+                  </p>
+                )}
+              </div>
+
+              {roadmap ? (
+                <div className="p-3.5 rounded-2xl bg-[#FAFAF2] border border-[#EDF3E8] space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold text-[#174B39]">
+                      Roadmap: {roadmap.targetRole || "Custom Engineering Path"}
+                    </span>
+                    <span className="font-mono text-emerald-700 font-bold">{roadmapProgressPct}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-[#EDF3E8] overflow-hidden">
+                    <div
+                      className="h-full bg-[#27875E] rounded-full transition-all"
+                      style={{ width: `${roadmapProgressPct}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-[#FAFAF2] border border-[#EDF3E8] text-xs text-[#69756B]">
+                  No roadmap generated yet. Click below to generate your curriculum.
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-[#69756B] py-4">
+              No active primary goal defined yet. Create your first goal to unlock structured roadmap guidance.
+            </p>
+          )}
+        </div>
+
+        {/* SECTION C: Real Persisted Progress Overview */}
+        <div className="p-5 rounded-3xl bg-white/90 border border-[#DCE5D5] shadow-xs space-y-3 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-[#27875E]" />
+              <h3 className="font-serif font-bold text-sm text-[#17211E]">Progress Overview</h3>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-[#FAFAF2] border border-[#EDF3E8] flex items-center justify-between">
+                <span className="text-[#69756B]">Completed Milestones</span>
+                <span className="font-mono font-bold text-[#17211E]">{completedMilestones.length}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#FAFAF2] border border-[#EDF3E8] flex items-center justify-between">
+                <span className="text-[#69756B]">Remaining Milestones</span>
+                <span className="font-mono font-bold text-[#17211E]">{remainingMilestones.length}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#FAFAF2] border border-[#EDF3E8] flex items-center justify-between">
+                <span className="text-[#69756B]">Verified Competencies</span>
+                <span className="font-mono font-bold text-emerald-700">{verifiedSkillsCount}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[#FAFAF2] border border-[#EDF3E8] flex items-center justify-between">
+                <span className="text-[#69756B]">Roadmap State</span>
+                <span className="font-mono text-[11px] font-semibold text-[#174B39]">
+                  {roadmap?.status || "None"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {onNavigateToRoadmap && (
+            <button
+              type="button"
+              onClick={onNavigateToRoadmap}
+              className="w-full py-2 rounded-xl bg-white hover:bg-[#EDF3E8] border border-[#DCE5D5] text-[#174B39] font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span>Explore Milestones</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION E: TALK TO ASTRION (Unified Immediate Conversation Composer) */}
+      {/* ========================================================================= */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#27875E]" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#69756B]">
+              Continue Mentorship with ASTRION
+            </h3>
+          </div>
+          <span className="text-xs text-[#27875E] font-medium hidden sm:inline">
+            Unified Mentorship · No specialist selection needed
+          </span>
+        </div>
+
         <AIMentorComposer
           onSendMessage={(content, options) => {
             onStartSession(content, options?.focusArea || selectedFocus);
@@ -152,195 +422,46 @@ export function AIMentorHome({
         />
       </div>
 
-      {/* 3. Compact Suggestion Chips */}
-      <div className="w-full mb-10">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#69756B]">
-            Recommended Specialist Workflows
-          </span>
-          <span className="text-xs text-[#27875E] font-medium hidden sm:inline">
-            Click to launch instantly
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {FOCUS_AREAS_CONFIG.map((item) => {
-            const Icon = ICON_MAP[item.iconName] || BookOpen;
-            const isSelected = selectedFocus === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleChipClick(item)}
-                className={cn(
-                  "p-3 rounded-2xl border text-left flex flex-col justify-between transition-all duration-200 group hover:-translate-y-0.5",
-                  isSelected
-                    ? "bg-[#E7F2DA] border-[#27875E] shadow-sm"
-                    : "bg-white/80 hover:bg-white border-[#DCE5D5] hover:border-[#27875E]/40 shadow-xs hover:shadow-md"
-                )}
-              >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <div className="w-7 h-7 rounded-xl bg-[#EDF3E8] group-hover:bg-[#E7F2DA] flex items-center justify-center text-[#174B39] transition-colors">
-                    <Icon className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#69756B] bg-[#FAFAF2] px-1.5 py-0.5 rounded-md border border-[#EDF3E8]">
-                    {item.badge.split(" ")[0]}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-[#17211E] group-hover:text-[#174B39] line-clamp-1">
-                    {item.label}
-                  </h3>
-                  <p className="text-[11px] text-[#69756B] line-clamp-1 mt-0.5">
-                    {item.description}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. Recent Conversations */}
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#69756B]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#69756B]">
-              Recent Mentorship Sessions
-            </h2>
-          </div>
-          {conversations.length > 0 && (
+      {/* Recent Sessions */}
+      {conversations.length > 0 && (
+        <div className="pt-4 border-t border-[#EDF3E8]">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#69756B]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#69756B]">
+                Recent Sessions
+              </h4>
+            </div>
             <button
               type="button"
               onClick={onViewAllHistory}
-              className="text-xs font-semibold text-[#174B39] hover:text-[#27875E] flex items-center gap-1 transition-colors"
+              className="text-xs font-semibold text-[#174B39] hover:text-[#27875E] flex items-center gap-1"
             >
               <span>View all ({conversations.length})</span>
               <ArrowRight className="w-3 h-3" />
             </button>
-          )}
-        </div>
-
-        {conversations.length === 0 ? (
-          <div className="w-full p-6 sm:p-8 bg-white/70 backdrop-blur-sm rounded-2xl border border-dashed border-[#DCE5D5] text-center">
-            <div className="w-10 h-10 rounded-2xl bg-[#EDF3E8] text-[#174B39] flex items-center justify-center mx-auto mb-3">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-semibold text-[#17211E]">No active sessions yet</h3>
-            <p className="text-xs text-[#69756B] max-w-sm mx-auto mt-1">
-              Start your first conversation with Dr. Aarav Mehta using the prompt composer above or choose a suggested workflow.
-            </p>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {conversations.slice(0, 4).map((conv) => (
-              <div
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {conversations.slice(0, 3).map((conv) => (
+              <button
                 key={conv.id}
-                className="w-full p-3 sm:p-3.5 bg-white/80 hover:bg-white rounded-2xl border border-[#DCE5D5] hover:border-[#174B39]/30 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3 group"
+                type="button"
+                onClick={() => onOpenConversation(conv.id)}
+                className="p-3.5 rounded-2xl bg-white border border-[#DCE5D5] hover:border-[#27875E] text-left transition-all space-y-1 shadow-2xs group"
               >
-                {/* Left: Clickable Conversation Info */}
-                <div
-                  onClick={() => onOpenConversation(conv.id)}
-                  className="flex-1 min-w-0 cursor-pointer"
-                >
-                  {editingConvId === conv.id ? (
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveRename(conv.id);
-                          if (e.key === "Escape") setEditingConvId(null);
-                        }}
-                        autoFocus
-                        className="text-sm font-medium text-[#17211E] bg-white border border-[#27875E] rounded-lg px-2 py-1 w-full max-w-md focus:outline-none focus:ring-1 focus:ring-[#27875E]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSaveRename(conv.id)}
-                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingConvId(null)}
-                        className="p-1 text-slate-400 hover:bg-slate-100 rounded"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#EDF3E8] group-hover:bg-[#E7F2DA] flex items-center justify-center text-[#174B39] shrink-0 transition-colors">
-                        <MessageSquare className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-semibold text-[#17211E] group-hover:text-[#174B39] truncate transition-colors">
-                          {conv.title || "Untitled Mentorship Session"}
-                        </h4>
-                        <div className="flex items-center gap-2 text-xs text-[#69756B] mt-0.5">
-                          <span className="capitalize">{conv.mode ? String(conv.mode).replace(/_/g, " ") : "General"}</span>
-                          <span>•</span>
-                          <span>{formatRelativeTime(conv.updatedAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                <div className="font-semibold text-xs text-[#17211E] group-hover:text-[#174B39] truncate">
+                  {conv.title || "Mentorship Session"}
                 </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-1 shrink-0 relative">
-                  <button
-                    type="button"
-                    onClick={() => onOpenConversation(conv.id)}
-                    className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#EDF3E8] group-hover:bg-[#E7F2DA] text-[#174B39] text-xs font-semibold transition-colors"
-                  >
-                    <span>Resume</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-
-                  {/* Options Menu Trigger */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setMenuOpenId(menuOpenId === conv.id ? null : conv.id)}
-                      className="p-1.5 rounded-lg text-[#69756B] hover:text-[#17211E] hover:bg-[#EDF3E8] transition-colors"
-                      title="Session options"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-
-                    {menuOpenId === conv.id && (
-                      <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-xl border border-[#DCE5D5] py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
-                        <button
-                          type="button"
-                          onClick={() => handleStartRename(conv)}
-                          className="w-full text-left px-3 py-1.5 text-xs text-[#17211E] hover:bg-[#EDF3E8] flex items-center gap-2"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-[#69756B]" />
-                          <span>Rename</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(conv.id)}
-                          className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                <div className="text-[10px] text-[#69756B] flex items-center justify-between">
+                  <span className="capitalize">{String(conv.mode || "learn").replace("_", " ")}</span>
+                  <span>{new Date(conv.updatedAt || conv.createdAt).toLocaleDateString()}</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
