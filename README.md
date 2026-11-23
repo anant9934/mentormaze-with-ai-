@@ -1,5 +1,10 @@
 # mentormaze-with-ai- — MentorMaze
 
+[![Staging Verification](https://img.shields.io/badge/Staging%20Acceptance-44%2F44%20Suites%20Passing-2ea44f?style=flat-square&logo=github)](STAGING_ACCEPTANCE_REPORT.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x%20Strict-blue?style=flat-square&logo=typescript)](tsconfig.json)
+[![Next.js](https://img.shields.io/badge/Next.js-14%20App%20Router-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![Security & Privacy](https://img.shields.io/badge/Consent%20Epoch-Enforced-8a2be2?style=flat-square)](lib/security/shared-rate-limiter.ts)
+
 > **Real People. Real Guidance. Grow Faster.**  
 > A production-minded human mentorship and mock interview platform under **AI Tathastu**.
 
@@ -94,4 +99,11 @@ MentorMaze includes an interactive top bar to test all user journeys instantly:
 - [SECURITY_CHECKLIST.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/SECURITY_CHECKLIST.md) — Audit of security & authorization controls
 - [TESTING_REPORT.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/TESTING_REPORT.md) — Automated test suite execution results
 - [KNOWN_LIMITATIONS.md](file:///Users/quantum/Desktop/MENTOR%20MAZE/KNOWN_LIMITATIONS.md) — Phase 1 boundaries & Phase 2 roadmap
+
+---
+
+## 👥 Engineering & Collaboration
+
+Engineered collaboratively by **ANANT KUMAR** ([@anant9934](https://github.com/anant9934)) and **Antigravity AI**.
+
 
