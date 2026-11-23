@@ -267,7 +267,7 @@ export function AIMentorCodework({ onSendToMentor }: AIMentorCodeworkProps) {
                 <Terminal className="w-8 h-8 text-[#69756B] mx-auto opacity-50" />
                 <h3 className="text-xs font-semibold text-[#17211E]">No analysis executed yet</h3>
                 <p className="text-[11px] text-[#69756B] max-w-xs mx-auto">
-                  Click &apos;Run Local Analysis&apos; or ask Dr. Aarav Mehta for deep review to inspect time & space complexity, invariants, and edge cases.
+                  Click &apos;Run Local Analysis&apos; or ask ASTRION CIPHER for deep review to inspect time & space complexity, invariants, and edge cases.
                 </p>
               </div>
             ) : isAnalyzing ? (
