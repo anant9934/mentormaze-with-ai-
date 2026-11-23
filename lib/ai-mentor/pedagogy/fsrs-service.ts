@@ -255,6 +255,11 @@ export class SpacedRepetitionScheduler {
     record: FSRSConceptRecord;
   } {
     const { studentUserId, conceptId, rating, reviewTimestamp, requestingUserId } = params;
+    const numericRating: FSRSRating =
+      typeof rating === "number" ? rating :
+      rating === "easy" ? 4 :
+      rating === "good" ? 3 :
+      rating === "hard" ? 2 : 1;
     const record = this.getConceptRecord(studentUserId, conceptId, requestingUserId);
 
     const now = reviewTimestamp ? new Date(reviewTimestamp) : new Date();
@@ -269,18 +274,18 @@ export class SpacedRepetitionScheduler {
 
     // 1. First review (state == 'new')
     if (record.reps === 0) {
-      nextStability = this.INITIAL_STABILITY[rating];
-      nextDifficulty = this.INITIAL_DIFFICULTY[rating];
-      nextState = rating === 1 ? "learning" : "review";
-      if (rating === 1) {
+      nextStability = this.INITIAL_STABILITY[numericRating];
+      nextDifficulty = this.INITIAL_DIFFICULTY[numericRating];
+      nextState = numericRating === 1 ? "learning" : "review";
+      if (numericRating === 1) {
         record.lapses += 1;
       }
     } else {
       // 2. Subsequent review: update difficulty
       // D_new = clamp(D - 0.5 * (rating - 3), 1.0, 10.0)
-      nextDifficulty = Math.max(1.0, Math.min(10.0, prevDifficulty - 0.5 * (rating - 3)));
+      nextDifficulty = Math.max(1.0, Math.min(10.0, prevDifficulty - 0.5 * (numericRating - 3)));
 
-      if (rating === 1) {
+      if (numericRating === 1) {
         // Lapse / Blackout
         record.lapses += 1;
         nextState = "relearning";
@@ -294,13 +299,13 @@ export class SpacedRepetitionScheduler {
         const retrievabilityBonus = Math.exp(0.5 * (1.0 - rBefore)) - 1.0;
 
         let multiplier = 1.0;
-        if (rating === 2) {
+        if (numericRating === 2) {
           // Hard: minimal growth
           multiplier = 1.15;
-        } else if (rating === 3) {
+        } else if (numericRating === 3) {
           // Good: standard exponential spacing
           multiplier = 1.0 + difficultyBonus * 1.5 + retrievabilityBonus * 0.8;
-        } else if (rating === 4) {
+        } else if (numericRating === 4) {
           // Easy: aggressive spacing
           multiplier = 1.0 + difficultyBonus * 2.5 + retrievabilityBonus * 1.2;
         }

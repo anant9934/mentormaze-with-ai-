@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const programmeId = searchParams.get("programmeId");
-    const targetUserId = searchParams.get("userId") || authUser.id;
+    const targetUserId = searchParams.get("studentUserId") || searchParams.get("userId") || authUser.id;
     const shouldExport = searchParams.get("export") === "true";
 
     if (targetUserId !== authUser.id && authUser.role !== "admin" && !authUser.role.startsWith("mentor")) {

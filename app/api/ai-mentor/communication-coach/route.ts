@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
-    const targetUserId = searchParams.get("userId") || authUser.id;
+    const targetUserId = searchParams.get("studentUserId") || searchParams.get("userId") || authUser.id;
 
     if (targetUserId !== authUser.id && authUser.role !== "admin" && !authUser.role.startsWith("mentor")) {
       return NextResponse.json(
