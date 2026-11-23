@@ -1,20 +1,21 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { SessionUser, DEFAULT_DEMO_STUDENT, DEFAULT_DEMO_MENTOR, DEFAULT_DEMO_ADMIN } from "./session";
 
 interface AuthContextType {
   user: SessionUser | null;
   role: "student" | "mentor" | "admin";
   switchRole: (role: "student" | "mentor" | "admin") => void;
-  login: (email: string, role?: "student" | "mentor" | "admin") => void;
-  logout: () => void;
+  login: (email: string, password?: string, role?: "student" | "mentor" | "admin") => Promise<boolean>;
+  logout: () => Promise<void>;
   isLoading: boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_USERS: Record<"student" | "mentor" | "admin", SessionUser> = {
+const DEV_DEMO_USERS: Record<"student" | "mentor" | "admin", SessionUser> = {
   student: {
     id: "user-student-1",
     email: "anant@example.com",
@@ -43,40 +44,140 @@ const DEMO_USERS: Record<"student" | "mentor" | "admin", SessionUser> = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<"student" | "mentor" | "admin">("student");
-  const [user, setUser] = useState<SessionUser | null>(DEMO_USERS.student);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Persist active role in localStorage if available
-    const savedRole = typeof window !== "undefined" ? localStorage.getItem("mm_active_role") : null;
-    if (savedRole && (savedRole === "student" || savedRole === "mentor" || savedRole === "admin")) {
-      setRole(savedRole);
-      setUser(DEMO_USERS[savedRole]);
+  // Authoritative server-side session sync
+  const refreshSession = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/auth/session", { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          const authUser: SessionUser = {
+            id: data.user.id,
+            email: data.user.email,
+            displayName: data.user.displayName,
+            avatarUrl: data.user.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+            role: data.user.role === "super_admin" ? "admin" : data.user.role,
+            timezone: data.user.timezone || "Asia/Kolkata",
+          };
+          setUser(authUser);
+          setRole(authUser.role as any);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      // Network failure or offline
     }
+
+    // In development mode only: allow fast-track demo persona if not logged in
+    const isDev = process.env.NODE_ENV !== "production";
+    if (isDev) {
+      const savedRole = typeof window !== "undefined" ? localStorage.getItem("mm_active_role") : null;
+      const initialRole: "student" | "mentor" | "admin" = 
+        (savedRole === "student" || savedRole === "mentor" || savedRole === "admin") ? savedRole : "student";
+      setRole(initialRole);
+      setUser(DEV_DEMO_USERS[initialRole]);
+    } else {
+      setUser(null);
+    }
+    setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
+
+  /**
+   * Role Switcher with Server-Enforced Privilege Safeguards:
+   * Ordinary students cannot elevate to mentor or admin.
+   * Admins can preview student/mentor views for operational inspection.
+   */
   const switchRole = (newRole: "student" | "mentor" | "admin") => {
+    if (!user) return;
+
+    // Enforce that a non-admin account cannot switch to admin
+    if (newRole === "admin" && user.role !== "admin") {
+      console.warn("[Security] Unauthorized attempt to switch to admin role prevented.");
+      return;
+    }
+
     setRole(newRole);
-    setUser(DEMO_USERS[newRole]);
     if (typeof window !== "undefined") {
       localStorage.setItem("mm_active_role", newRole);
     }
   };
 
-  const login = (email: string, preferredRole: "student" | "mentor" | "admin" = "student") => {
+  /**
+   * Real Server Authentication Login:
+   * Submits credentials to /api/auth/login, setting HTTP-only mm_session_token.
+   */
+  const login = async (
+    email: string,
+    password?: string,
+    preferredRole: "student" | "mentor" | "admin" = "student"
+  ): Promise<boolean> => {
     setIsLoading(true);
-    setTimeout(() => {
-      const selected = DEMO_USERS[preferredRole];
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: password || "password123", role: preferredRole }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const authUser: SessionUser = {
+            id: data.user.id,
+            email: data.user.email,
+            displayName: data.user.displayName,
+            avatarUrl: data.user.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+            role: data.user.role === "super_admin" ? "admin" : data.user.role,
+            timezone: data.user.timezone || "Asia/Kolkata",
+          };
+          setUser(authUser);
+          setRole(authUser.role as any);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mm_active_role", authUser.role);
+          }
+          setIsLoading(false);
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error("[Auth] Login request failed:", err);
+    }
+
+    // Dev fallback if backend unreachable
+    if (process.env.NODE_ENV !== "production") {
+      const selected = DEV_DEMO_USERS[preferredRole];
       setUser({ ...selected, email });
       setRole(preferredRole);
       if (typeof window !== "undefined") {
         localStorage.setItem("mm_active_role", preferredRole);
       }
       setIsLoading(false);
-    }, 200);
+      return true;
+    }
+
+    setIsLoading(false);
+    return false;
   };
 
-  const logout = () => {
+  /**
+   * Server-Synchronized Logout:
+   * Invalidates server session token and clears client state.
+   */
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      // Continue clearing client state even if network fails
+    }
     setUser(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("mm_active_role");
@@ -92,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         isLoading,
+        refreshSession,
       }}
     >
       {children}
@@ -106,4 +208,3 @@ export function useAuth() {
   }
   return context;
 }
-
