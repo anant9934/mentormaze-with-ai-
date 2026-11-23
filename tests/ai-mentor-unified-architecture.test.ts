@@ -1,7 +1,8 @@
 /**
  * MentorMaze Unified Intelligence Architecture Test Suite
  * Brand: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
- * Identity: Dr. Aarav Mehta (Principal Mentor · AI Intelligence)
+ * Identity: ASTRION (Adaptive Strategic Intelligence & Reasoning Network)
+ * Core: ASTRION CORE (`astrion-core`)
  */
 
 import { describe, it, expect } from "vitest";
@@ -11,7 +12,7 @@ import { UNIFIED_MENTOR_IDENTITY, FocusArea } from "../lib/ai-mentor/types";
 
 describe("Unified Intelligence Architecture & Specialist Routing", () => {
   // Test 1: Single Unified Mentor Identity
-  it("maintains Dr. Aarav Mehta as the sole unified mentor identity across all responses", async () => {
+  it("maintains ASTRION as the sole unified mentor identity across all responses", async () => {
     const result = await AIMentorOrchestrator.processTurn({
       studentUserId: "usr-unified-test-1",
       userMessage: "Hello, who are you and how can you help me prepare for placements?",
@@ -19,10 +20,10 @@ describe("Unified Intelligence Architecture & Specialist Routing", () => {
     });
 
     expect(result.mentorIdentity).toBeDefined();
-    expect(result.mentorIdentity?.name).toBe("Dr. Aarav Mehta");
-    expect(result.mentorIdentity?.title).toContain("Principal Mentor");
-    expect(result.mentorIdentity?.credentials).toContain("Staff Software Architect");
-    expect(result.mentorIdentity?.systemPersona).toContain("Dr. Aarav Mehta");
+    expect(result.mentorIdentity?.name).toBe("ASTRION");
+    expect(result.mentorIdentity?.title).toContain("Adaptive Strategic Intelligence");
+    expect(result.mentorIdentity?.credentials).toContain("ASTRION CORE");
+    expect(result.mentorIdentity?.systemPersona).toContain("ASTRION");
   });
 
   // Test 2: Specialist Registry covers all 9 canonical focus areas
@@ -99,7 +100,7 @@ describe("Unified Intelligence Architecture & Specialist Routing", () => {
 
     expect(turn2.specialistCapability?.id).toBe("coding_dsa");
     expect(turn2.message).toContain("Code Review");
-    expect(turn2.mentorIdentity?.name).toBe("Dr. Aarav Mehta");
+    expect(turn2.mentorIdentity?.name).toBe("ASTRION");
 
     // Turn 3: Switch to System Design with history intact
     const turn3 = await AIMentorOrchestrator.processTurn({
@@ -115,7 +116,7 @@ describe("Unified Intelligence Architecture & Specialist Routing", () => {
     });
 
     expect(turn3.specialistCapability?.id).toBe("system_design");
-    expect(turn3.mentorIdentity?.name).toBe("Dr. Aarav Mehta");
+    expect(turn3.mentorIdentity?.name).toBe("ASTRION");
   });
 
   // Test 5: Concept Verification Checks and Citations

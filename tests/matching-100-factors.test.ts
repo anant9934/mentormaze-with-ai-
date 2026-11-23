@@ -26,7 +26,7 @@ describe("MentorMaze 100-Factor Matchmaking Intelligence Engine", () => {
   });
 
   it("calculates comprehensive 100-factor scores with dimensional breakdowns in < 10ms", () => {
-    const student = store.getStudentProfile("user-student-1");
+    const student = store.getStudentProfile("user-student-1") || null;
     const approvedMentors = store.getMentors(true);
 
     const t0 = performance.now();
@@ -76,7 +76,7 @@ describe("MentorMaze 100-Factor Matchmaking Intelligence Engine", () => {
   });
 
   it("dynamically adjusts mentor rankings according to strategy presets", () => {
-    const student = store.getStudentProfile("user-student-1");
+    const student = store.getStudentProfile("user-student-1") || null;
     const approvedMentors = store.getMentors(true);
 
     const techRankings = MatchmakingEngine.rankMentors(

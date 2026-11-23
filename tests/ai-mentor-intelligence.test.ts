@@ -168,7 +168,7 @@ describe("MentorMaze AI Mentor Intelligence System — Comprehensive Test Suite"
   describe("8. Student Memory Lifecycle", () => {
     it("creates, updates, and deletes structured student memories with user control", () => {
       const userId = "usr-test-mem";
-      const created = StudentMemoryService.saveMemory(userId, "goal", "Dream Role", "SDE-1 @ Google", "student_reported");
+      const created = StudentMemoryService.saveMemory(userId, "current_goals", "Dream Role", "SDE-1 @ Google", "student_reported");
       expect(created.key).toBe("Dream Role");
 
       const list = StudentMemoryService.getMemories(userId);

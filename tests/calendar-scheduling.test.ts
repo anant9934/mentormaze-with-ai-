@@ -144,11 +144,18 @@ describe("MentorMaze Calendar & Scheduling Engine Test Suite", () => {
 
   describe("3. Dynamic Bookable Slot Generator", () => {
     it("generates slots within mentor's weekly windows and converts to viewer timezone", async () => {
-      // Pick a future Wednesday: 2026-11-18
+      // Pick a future Wednesday (day 3)
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + 7);
+      while (d.getUTCDay() !== 3) {
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
+      const futureWed = d.toISOString().split("T")[0];
+
       const slots = await SlotGenerator.generateSlots({
         mentorProfileId: MENTOR_ID,
-        startDate: "2026-11-18",
-        endDate: "2026-11-18",
+        startDate: futureWed,
+        endDate: futureWed,
         durationMinutes: 30,
         viewerTimezone: "Asia/Kolkata",
       });
@@ -166,18 +173,25 @@ describe("MentorMaze Calendar & Scheduling Engine Test Suite", () => {
     });
 
     it("accurately shifts slot display times when queried in US Eastern timezone (EST)", async () => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + 7);
+      while (d.getUTCDay() !== 3) {
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
+      const futureWed = d.toISOString().split("T")[0];
+
       const slotsIst = await SlotGenerator.generateSlots({
         mentorProfileId: MENTOR_ID,
-        startDate: "2026-11-18",
-        endDate: "2026-11-18",
+        startDate: futureWed,
+        endDate: futureWed,
         durationMinutes: 30,
         viewerTimezone: "Asia/Kolkata",
       });
 
       const slotsEst = await SlotGenerator.generateSlots({
         mentorProfileId: MENTOR_ID,
-        startDate: "2026-11-18",
-        endDate: "2026-11-18",
+        startDate: futureWed,
+        endDate: futureWed,
         durationMinutes: 30,
         viewerTimezone: "America/New_York",
       });
@@ -220,11 +234,17 @@ describe("MentorMaze Calendar & Scheduling Engine Test Suite", () => {
 
     it("excludes slots that collide with external calendar busy periods", async () => {
       const db = getDb();
-      const testDate = "2026-11-20";
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + 7);
+      while (d.getUTCDay() !== 3) {
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
+      const testDate = d.toISOString().split("T")[0];
 
-      // 10:00 IST is 04:30 UTC
-      const busyStartUtc = new Date(`${testDate}T04:30:00Z`);
-      const busyEndUtc = new Date(`${testDate}T05:30:00Z`);
+      // In mentor's 14:00-18:00 IST window (08:30-12:30 UTC):
+      // 14:00 IST is 08:30 UTC
+      const busyStartUtc = new Date(`${testDate}T08:30:00Z`);
+      const busyEndUtc = new Date(`${testDate}T09:30:00Z`);
 
       const connId = "70000000-0000-0000-0000-000000000001";
       await db.execute(sql`

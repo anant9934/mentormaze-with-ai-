@@ -201,10 +201,18 @@ describe("Phase 2: Live AI Mentor Activation, Production RAG & Student Memory", 
     const studentB = "usr-student-B";
 
     // Save memory for Student B
-    StudentMemoryService.saveMemory(studentB, "career_objectives", "Target Role", "Google L4 Senior Engineer", {
-      studentConfirmed: true,
-      requestingUserId: studentB,
-    });
+    StudentMemoryService.saveMemory(
+      studentB,
+      "career_objectives",
+      "Target Role",
+      "Google L4 Senior Engineer",
+      "student_reported",
+      1.0,
+      false,
+      undefined,
+      true,
+      studentB
+    );
 
     // Student A attempts to read Student B's memory directly
     expect(() => {
