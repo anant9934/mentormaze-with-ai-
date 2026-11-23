@@ -9,12 +9,12 @@ export function AIMentorHelp() {
 
   const FAQS = [
     {
-      q: "Who is Dr. Aarav Mehta?",
-      a: "Dr. Aarav Mehta is your unified Principal Mentor at MentorMaze by AI Tathastu. Rather than eight disjoint chatbots, Dr. Aarav Mehta is a single continuous intelligence that dynamically engages specialized analytical capabilities across conceptual learning, coding & DSA, system architecture, resume transformation, and technical interviews.",
+      q: "What is ASTRION?",
+      a: "ASTRION (Adaptive Strategic Intelligence & Reasoning Network) is the official AI Mentorship Intelligence for MentorMaze by AI Tathastu. Rather than eight disconnected chatbots, ASTRION is a single unified mentor with eight specialized intelligence capabilities: SAGE, CIPHER, ATLAS, FORGE, VECTRA, PRISM, ORACLE, and CHRONOS.",
     },
     {
       q: "How does Socratic scaffolding work?",
-      a: "Instead of immediately dumping full solutions or code answers, Dr. Aarav Mehta provides tiered hints and invariant questions designed to build deep mental models and problem-solving stamina. You can request direct answers at any time by asking for a complete worked example.",
+      a: "Instead of immediately dumping full solutions or code answers, ASTRION provides tiered hints and invariant questions designed to build deep mental models and problem-solving stamina. You can request direct answers at any time by asking for a complete worked example.",
     },
     {
       q: "Are my conversations and code kept private?",
@@ -26,7 +26,7 @@ export function AIMentorHelp() {
     },
     {
       q: "How can I escalate to a verified human mentor?",
-      a: "When a concept requires personalized 1:1 human evaluation or placement strategy, Dr. Aarav Mehta suggests a Human Mentor Escalation link. You can also visit the Mentor Marketplace at https://mentormaze.aitathastu.com/mentors at any time.",
+      a: "When a concept requires personalized 1:1 human evaluation or placement strategy, ASTRION suggests a Human Mentor Escalation link. You can also visit the Mentor Marketplace at https://mentormaze.aitathastu.com/mentors at any time.",
     },
   ];
 

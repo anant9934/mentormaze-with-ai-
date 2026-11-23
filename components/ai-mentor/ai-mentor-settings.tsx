@@ -33,7 +33,7 @@ export function AIMentorSettings() {
         <div className="flex items-center justify-between pb-4 border-b border-[#EDF3E8]">
           <div>
             <h3 className="font-semibold text-[#17211E]">Text-to-Speech Output</h3>
-            <p className="text-xs text-[#69756B]">Allow speech synthesis playback for Dr. Aarav Mehta responses.</p>
+            <p className="text-xs text-[#69756B]">Allow speech synthesis playback for ASTRION responses.</p>
           </div>
           <input
             type="checkbox"
