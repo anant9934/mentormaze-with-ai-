@@ -12,6 +12,8 @@ export interface SafetyCheckResult {
   crisisHelpNotice?: string;
 }
 
+export type SafetyInspectionResult = SafetyCheckResult;
+
 export class SafetyGuardrails {
   /**
    * Evaluates incoming student input for clinical therapy claims, crisis disclosures, prompt injection, and PII
