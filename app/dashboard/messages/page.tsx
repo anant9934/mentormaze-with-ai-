@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { store } from "@/lib/data/store";
 import { useAuth } from "@/lib/auth/context";
 import {
   Send,
@@ -15,69 +15,231 @@ import {
   Search,
   ArrowLeft,
   Circle,
+  AlertCircle,
+  Loader2,
+  LogIn,
+  MessageSquare,
 } from "lucide-react";
 
-export default function MessagesDashboardPage() {
-  const { user } = useAuth();
-  const currentUserId = user?.id || "user-student-1";
+function MessagesDashboardContent() {
+  const searchParams = useSearchParams();
+  const mentorIdParam = searchParams.get("mentorId");
+  const { user, isLoading: authLoading } = useAuth();
 
-  const [activeConversationId, setActiveConversationId] = useState("conv-priya-anant");
-  const [messages, setMessages] = useState(store.getMessages("conv-priya-anant"));
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "chat">(mentorIdParam ? "chat" : "list");
+  const [messages, setMessages] = useState<any[]>([]);
   const [inputContent, setInputContent] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const contacts = [
-    {
-      id: "conv-priya-anant",
-      mentorName: "Priya Sharma",
-      mentorRole: "Software Engineer @ Microsoft",
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
-      unreadCount: 1,
-      lastMessage: "Please make sure to upload your latest resume...",
-      time: "12:30 PM",
-      online: true,
-    },
-    {
-      id: "conv-rohan-anant",
-      mentorName: "Rohan Mehta",
-      mentorRole: "Data Scientist @ Google",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-      unreadCount: 0,
-      lastMessage: "Ready for our technical interview round on Tuesday.",
-      time: "Yesterday",
-      online: false,
-    },
-  ];
+  // 1. Fetch conversations or initialize with mentor
+  useEffect(() => {
+    let isMounted = true;
 
-  const activeContact = contacts.find((c) => c.id === activeConversationId) || contacts[0];
+    async function loadConversations() {
+      if (authLoading) return;
+      if (!user) {
+        setIsLoadingContacts(false);
+        return;
+      }
 
-  const handleSendMessage = (e: React.FormEvent) => {
+      try {
+        setIsLoadingContacts(true);
+        setError(null);
+
+        // If mentorIdParam is provided, initialize or load that conversation
+        if (mentorIdParam) {
+          const res = await fetch(`/api/messages?mentorId=${encodeURIComponent(mentorIdParam)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (isMounted && data.success && data.conversationId) {
+              setActiveConversationId(data.conversationId);
+              setMessages(data.messages || []);
+            }
+          }
+        }
+
+        // Load all conversations for this user
+        const listRes = await fetch("/api/messages");
+        if (!listRes.ok) {
+          throw new Error(`Failed to load conversations (HTTP ${listRes.status})`);
+        }
+        const listData = await listRes.json();
+        if (isMounted && listData.success) {
+          const convList = listData.conversations || [];
+          setContacts(convList);
+
+          // If no activeConversationId yet, default to first conversation
+          if (!mentorIdParam && convList.length > 0) {
+            setActiveConversationId(convList[0].id);
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          console.error("Messages load error:", err);
+          setError(err.message || "Failed to load conversations.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingContacts(false);
+        }
+      }
+    }
+
+    loadConversations();
+    return () => {
+      isMounted = false;
+    };
+  }, [user, authLoading, mentorIdParam]);
+
+  // 2. Fetch messages whenever activeConversationId changes
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadActiveMessages() {
+      if (!activeConversationId) return;
+
+      try {
+        setIsLoadingMessages(true);
+        const res = await fetch(`/api/messages?conversationId=${encodeURIComponent(activeConversationId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.success) {
+            setMessages(data.messages || []);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load messages:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingMessages(false);
+        }
+      }
+    }
+
+    loadActiveMessages();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeConversationId]);
+
+  const activeContact = contacts.find((c) => c.id === activeConversationId) || (contacts.length > 0 ? contacts[0] : null);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputContent.trim()) return;
+    if (!inputContent.trim() || !activeConversationId || isSending) return;
 
-    const newMsg = store.sendMessage(
-      activeConversationId,
-      currentUserId,
-      inputContent.trim()
-    );
-
-    setMessages([...store.getMessages(activeConversationId)]);
+    const outgoingText = inputContent.trim();
     setInputContent("");
 
-    // Simulate mentor typing and reply after 1.5s
-    setTimeout(() => {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        store.sendMessage(
-          activeConversationId,
-          "user-mentor-priya",
-          "Got your message! I've noted down this discussion point for our live session."
-        );
-        setMessages([...store.getMessages(activeConversationId)]);
-      }, 1500);
-    }, 500);
+    try {
+      setIsSending(true);
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConversationId,
+          content: outgoingText,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send message");
+      }
+
+      // Append persisted message to thread
+      setMessages((prev) => [...prev, data.message]);
+
+      // Update contact preview
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === activeConversationId
+            ? { ...c, lastMessage: outgoingText, time: "Just now" }
+            : c
+        )
+      );
+    } catch (err: any) {
+      alert("Error sending message: " + err.message);
+      setInputContent(outgoingText); // restore
+    } finally {
+      setIsSending(false);
+    }
   };
+
+  const handleSendAttachment = async () => {
+    if (!activeConversationId || isSending) return;
+    const fileName = prompt("Attach document name (PDF):", "Resume_Draft_v2.pdf");
+    if (!fileName) return;
+
+    try {
+      setIsSending(true);
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConversationId,
+          content: "Attached document for your review:",
+          attachmentName: fileName,
+          attachmentUrl: `/documents/${fileName}`,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMessages((prev) => [...prev, data.message]);
+      } else {
+        alert(data.error || "Failed to send attachment");
+      }
+    } catch (err: any) {
+      alert("Error sending attachment: " + err.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (authLoading || isLoadingContacts) {
+    return (
+      <div className="min-h-screen flex flex-col bg-cream-50">
+        <Navbar />
+        <main className="flex-1 max-w-7xl mx-auto px-4 py-16 flex flex-col items-center justify-center">
+          <Loader2 className="w-8 h-8 text-forest-800 animate-spin mb-4" />
+          <p className="text-xs text-ink-600 font-medium">Loading direct messages...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col bg-cream-50">
+        <Navbar />
+        <main className="flex-1 max-w-md mx-auto px-4 py-20 text-center">
+          <div className="card-warm bg-white p-8 rounded-3xl shadow-card">
+            <div className="w-12 h-12 rounded-full bg-forest-100 text-forest-900 mx-auto flex items-center justify-center mb-4">
+              <LogIn className="w-6 h-6" />
+            </div>
+            <h1 className="font-serif text-2xl font-bold text-ink-950 mb-2">Sign In Required</h1>
+            <p className="text-xs text-ink-600 mb-6">
+              Please sign in to access your direct mentor and student message threads.
+            </p>
+            <Link
+              href="/login?redirect=/dashboard/messages"
+              className="btn-primary text-xs py-2.5 px-6 inline-flex items-center gap-2"
+            >
+              <span>Sign In to Continue</span>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-cream-50">
@@ -95,10 +257,17 @@ export default function MessagesDashboardPage() {
           </Link>
         </div>
 
+        {error && (
+          <div className="mb-4 p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-3 text-xs text-red-800">
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Messaging Container */}
         <div className="card-warm bg-white rounded-3xl p-0 overflow-hidden shadow-card grid grid-cols-1 md:grid-cols-12 flex-1 min-h-[600px] border border-border">
           {/* CONVERSATION LIST (4 COLS) */}
-          <div className="md:col-span-4 border-r border-border p-4 flex flex-col justify-between bg-cream-50/50">
+          <div className={`md:col-span-4 border-r border-border p-4 flex-col justify-between bg-cream-50/50 ${mobileView === "chat" ? "hidden md:flex" : "flex"}`}>
             <div>
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
                 <h2 className="font-serif text-lg font-bold text-ink-950">Messages</h2>
@@ -114,16 +283,16 @@ export default function MessagesDashboardPage() {
                       key={c.id}
                       onClick={() => {
                         setActiveConversationId(c.id);
-                        setMessages(store.getMessages(c.id));
+                        setMobileView("chat");
                       }}
-                      className={`w-full p-3 rounded-2xl text-left transition-all flex items-start gap-3 ${
+                      className={`w-full min-h-[56px] p-3 rounded-2xl text-left transition-all flex items-start gap-3 ${
                         isSelected
                           ? "bg-white border border-forest-900 shadow-sm"
                           : "hover:bg-cream-100 border border-transparent"
                       }`}
                     >
                       <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-cream-200">
-                        <Image src={c.avatar} alt={c.mentorName} fill className="object-cover" />
+                        <Image src={c.avatar} alt={c.mentorName || "User"} fill className="object-cover" />
                         {c.online && (
                           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
                         )}
@@ -146,6 +315,17 @@ export default function MessagesDashboardPage() {
                     </button>
                   );
                 })}
+
+                {contacts.length === 0 && (
+                  <div className="p-8 text-center text-xs text-ink-500">
+                    <MessageSquare className="w-8 h-8 text-ink-300 mx-auto mb-2" />
+                    <p className="font-semibold text-ink-800">No active conversations yet.</p>
+                    <p className="mt-1">Browse approved mentors and click &quot;Message&quot; to initiate a thread.</p>
+                    <Link href="/mentors" className="btn-secondary text-xs mt-4 inline-block py-1.5 px-3 min-h-[40px]">
+                      Find Mentors
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -155,121 +335,135 @@ export default function MessagesDashboardPage() {
           </div>
 
           {/* ACTIVE CHAT STREAM (8 COLS) */}
-          <div className="md:col-span-8 flex flex-col justify-between bg-white">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between bg-cream-50/40">
-              <div className="flex items-center gap-3">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-cream-200 flex-shrink-0">
-                  <Image src={activeContact.avatar} alt={activeContact.mentorName} fill className="object-cover" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-ink-950">
-                    <span>{activeContact.mentorName}</span>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  </div>
-                  <p className="text-[10px] text-ink-500">{activeContact.mentorRole}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/sessions/booking-1/live"
-                  className="btn-primary text-[11px] py-1.5 px-3"
-                >
-                  Join Video Room
-                </Link>
-              </div>
-            </div>
-
-            {/* Message History */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4">
-              {messages.map((msg) => {
-                const isMe = msg.senderUserId === currentUserId;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                  >
-                    <div
-                      className={`max-w-md p-4 rounded-2xl text-xs leading-relaxed ${
-                        isMe
-                          ? "bg-forest-900 text-white rounded-br-xs"
-                          : "bg-cream-100 text-ink-950 border border-border rounded-bl-xs"
-                      }`}
+          <div className={`md:col-span-8 flex-col justify-between bg-white ${mobileView === "list" ? "hidden md:flex" : "flex"}`}>
+            {activeContact ? (
+              <>
+                {/* Chat Header */}
+                <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between bg-cream-50/40">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMobileView("list")}
+                      className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-ink-700 hover:text-ink-950 hover:bg-cream-100 transition-colors"
+                      aria-label="Back to conversations list"
                     >
-                      <p>{msg.content}</p>
-
-                      {/* Attachment if present */}
-                      {msg.attachmentName && (
-                        <div
-                          className={`mt-2 p-2.5 rounded-xl flex items-center justify-between gap-3 text-xs ${
-                            isMe ? "bg-forest-800 text-emerald-300" : "bg-white text-forest-900 border border-border"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <FileText className="w-4 h-4 flex-shrink-0" />
-                            <span className="truncate font-semibold">{msg.attachmentName}</span>
-                          </div>
-                          <span className="text-[10px] opacity-75">PDF</span>
-                        </div>
-                      )}
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-cream-200 flex-shrink-0">
+                      <Image src={activeContact.avatar} alt={activeContact.mentorName} fill className="object-cover" />
                     </div>
-                    <span className="text-[9px] text-ink-400 mt-1 px-1">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-ink-950">
+                        <span>{activeContact.mentorName}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      </div>
+                      <p className="text-[10px] text-ink-500 truncate max-w-[150px] sm:max-w-none">{activeContact.mentorRole}</p>
+                    </div>
                   </div>
-                );
-              })}
 
-              {/* Typing indicator */}
-              {isTyping && (
-                <div className="flex items-center gap-1.5 text-xs text-ink-500 italic">
-                  <span className="w-2 h-2 rounded-full bg-forest-700 animate-ping"></span>
-                  <span>{activeContact.mentorName} is typing...</span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/sessions/demo-live/live"
+                      className="btn-primary min-h-[36px] text-[11px] py-1.5 px-3 flex items-center justify-center"
+                    >
+                      Join Room
+                    </Link>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Message Input Form */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-border flex items-center gap-2 bg-cream-50/30">
-              <button
-                type="button"
-                onClick={() => {
-                  const fileName = prompt("Attach document name (PDF):", "Resume_Draft_v2.pdf");
-                  if (fileName) {
-                    store.sendMessage(
-                      activeConversationId,
-                      currentUserId,
-                      "Attached updated document for review:",
-                      fileName,
-                      `/documents/${fileName}`
-                    );
-                    setMessages([...store.getMessages(activeConversationId)]);
-                  }
-                }}
-                className="p-2.5 rounded-full hover:bg-cream-100 text-ink-500 hover:text-ink-950 transition-colors"
-                title="Attach Document"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
+                {/* Message History */}
+                <div className="flex-1 p-6 overflow-y-auto space-y-4 max-h-[500px]">
+                  {isLoadingMessages ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-6 h-6 text-forest-800 animate-spin" />
+                    </div>
+                  ) : messages.length > 0 ? (
+                    messages.map((msg) => {
+                      const isMe = msg.senderUserId === user.id;
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                        >
+                          <div
+                            className={`max-w-md p-4 rounded-2xl text-xs leading-relaxed ${
+                              isMe
+                                ? "bg-forest-900 text-white rounded-br-xs"
+                                : "bg-cream-100 text-ink-950 border border-border rounded-bl-xs"
+                            }`}
+                          >
+                            <p>{msg.content}</p>
 
-              <input
-                type="text"
-                value={inputContent}
-                onChange={(e) => setInputContent(e.target.value)}
-                placeholder={`Message ${activeContact.mentorName}...`}
-                className="flex-1 p-2.5 px-4 rounded-full border border-border text-xs text-ink-950 bg-white focus:outline-none focus:ring-2 focus:ring-forest-700"
-              />
+                            {/* Attachment if present */}
+                            {msg.attachmentName && (
+                              <div
+                                className={`mt-2 p-2.5 rounded-xl flex items-center justify-between gap-3 text-xs ${
+                                  isMe ? "bg-forest-800 text-emerald-300" : "bg-white text-forest-900 border border-border"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <FileText className="w-4 h-4 flex-shrink-0" />
+                                  <span className="truncate font-semibold">{msg.attachmentName}</span>
+                                </div>
+                                <span className="text-[10px] opacity-75">PDF</span>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-ink-400 mt-1 px-1">
+                            {msg.createdAt
+                              ? new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                              : "Now"}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-8 text-center text-xs text-ink-500">
+                      No messages yet in this conversation. Send a greeting to start chatting!
+                    </div>
+                  )}
+                </div>
 
-              <button
-                type="submit"
-                disabled={!inputContent.trim()}
-                className="btn-primary p-2.5 rounded-full flex-shrink-0 disabled:opacity-40"
-                title="Send Message"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+                {/* Message Input Form */}
+                <form onSubmit={handleSendMessage} className="p-3 sm:p-4 border-t border-border flex items-center gap-2 bg-cream-50/30">
+                  <button
+                    type="button"
+                    onClick={handleSendAttachment}
+                    disabled={isSending}
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-full hover:bg-cream-100 text-ink-500 hover:text-ink-950 transition-colors"
+                    title="Attach Document"
+                    aria-label="Attach Document"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+
+                  <input
+                    type="text"
+                    value={inputContent}
+                    onChange={(e) => setInputContent(e.target.value)}
+                    placeholder={`Message ${activeContact.mentorName}...`}
+                    disabled={isSending}
+                    className="flex-1 min-h-[44px] p-2.5 px-4 rounded-full border border-border text-sm sm:text-xs text-ink-950 bg-white focus:outline-none focus:ring-2 focus:ring-forest-700"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={!inputContent.trim() || isSending}
+                    className="btn-primary min-h-[44px] min-w-[44px] p-2.5 rounded-full flex-shrink-0 flex items-center justify-center disabled:opacity-40"
+                    title="Send Message"
+                    aria-label="Send Message"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-ink-500 text-xs">
+                <MessageSquare className="w-12 h-12 text-ink-300 mb-3" />
+                <h3 className="font-serif text-lg font-bold text-ink-950 mb-1">Select a Conversation</h3>
+                <p>Choose a contact from the left pane or explore mentors to start a new chat.</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -279,3 +473,21 @@ export default function MessagesDashboardPage() {
   );
 }
 
+export default function MessagesDashboardPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col bg-cream-50">
+          <Navbar />
+          <main className="flex-1 max-w-7xl mx-auto px-4 py-16 flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 text-forest-800 animate-spin mb-4" />
+            <p className="text-xs text-ink-600 font-medium">Loading direct messages...</p>
+          </main>
+          <Footer />
+        </div>
+      }
+    >
+      <MessagesDashboardContent />
+    </React.Suspense>
+  );
+}

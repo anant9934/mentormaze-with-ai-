@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AI Mentor Workspace — Dr. Aarav Mehta",
+  title: "ASTRION — Adaptive AI Mentorship Intelligence | MentorMaze by AI Tathastu",
   description:
-    "Personalized, adaptive, evidence-driven AI mentoring workspace inside MentorMaze by AI Tathastu. Dedicated AI studio shell for engineering students.",
+    "ASTRION: Adaptive Strategic Intelligence & Reasoning Network. Unified AI Mentorship Intelligence across computer science, distributed systems, code review, resumes, and technical interviews.",
 };
 
 export default function AIMentorLayout({
