@@ -104,6 +104,9 @@ MentorMaze includes an interactive top bar to test all user journeys instantly:
 
 ## 👥 Engineering & Collaboration
 
-Engineered collaboratively by **ANANT KUMAR** ([@anant9934](https://github.com/anant9934)) and **Antigravity AI**.
+Engineered collaboratively by:
+- **ANANT KUMAR** ([@anant9934](https://github.com/anant9934))
+- **Shivam Kumar Singh** (<shiviii5165@gmail.com>)
+- **Antigravity AI**
 
 
