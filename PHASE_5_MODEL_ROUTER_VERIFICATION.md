@@ -158,3 +158,4 @@ To guarantee that unit and integration test suites run deterministically in CI/C
 | **Provider Transparency** | **VERIFIED** | Origin tags returned in response metadata |
 | **Cloud Cascade** | **VERIFIED** | Deprecated `gemini-2.5-flash` replaced with `gemini-2.0-flash` |
 | **Automated Tests** | **PASSING** | 57 / 57 Vitest tests passing |
+

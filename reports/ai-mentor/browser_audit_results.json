@@ -1,0 +1,560 @@
+{
+  "timestamp": "2026-11-19T15:54:14.457Z",
+  "viewports": {
+    "desktop": {
+      "width": 1440,
+      "height": 900,
+      "screenshot": "/Users/quantum/Desktop/MENTOR MAZE/reports/ai-mentor/screenshots/desktop_1440x900_home.png"
+    },
+    "tablet": {
+      "width": 1024,
+      "height": 768,
+      "screenshot": "/Users/quantum/Desktop/MENTOR MAZE/reports/ai-mentor/screenshots/tablet_1024x768_home.png",
+      "sidebar": {
+        "exists": true,
+        "visible": true,
+        "width": 280,
+        "height": 744
+      }
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "screenshot": "/Users/quantum/Desktop/MENTOR MAZE/reports/ai-mentor/screenshots/mobile_390x844_home.png",
+      "drawerScreenshot": "/Users/quantum/Desktop/MENTOR MAZE/reports/ai-mentor/screenshots/mobile_390x844_drawer_open.png",
+      "drawerToggleSuccess": true,
+      "horizontalOverflowDetected": false
+    }
+  },
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "networkFailures": [],
+  "successfulRequests": [
+    {
+      "url": "http://localhost:3000/ai-mentor",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/webpack-a9a78e5936e4d970.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/css/40c7e5b9b1bdc082.css",
+      "status": 200,
+      "contentType": "text/css; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app-143c9459b6970e85.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/manifest.json",
+      "status": 200,
+      "contentType": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/216-d888eaf28f6150ea.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2117-71de7e53189e4d69.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2163-51272409ead53e9c.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/578-5fbb703f8fd61524.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/layout-31c2762d604b551e.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/fd9d1056-936a24b2e33fae79.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/ai-mentor/page-5c01c7e98f467973.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8"
+    },
+    {
+      "url": "http://localhost:3000/brand/astrion-icon.svg",
+      "status": 200,
+      "contentType": "image/svg+xml"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations?userId=user-student-1",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_Bx0vrx52g.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "http://localhost:3000/?_rsc=oakds",
+      "status": 200,
+      "contentType": "text/x-component"
+    },
+    {
+      "url": "http://localhost:3000/favicon.ico",
+      "status": 200,
+      "contentType": "image/x-icon"
+    },
+    {
+      "url": "http://localhost:3000/icon-192.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/1223-cee96d43cbf64187.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/page-cd53bef9051fa9a7.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/4577-ec2ae25dfbb78dfe.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor",
+      "status": 200,
+      "contentType": "text/event-stream"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations?userId=user-student-1",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/ai-mentor",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/css/40c7e5b9b1bdc082.css",
+      "status": 200,
+      "contentType": "text/css; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/webpack-a9a78e5936e4d970.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/fd9d1056-936a24b2e33fae79.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2117-71de7e53189e4d69.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app-143c9459b6970e85.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/216-d888eaf28f6150ea.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2163-51272409ead53e9c.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/578-5fbb703f8fd61524.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/ai-mentor/page-5c01c7e98f467973.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/layout-31c2762d604b551e.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_Bx0vrx52g.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "http://localhost:3000/brand/astrion-icon.svg",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations?userId=user-student-1",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/manifest.json",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/favicon.ico",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/?_rsc=oakds",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/1223-cee96d43cbf64187.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/4577-ec2ae25dfbb78dfe.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/page-cd53bef9051fa9a7.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/icon-192.png",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/ai-mentor",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/css/40c7e5b9b1bdc082.css",
+      "status": 200,
+      "contentType": "text/css; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/webpack-a9a78e5936e4d970.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/fd9d1056-936a24b2e33fae79.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2117-71de7e53189e4d69.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app-143c9459b6970e85.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/216-d888eaf28f6150ea.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2163-51272409ead53e9c.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/578-5fbb703f8fd61524.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/ai-mentor/page-5c01c7e98f467973.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/layout-31c2762d604b551e.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_Bx0vrx52g.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "http://localhost:3000/brand/astrion-icon.svg",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations?userId=user-student-1",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/?_rsc=oakds",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/1223-cee96d43cbf64187.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/4577-ec2ae25dfbb78dfe.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/page-cd53bef9051fa9a7.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/ai-mentor",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/css/40c7e5b9b1bdc082.css",
+      "status": 200,
+      "contentType": "text/css; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/webpack-a9a78e5936e4d970.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/fd9d1056-936a24b2e33fae79.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2117-71de7e53189e4d69.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/main-app-143c9459b6970e85.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/216-d888eaf28f6150ea.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/2163-51272409ead53e9c.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/578-5fbb703f8fd61524.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/ai-mentor/page-5c01c7e98f467973.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/layout-31c2762d604b551e.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap",
+      "status": 200,
+      "contentType": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/dmserifdisplay/v17/-nFnOHM81r4j6k0gjAW3mujVU2B2G_Bx0vrx52g.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "status": 200,
+      "contentType": "font/woff2"
+    },
+    {
+      "url": "http://localhost:3000/brand/astrion-icon.svg",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor/conversations?userId=user-student-1",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/api/ai-mentor",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "url": "http://localhost:3000/?_rsc=oakds",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/manifest.json",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/1223-cee96d43cbf64187.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/4577-ec2ae25dfbb78dfe.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/_next/static/chunks/app/page-cd53bef9051fa9a7.js",
+      "status": 200,
+      "contentType": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "http://localhost:3000/favicon.ico",
+      "status": 304,
+      "contentType": ""
+    },
+    {
+      "url": "http://localhost:3000/icon-192.png",
+      "status": 304,
+      "contentType": ""
+    }
+  ],
+  "interactions": {
+    "sidebarHistoryNavigation": {
+      "tested": true,
+      "success": false
+    },
+    "suggestionChipLaunch": {
+      "tested": true,
+      "success": false,
+      "screenshot": "/Users/quantum/Desktop/MENTOR MAZE/reports/ai-mentor/screenshots/desktop_active_conversation.png"
+    },
+    "shiftEnterMultiline": {
+      "tested": true,
+      "multilinePreserved": true
+    }
+  },
+  "computedStyles": {
+    "bodyFont": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, sans-serif, Inter, -apple-system, \"system-ui\", \"Segoe UI\", sans-serif",
+    "backgroundColor": "rgb(251, 248, 241)",
+    "color": "rgb(23, 33, 30)",
+    "sidebar": {
+      "width": "280px",
+      "display": "flex",
+      "position": "static"
+    },
+    "main": {
+      "borderRadius": "24px",
+      "backgroundColor": "rgba(255, 255, 255, 0.7)",
+      "overflow": "hidden"
+    },
+    "h1": {
+      "text": "What should we build or learn today?",
+      "fontFamily": "\"DM Serif Display\", Georgia, serif",
+      "fontSize": "48px"
+    },
+    "avatar": {
+      "width": "24px",
+      "height": "24px",
+      "objectFit": "contain"
+    },
+    "chipsCount": 8
+  },
+  "liveInferenceTurn": {
+    "prompt": "What is the time complexity of QuickSort in the average case?",
+    "receivedResponse": false,
+    "observedLatencyMs": 5032
+  }
+}

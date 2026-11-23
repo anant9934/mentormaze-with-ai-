@@ -161,3 +161,4 @@ To legitimately advance specialist adapters from `REGISTERED` to `TRAINED` / `EV
 1. **Data Partitioning:** Isolate the 8,488 training examples into domain-specific subsets (e.g., 1,500 DSA examples, 1,200 System Design examples).
 2. **Cloud GPU Allocation:** Train multi-LoRA branches using parameter-efficient fine-tuning on an NVIDIA A100 cluster.
 3. **Empirical Benchmarks:** Measure each specialist adapter against domain-specific test suites before listing as `DEPLOYABLE`.
+

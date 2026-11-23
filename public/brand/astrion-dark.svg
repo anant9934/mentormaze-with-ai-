@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" fill="none" width="200" height="60">
+  <!-- ASTRION Dark Surface Lockup -->
+  <g transform="translate(4, 5)">
+    <svg width="50" height="50" viewBox="0 0 120 120" fill="none">
+      <circle cx="60" cy="60" r="54" stroke="#21634A" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6" />
+      <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#8EB8A3" stroke-width="2.5" transform="rotate(-30 60 60)" />
+      <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#8EB8A3" stroke-width="2.5" transform="rotate(30 60 60)" />
+      <circle cx="60" cy="60" r="22" fill="#609B7F" />
+      <path d="M60 45 L64 55 L74 60 L64 65 L60 75 L56 65 L46 60 L56 55 Z" fill="#FFFFFF" />
+    </svg>
+  </g>
+  <text x="64" y="34" font-family="'DM Serif Display', Georgia, serif" font-size="24" font-weight="700" fill="#FFFFFF" letter-spacing="1.2">ASTRION</text>
+  <text x="65" y="47" font-family="'Inter', sans-serif" font-size="8" font-weight="600" fill="#8EB8A3" letter-spacing="1.5">AI MENTORSHIP</text>
+</svg>

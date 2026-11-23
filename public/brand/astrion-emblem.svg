@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" width="120" height="120">
+  <!-- ASTRION Standalone Emblem: Adaptive Strategic Intelligence & Reasoning Network -->
+  <defs>
+    <radialGradient id="astrionCoreGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2B6F50" />
+      <stop offset="60%" stop-color="#174B39" />
+      <stop offset="100%" stop-color="#123B2E" />
+    </radialGradient>
+    <linearGradient id="astrionOrbitalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8EB8A3" />
+      <stop offset="100%" stop-color="#21634A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Protective Halo / Boundary -->
+  <circle cx="60" cy="60" r="54" stroke="#DDE6D7" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.8" />
+
+  <!-- Orbital Rings (Intersecting Strategic Axes) -->
+  <ellipse cx="60" cy="60" rx="46" ry="20" stroke="url(#astrionOrbitalGrad)" stroke-width="2.2" transform="rotate(-30 60 60)" />
+  <ellipse cx="60" cy="60" rx="46" ry="20" stroke="url(#astrionOrbitalGrad)" stroke-width="2.2" transform="rotate(30 60 60)" />
+  <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#2B6F50" stroke-width="1.8" transform="rotate(90 60 60)" opacity="0.6" />
+
+  <!-- 8 Specialist Intelligence Nodes (Orbital Coordinates) -->
+  <!-- 1. SAGE (Top North) -->
+  <circle cx="60" cy="14" r="4.5" fill="#123B2E" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 2. CIPHER (North-East) -->
+  <circle cx="96" cy="38" r="4.5" fill="#21634A" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 3. ATLAS (South-East) -->
+  <circle cx="96" cy="82" r="4.5" fill="#174B39" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 4. FORGE (Bottom South) -->
+  <circle cx="60" cy="106" r="4.5" fill="#123B2E" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 5. VECTRA (South-West) -->
+  <circle cx="24" cy="82" r="4.5" fill="#21634A" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 6. PRISM (North-West) -->
+  <circle cx="24" cy="38" r="4.5" fill="#174B39" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 7. ORACLE (Equator East) -->
+  <circle cx="106" cy="60" r="4" fill="#3D8262" stroke="#FBF8F1" stroke-width="1.5" />
+  <!-- 8. CHRONOS (Equator West) -->
+  <circle cx="14" cy="60" r="4" fill="#3D8262" stroke="#FBF8F1" stroke-width="1.5" />
+
+  <!-- Central Intelligence Core (ASTRION CORE) -->
+  <circle cx="60" cy="60" r="22" fill="url(#astrionCoreGrad)" />
+  <circle cx="60" cy="60" r="17" stroke="#8EB8A3" stroke-width="1.2" opacity="0.7" />
+  
+  <!-- Core Prismatic Diamond / Star of Wisdom -->
+  <path d="M60 44 L64.5 55.5 L76 60 L64.5 64.5 L60 76 L55.5 64.5 L44 60 L55.5 55.5 Z" fill="#FBF8F1" />
+  <circle cx="60" cy="60" r="3" fill="#123B2E" />
+</svg>

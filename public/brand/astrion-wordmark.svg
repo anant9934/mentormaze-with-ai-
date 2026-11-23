@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" fill="none" width="380" height="80">
+  <!-- ASTRION Primary Brand Wordmark -->
+  <g transform="translate(10, 10)">
+    <!-- Standalone Emblem scaled to 60x60 -->
+    <svg width="60" height="60" viewBox="0 0 120 120" fill="none">
+      <circle cx="60" cy="60" r="54" stroke="#DDE6D7" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.8" />
+      <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#21634A" stroke-width="2.2" transform="rotate(-30 60 60)" />
+      <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#21634A" stroke-width="2.2" transform="rotate(30 60 60)" />
+      <ellipse cx="60" cy="60" rx="46" ry="20" stroke="#2B6F50" stroke-width="1.8" transform="rotate(90 60 60)" opacity="0.6" />
+      <circle cx="60" cy="14" r="4.5" fill="#123B2E" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="96" cy="38" r="4.5" fill="#21634A" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="96" cy="82" r="4.5" fill="#174B39" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="60" cy="106" r="4.5" fill="#123B2E" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="24" cy="82" r="4.5" fill="#21634A" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="24" cy="38" r="4.5" fill="#174B39" stroke="#FBF8F1" stroke-width="1.5" />
+      <circle cx="60" cy="60" r="22" fill="#123B2E" />
+      <circle cx="60" cy="60" r="17" stroke="#8EB8A3" stroke-width="1.2" opacity="0.7" />
+      <path d="M60 44 L64.5 55.5 L76 60 L64.5 64.5 L60 76 L55.5 64.5 L44 60 L55.5 55.5 Z" fill="#FBF8F1" />
+      <circle cx="60" cy="60" r="3" fill="#123B2E" />
+    </svg>
+  </g>
+
+  <!-- Typography -->
+  <text x="82" y="44" font-family="'DM Serif Display', Georgia, serif" font-size="34" font-weight="700" fill="#123B2E" letter-spacing="1.5">ASTRION</text>
+  <text x="84" y="60" font-family="'Inter', -apple-system, sans-serif" font-size="10.5" font-weight="600" fill="#21634A" letter-spacing="1.8">ADAPTIVE STRATEGIC INTELLIGENCE</text>
+  <text x="310" y="44" font-family="'Inter', -apple-system, sans-serif" font-size="9" font-weight="700" fill="#174B39" letter-spacing="0.5">TM</text>
+</svg>

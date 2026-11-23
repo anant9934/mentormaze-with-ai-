@@ -10,12 +10,12 @@ MentorMaze uses **Google Workspace / Gmail SMTP** with a dedicated 16-character 
 | `SMTP_PORT` | `465` | Direct SSL/TLS secure port |
 | `SMTP_SECURE` | `true` | Enforces TLS encryption on socket open |
 | `SMTP_USER` | `hellomentormaze@gmail.com` | Authenticated Google account identity |
-| `SMTP_PASS` | `jypc xjyv tjdw vnln` | 16-character Google App Password (with spaces) |
+| `SMTP_PASS` | `[REDACTED_SMTP_PASSWORD]` | 16-character Google App Password (with spaces) |
 | `SMTP_FROM_NAME` | `MentorMaze` | Official display name in mail clients |
 | `SMTP_FROM_EMAIL`| `hellomentormaze@gmail.com` | Verified sender envelope address |
 
 > [!IMPORTANT]
-> Google App Passwords must preserve the exact whitespace pattern (`jypc xjyv tjdw vnln`) when communicating with `smtp.gmail.com:465`. The `lib/email/transport.ts` configuration layer automatically normalizes this format to prevent `535-5.7.8 BadCredentials` errors.
+> Google App Passwords must preserve the exact whitespace pattern (`[REDACTED_SMTP_PASSWORD]`) when communicating with `smtp.gmail.com:465`. The `lib/email/transport.ts` configuration layer automatically normalizes this format to prevent `535-5.7.8 BadCredentials` errors.
 
 ---
 
@@ -30,7 +30,7 @@ nodemailer.createTransport({
   secure: true,
   auth: {
     user: "hellomentormaze@gmail.com",
-    pass: "jypc xjyv tjdw vnln",
+    pass: "[REDACTED_SMTP_PASSWORD]",
   },
   pool: true,              // Reuses persistent TCP connections across requests
   maxConnections: 5,       // Prevents socket exhaustion

@@ -36,11 +36,11 @@ Set the following environment variables in the hosting dashboard (e.g., Vercel P
 | `NEXT_PUBLIC_APP_NAME` | `MentorMaze` | `Completed and verified` |
 | `NEXT_PUBLIC_APP_URL` | `https://mentormaze.aitathastu.com` | `Completed and verified` |
 | `NEXTAUTH_URL` | `https://mentormaze.aitathastu.com` | `Completed and verified` |
-| `DATABASE_URL` | `postgresql://neondb_owner:npg_h6L3cvsjztUO@ep-withered-heart-bebleio4-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` | `Completed and verified` |
-| `DIRECT_DATABASE_URL` | `postgresql://neondb_owner:npg_h6L3cvsjztUO@ep-withered-heart-bebleio4.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` | `Completed and verified` |
+| `DATABASE_URL` | `postgresql://neondb_owner:[REDACTED_DATABASE_SECRET]@ep-withered-heart-bebleio4-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` | `Completed and verified` |
+| `DIRECT_DATABASE_URL` | `postgresql://neondb_owner:[REDACTED_DATABASE_SECRET]@ep-withered-heart-bebleio4.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` | `Completed and verified` |
 | `AUTH_SECRET` | Generate with `openssl rand -base64 32` | `Requires hosting dashboard configuration` |
 | `GOOGLE_CLIENT_ID` | `65716802967-bm744m2d0m39o08i960tm6q4m07ubfi0.apps.googleusercontent.com` | `Completed and verified` |
-| `GOOGLE_CLIENT_SECRET` | `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` | `Completed and verified` |
+| `GOOGLE_CLIENT_SECRET` | `[REDACTED_GOOGLE_CLIENT_SECRET]` | `Completed and verified` |
 | `GOOGLE_REDIRECT_URI` | `https://mentormaze.aitathastu.com/api/auth/callback/google` | `Completed and verified` |
 | `SMTP_HOST` | `smtp.gmail.com` | `Completed and verified` |
 | `SMTP_PORT` | `465` | `Completed and verified` |

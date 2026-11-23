@@ -114,3 +114,4 @@ React's virtual DOM diffing algorithm works by comparing the current state of th
 | `DEPLOYABLE` | **`EVALUATED`** | Only 25 optimizer steps were completed (200 of 8,488 examples consumed). Does not meet full-epoch requirement. |
 | Smoke Test | **Intermediate Checkpoint** | Distinct from `training/adapters/mentormaze-2b-smoke-test-only` (which was 4.4 MB on mock architecture). `mentormaze-2b-sft-v1` is 67.33 MB on real Qwen 3.5. |
 | Production Serving | **Research / Standby Daemon** | Accessible via local inference server on port 8000 for experimentation; cloud fallback ensures student reliability. |
+

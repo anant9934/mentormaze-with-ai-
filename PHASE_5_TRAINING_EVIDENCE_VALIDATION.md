@@ -138,3 +138,4 @@ To train across all 8,488 curated examples:
 
 ### Recommendation
 The 25-step checkpoint is fully verified as an **`EVALUATED` intermediate artifact** and serves reliably as our local fallback engine inside `ModelProviderRouter` when augmented with RAG. Full epoch training should be scheduled on cloud GPU infrastructure prior to standalone edge deployment.
+

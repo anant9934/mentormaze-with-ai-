@@ -88,3 +88,4 @@ All viewports were rendered against the live production build and verified via h
 ## 5. Visual Artifact Certification
 
 The captured PNG files in `docs/screenshots/` constitute authoritative visual evidence that the standalone AI workspace has been designed, implemented, and verified to production standards.
+

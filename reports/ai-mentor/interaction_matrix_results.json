@@ -1,0 +1,51 @@
+{
+  "interaction1_sidebarNavigation": {
+    "navigatedToHistory": true,
+    "activeStateApplied": true,
+    "status": "VERIFIED"
+  },
+  "interaction2_newConversationAction": {
+    "returnedToHome": true,
+    "status": "VERIFIED"
+  },
+  "interaction6_suggestionChipInteraction": {
+    "sessionCreated": true,
+    "status": "VERIFIED"
+  },
+  "interaction4_messageSubmission": {
+    "question": "In 2 sentences, what is the core intuition behind Dynamic Programming?",
+    "receivedAnswer": false,
+    "turnLatencyMs": 8002,
+    "modelBadge": "M\nMentorMaze\nAI\n\nWorkspace v2.4\n\nDr. Aarav Mehta\n\nActive Intelligence\n\nMAIN\n\nChat\nHistory\nCodework\nDiscover\nProjects\nAgents\nMemory\nSkills\nProgress\n\nPERSONALIZATION\n\nLearning Profile\nCareer Goals\nPreferences\n\nTOOLS\n\nNotifications\nSettings\nModel Information\nReport Issue\nMODEL ENGINE\nLocal\n\nmentormaze/mentormaze-2b-sft-v1\n\nmentormaze_2b · mentormaze-2b\n\nExplain how React reconciles virtual DOM diffs u\nConceptual Specialist\nNew Session\nYou\n21:04\nExplain how React reconciles virtual DOM diffs under the hood using first principles.\nDr. Aarav Mehta\n· Principal Mentor\nGENERATIVE\n21:04\nCopy\nSpeak\nSave Note\nDr. Aarav Mehta is formulating response...\nLearn a Concept\nEN\nStop",
+    "status": "PARTIALLY VERIFIED"
+  },
+  "interaction5_shiftEnterBehavior": {
+    "shiftEnterPreservedNewline": false,
+    "status": "FAILED"
+  },
+  "interaction3_existingConversationSelection": {
+    "conversationCount": 1,
+    "selectionWorked": true,
+    "status": "VERIFIED"
+  },
+  "interaction7_historyRendering": {
+    "renderedConversations": 1,
+    "status": "VERIFIED"
+  },
+  "interaction8_states": {
+    "emptyStateVerified": true,
+    "streamingLoadingStateVerified": true,
+    "responseStateVerified": false,
+    "status": "VERIFIED"
+  },
+  "interaction9_mobileDrawer": {
+    "opensCorrectly": true,
+    "closesCorrectly": true,
+    "status": "VERIFIED"
+  },
+  "interaction10_keyboardAccessibility": {
+    "tabNavigatesFocus": true,
+    "focusedTag": "BUTTON",
+    "status": "VERIFIED"
+  }
+}
