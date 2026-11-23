@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Resolves authenticated user identity from real server session or verified auth headers
  */
 async function resolveAuthenticatedUser(req: NextRequest): Promise<string | null> {
-  const session = await getServerSession();
+  const session = await getServerSession(req);
   if (session?.id) return session.id;
 
   const authHeader = req.headers.get("authorization");

@@ -9,21 +9,33 @@ export const dynamic = "force-dynamic";
 /**
  * Resolves authenticated user identity from real server session or verified auth headers
  */
-async function resolveAuthenticatedUser(req: NextRequest, bodyUserId?: string): Promise<string> {
-  const session = await getServerSession();
-  if (session?.id) return session.id;
+async function resolveAuthenticatedUser(req: NextRequest): Promise<{ id: string; role: string } | null> {
+  const session = await getServerSession(req);
+  if (session?.id) return { id: session.id, role: session.role || "student" };
 
-  const authHeader = req.headers.get("authorization");
-  const authUser = req.headers.get("x-mentormaze-auth-user") || req.headers.get("x-user-id");
-  if (authUser && (authHeader || req.headers.get("x-mentormaze-test") === "true" || process.env.NODE_ENV !== "production")) {
-    return authUser;
+  // For controlled test harnesses only when non-production and test header set
+  if (process.env.NODE_ENV !== "production" && req.headers.get("x-mentormaze-test") === "true") {
+    const testUser = req.headers.get("x-mentormaze-auth-user") || req.headers.get("x-user-id");
+    if (testUser) {
+      const role = testUser.startsWith("admin") ? "admin" : testUser.startsWith("mentor-") ? "mentor" : "student";
+      return { id: testUser, role };
+    }
   }
 
-  return bodyUserId || "usr-student-1";
+  return null;
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const authUser = await resolveAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json(
+        { success: false, error: "401_UNAUTHORIZED: Authentication required to interact with ASTRION." },
+        { status: 401 }
+      );
+    }
+    const studentUserId = authUser.id;
+
     const body = await req.json();
 
     const userMessage = String(body.userMessage || body.message || "");
@@ -43,7 +55,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const studentUserId = await resolveAuthenticatedUser(req, body.studentUserId);
     const mode = (body.focusArea || body.mode || "learn") as TeachingMode;
     const focusArea = body.focusArea;
     const languagePreference = (body.languagePreference || "en") as LanguageCode;
@@ -100,6 +111,20 @@ export async function POST(req: NextRequest) {
                   estimatedCostUsd: result.estimatedCostUsd,
                   fallbackReason: result.fallbackReason,
                   postInteractionCheck: result.postInteractionCheck,
+                  studyPlan: result.studyPlan,
+                  progressInsights: result.progressInsights,
+                  resources: result.resources,
+                  reminders: result.reminders,
+                  mentorHandoff: result.mentorHandoff,
+                  goalReference: result.goalReference,
+                  assessment: result.assessment,
+                  recommendedNextAction: result.recommendedNextAction,
+                  roadmapUpdates: result.roadmapUpdates,
+                  milestoneUpdates: result.milestoneUpdates,
+                  followUpSuggestion: result.followUpSuggestion,
+                  requiresStudentConfirmation: result.requiresStudentConfirmation,
+                  confidence: result.confidence,
+                  evidenceReferences: result.evidenceReferences,
                 },
               })}\n\n`
             )
@@ -140,6 +165,20 @@ export async function POST(req: NextRequest) {
       estimatedCostUsd: result.estimatedCostUsd,
       fallbackReason: result.fallbackReason,
       postInteractionCheck: result.postInteractionCheck,
+      studyPlan: result.studyPlan,
+      progressInsights: result.progressInsights,
+      resources: result.resources,
+      reminders: result.reminders,
+      mentorHandoff: result.mentorHandoff,
+      goalReference: result.goalReference,
+      assessment: result.assessment,
+      recommendedNextAction: result.recommendedNextAction,
+      roadmapUpdates: result.roadmapUpdates,
+      milestoneUpdates: result.milestoneUpdates,
+      followUpSuggestion: result.followUpSuggestion,
+      requiresStudentConfirmation: result.requiresStudentConfirmation,
+      confidence: result.confidence,
+      evidenceReferences: result.evidenceReferences,
     });
   } catch (error: any) {
     console.error("[API AI Mentor Error]:", error);
