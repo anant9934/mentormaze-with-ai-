@@ -1,5 +1,5 @@
 /**
- * Practice Specialist Capability — Dr. Aarav Mehta Internal Module
+ * Practice Specialist Capability — SAGE Learning Intelligence Sub-module
  * Focus: Socratic scaffolding, progressive hints (Level 1-3), active recall, problem solving
  */
 

@@ -1,6 +1,8 @@
 /**
- * Resume Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: Resume analysis, Google XYZ bullet formula, zero-fabrication metrics, JD keyword alignment
+ * PRISM Resume Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: prism-resume
+ * Principle: Improve how genuine capabilities are communicated. Never invent experience, achievements, metrics, or credentials.
  */
 
 import {
@@ -14,10 +16,12 @@ import { CareerIntelligenceService } from "../career-intelligence";
 
 export class ResumeSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "resume";
-  public readonly name = "Resume & Google XYZ Specialist";
-  public readonly badge = "Using Resume Engineering Expertise";
-  public readonly domain = "Resume Transformation & Factual Alignment";
-  public readonly description = "Transforms vague bullet points into impact-driven Google XYZ formulas with a strict zero-fabrication policy.";
+  public readonly codeName = "PRISM";
+  public readonly responsibility = "Resume intelligence";
+  public readonly name = "PRISM Resume Intelligence";
+  public readonly badge = "PRISM Resume Intelligence";
+  public readonly domain = "Resume Transformation, ATS Alignment & Google XYZ Formatting";
+  public readonly description = "Transforms engineering resumes using Google XYZ metrics, structures verifiable achievements, and optimizes ATS match rates. Never invents experience.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();

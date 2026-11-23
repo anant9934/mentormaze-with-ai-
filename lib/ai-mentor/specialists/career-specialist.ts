@@ -1,6 +1,8 @@
 /**
- * Career Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: Job description analysis, engineering level calibration, market compensation, placement strategy
+ * VECTRA Career Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: vectra-career
+ * Principle: Connect student capabilities with realistic career opportunities.
  */
 
 import {
@@ -14,10 +16,12 @@ import { CareerIntelligenceService } from "../career-intelligence";
 
 export class CareerSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "career";
-  public readonly name = "Career & Job Market Specialist";
-  public readonly badge = "Using Career Intelligence Expertise";
-  public readonly domain = "Engineering Career Strategy & Level Calibration";
-  public readonly description = "Analyzes real job descriptions, decodes compensation benchmarks, calibrates seniority levels (L3 to L6), and plans strategic placements.";
+  public readonly codeName = "VECTRA";
+  public readonly responsibility = "Career strategy";
+  public readonly name = "VECTRA Career Strategy";
+  public readonly badge = "VECTRA Career Strategy";
+  public readonly domain = "Career Roadmaps, Market Demand & Role Ladders";
+  public readonly description = "Analyzes hiring demand, placement requirements, role ladders, and bridges academic curricula with industry expectations.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();

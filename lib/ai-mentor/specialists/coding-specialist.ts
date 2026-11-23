@@ -1,6 +1,8 @@
 /**
- * Coding & DSA Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: Asymptotic complexity, algorithmic edge cases, code review, bug detection
+ * CIPHER Engineering Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: cipher-engineering
+ * Principle: Help students become independent problem solvers.
  */
 
 import {
@@ -14,10 +16,12 @@ import { CodeMentorService } from "../code-mentor";
 
 export class CodingSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "coding_dsa";
-  public readonly name = "Coding & DSA Specialist";
-  public readonly badge = "Using Coding & DSA Expertise";
-  public readonly domain = "Data Structures, Algorithms & Code Optimization";
-  public readonly description = "Performs deep line-by-line code review, identifies asymptotic bottlenecks, and provides optimized, bug-free implementations.";
+  public readonly codeName = "CIPHER";
+  public readonly responsibility = "Programming and DSA";
+  public readonly name = "CIPHER Programming and DSA";
+  public readonly badge = "CIPHER Programming and DSA";
+  public readonly domain = "Programming Fundamentals, Data Structures, Algorithms & Code Review";
+  public readonly description = "Performs deep line-by-line code review, identifies asymptotic bottlenecks, debugs edge cases, and provides optimized, bug-free implementations.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();

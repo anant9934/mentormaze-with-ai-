@@ -1,6 +1,8 @@
 /**
- * Interview Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: FAANG technical interview rubrics, STAR behavioral method, live simulation
+ * ORACLE Interview Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: oracle-interviews
+ * Principle: Evaluate answers using transparent criteria and actionable feedback.
  */
 
 import {
@@ -14,10 +16,12 @@ import { InterviewCoachService } from "../interview-coach";
 
 export class InterviewSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "interview";
-  public readonly name = "Interview Simulation & Rubric Specialist";
-  public readonly badge = "Using Interview Coaching Expertise";
-  public readonly domain = "FAANG Technical & Behavioral Interview Rubrics";
-  public readonly description = "Conducts calibrated mock technical and behavioral interviews using standard 4-tier FAANG evaluation rubrics.";
+  public readonly codeName = "ORACLE";
+  public readonly responsibility = "Interview intelligence";
+  public readonly name = "ORACLE Interview Intelligence";
+  public readonly badge = "ORACLE Interview Intelligence";
+  public readonly domain = "Technical & Behavioral Interview Calibration";
+  public readonly description = "Conducts calibrated mock technical and behavioral interviews using standard 4-tier FAANG evaluation rubrics and STAR calibration.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();

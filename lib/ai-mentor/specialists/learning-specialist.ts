@@ -1,6 +1,8 @@
 /**
- * Learning Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: First-principles conceptual learning, Socratic depth, curriculum standards
+ * SAGE Learning Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: sage-learning
+ * Principle: Teach the reasoning, not merely the answer.
  */
 
 import {
@@ -14,10 +16,12 @@ import { CurriculumKnowledgeService } from "../curriculum-knowledge";
 
 export class LearningSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "learn";
-  public readonly name = "Concept Learning Specialist";
-  public readonly badge = "Using Conceptual Pedagogy Expertise";
-  public readonly domain = "Computer Science Fundamentals & Pedagogy";
-  public readonly description = "Explains core computer science concepts from first principles with verified analogies, invariants, and edge cases.";
+  public readonly codeName = "SAGE";
+  public readonly responsibility = "Learning intelligence";
+  public readonly name = "SAGE Learning Intelligence";
+  public readonly badge = "SAGE Learning Intelligence";
+  public readonly domain = "Conceptual Pedagogy, First Principles & Socratic Tutoring";
+  public readonly description = "Teaches conceptual reasoning from first principles with formal computational invariants, step-by-step proofs, and progressive scaffolding.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();
@@ -52,7 +56,7 @@ export class LearningSpecialist implements ISpecialistCapability {
   }
 
   public getSystemPromptEnrichment(input: SpecialistExecutionInput): string {
-    return `### INTERNAL SPECIALIST ACTIVATION: Concept Learning & Pedagogy
+    return `### INTERNAL SPECIALIST ACTIVATION: SAGE Learning Intelligence (Core Principle: Teach the reasoning, not merely the answer)
 - Explain concepts from first principles with formal definitions followed by real-world intuition.
 - Break down mechanisms step-by-step and explicitly state underlying computational invariants.
 - Contrast with alternative approaches and analyze asymptotic trade-offs (Time vs Space).

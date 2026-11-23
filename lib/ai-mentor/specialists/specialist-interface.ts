@@ -1,7 +1,7 @@
 /**
  * Unified Intelligence Architecture — Specialist Capability Interface
  * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
- * Mentor: Dr. Aarav Mehta (Principal Mentor · AI Intelligence)
+ * Identity: ASTRION (Adaptive Strategic Intelligence & Reasoning Network)
  */
 
 import {
@@ -57,6 +57,8 @@ export interface ISpecialistCapability {
   readonly badge: string;
   readonly domain: string;
   readonly description: string;
+  readonly codeName?: string;
+  readonly responsibility?: string;
 
   /**
    * Evaluates whether an incoming message matches this specialist capability

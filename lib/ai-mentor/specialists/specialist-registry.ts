@@ -1,7 +1,9 @@
 /**
- * Unified Intelligence Architecture — Specialist Registry & Intent Resolver
+ * ASTRION Unified Intelligence Architecture — Specialist Registry & Intent Resolver
  * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
- * Mentor: Dr. Aarav Mehta (Principal Mentor · AI Intelligence)
+ * Identity: ASTRION (Adaptive Strategic Intelligence & Reasoning Network)
+ * Core: ASTRION CORE (`astrion-core`)
+ * Specialists: SAGE, CIPHER, ATLAS, FORGE, VECTRA, PRISM, ORACLE, CHRONOS
  */
 
 import { FocusArea, TeachingMode, SpecialistCapabilityInfo } from "../types";
@@ -15,9 +17,50 @@ import { ResumeSpecialist } from "./resume-specialist";
 import { InterviewSpecialist } from "./interview-specialist";
 import { ProjectSpecialist } from "./project-specialist";
 import { StudyPlanningSpecialist } from "./study-planning-specialist";
+import {
+  type SpecialistCodeName,
+  type SpecialistContract,
+  CANONICAL_SPECIALISTS,
+} from "../contracts/specialist.contract";
+
+export type {
+  SpecialistCodeName,
+  SpecialistContract,
+};
+export {
+  CANONICAL_SPECIALISTS,
+};
+
+export const CANONICAL_SPECIALIST_NAMES: SpecialistCodeName[] = [
+  "SAGE",
+  "CIPHER",
+  "ATLAS",
+  "FORGE",
+  "VECTRA",
+  "PRISM",
+  "ORACLE",
+  "CHRONOS",
+];
 
 export class SpecialistRegistry {
   private static specialists: Map<FocusArea, ISpecialistCapability> = new Map();
+
+  /**
+   * Canonical 8-Specialist to Capability Mapping Specification
+   */
+  public static readonly CANONICAL_SPECIALISTS: Record<
+    SpecialistCodeName,
+    { id: FocusArea; responsibility: string }
+  > = {
+    SAGE: { id: "learn", responsibility: "Learning intelligence" },
+    CIPHER: { id: "coding_dsa", responsibility: "Programming and DSA" },
+    ATLAS: { id: "system_design", responsibility: "Systems architecture" },
+    FORGE: { id: "projects", responsibility: "Project intelligence" },
+    VECTRA: { id: "career", responsibility: "Career strategy" },
+    PRISM: { id: "resume", responsibility: "Resume intelligence" },
+    ORACLE: { id: "interview", responsibility: "Interview intelligence" },
+    CHRONOS: { id: "study_planning", responsibility: "Planning intelligence" },
+  };
 
   static {
     const list: ISpecialistCapability[] = [
@@ -69,6 +112,7 @@ export class SpecialistRegistry {
         return "interview";
 
       case "project_mentor":
+      case "project_architect":
       case "projects":
       case "project":
         return "projects";
@@ -199,6 +243,54 @@ export class SpecialistRegistry {
   }
 
   /**
+   * Resolves an optional secondary specialist when the query spans multiple domains (bounded multi-specialist routing)
+   */
+  public static resolveSecondarySpecialist(
+    message: string,
+    primaryFocusArea: FocusArea
+  ): ISpecialistCapability | null {
+    const lower = message.toLowerCase();
+
+    // Bounded execution: at most one secondary specialist
+    if (
+      primaryFocusArea !== "coding_dsa" &&
+      (lower.includes("code review") || lower.includes("write code") || lower.includes("implement this") || lower.includes("dsa solution"))
+    ) {
+      return this.getSpecialist("coding_dsa");
+    }
+
+    if (
+      primaryFocusArea !== "resume" &&
+      (lower.includes("resume") || lower.includes("cv") || lower.includes("bullet point"))
+    ) {
+      return this.getSpecialist("resume");
+    }
+
+    if (
+      primaryFocusArea !== "career" &&
+      (lower.includes("career ladder") || lower.includes("salary expectations") || lower.includes("job market"))
+    ) {
+      return this.getSpecialist("career");
+    }
+
+    if (
+      primaryFocusArea !== "system_design" &&
+      (lower.includes("system design") || lower.includes("distributed architecture") || lower.includes("scalability"))
+    ) {
+      return this.getSpecialist("system_design");
+    }
+
+    if (
+      primaryFocusArea !== "study_planning" &&
+      (lower.includes("study plan") || lower.includes("milestone roadmap") || lower.includes("learning schedule"))
+    ) {
+      return this.getSpecialist("study_planning");
+    }
+
+    return null;
+  }
+
+  /**
    * Returns all 9 specialist capability modules
    */
   public static getAllSpecialists(): ISpecialistCapability[] {
@@ -211,4 +303,50 @@ export class SpecialistRegistry {
   public static getSpecialistMetadataList(): SpecialistCapabilityInfo[] {
     return this.getAllSpecialists().map((s) => s.getMetadata());
   }
+
+  /**
+   * Retrieves strongly typed domain contract for a canonical specialist
+   */
+  public static getCanonicalContract(codeName: SpecialistCodeName): SpecialistContract {
+    const contract = CANONICAL_SPECIALISTS[codeName];
+    if (!contract) {
+      return CANONICAL_SPECIALISTS.SAGE;
+    }
+    return contract;
+  }
+
+  /**
+   * Retrieves specialist capability implementation by canonical code name
+   */
+  public static getSpecialistByCodeName(codeName: SpecialistCodeName): ISpecialistCapability {
+    const contract = this.getCanonicalContract(codeName);
+    return this.getSpecialist(contract.focusAreaId);
+  }
+}
+
+export const SPECIALIST_CAPABILITIES: SpecialistCapabilityInfo[] = SpecialistRegistry.getSpecialistMetadataList();
+
+export function resolveSecondarySpecialist(
+  primarySpecialistOrFocus: string,
+  userMessage: string
+): ISpecialistCapability | null {
+  let focus: FocusArea = "learn";
+  if (primarySpecialistOrFocus.includes("cipher") || primarySpecialistOrFocus === "coding_dsa" || primarySpecialistOrFocus === "coding") {
+    focus = "coding_dsa";
+  } else if (primarySpecialistOrFocus.includes("atlas") || primarySpecialistOrFocus === "system_design") {
+    focus = "system_design";
+  } else if (primarySpecialistOrFocus.includes("prism") || primarySpecialistOrFocus === "resume") {
+    focus = "resume";
+  } else if (primarySpecialistOrFocus.includes("vectra") || primarySpecialistOrFocus === "career") {
+    focus = "career";
+  } else if (primarySpecialistOrFocus.includes("oracle") || primarySpecialistOrFocus === "interview" || primarySpecialistOrFocus === "interviews") {
+    focus = "interview";
+  } else if (primarySpecialistOrFocus.includes("chronos") || primarySpecialistOrFocus === "study_planning" || primarySpecialistOrFocus === "planning") {
+    focus = "study_planning";
+  } else if (primarySpecialistOrFocus.includes("forge") || primarySpecialistOrFocus === "projects") {
+    focus = "projects";
+  } else {
+    focus = "learn";
+  }
+  return SpecialistRegistry.resolveSecondarySpecialist(userMessage, focus);
 }

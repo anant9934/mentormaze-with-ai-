@@ -1,6 +1,8 @@
 /**
- * Project Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: Production architecture, portfolio engineering, tech stack selection, API contracts
+ * FORGE Project Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: forge-projects
+ * Principle: Convert ideas into working, maintainable engineering systems.
  */
 
 import {
@@ -13,10 +15,12 @@ import { FocusArea, SpecialistCapabilityInfo } from "../types";
 
 export class ProjectSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "projects";
-  public readonly name = "Portfolio Project & Architecture Specialist";
-  public readonly badge = "Using Project Architecture Expertise";
-  public readonly domain = "Production Software Engineering & Portfolio Systems";
-  public readonly description = "Designs comprehensive, non-trivial engineering projects with production-grade backend architectures, database schemas, and CI/CD pipelines.";
+  public readonly codeName = "FORGE";
+  public readonly responsibility = "Project intelligence";
+  public readonly name = "FORGE Project Intelligence";
+  public readonly badge = "FORGE Project Intelligence";
+  public readonly domain = "Project Engineering, Architecture Blueprints & Testing";
+  public readonly description = "Blueprints project architecture, production-readiness reviews, codebase structure audits, and comprehensive test strategies.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();

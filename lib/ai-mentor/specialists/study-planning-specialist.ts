@@ -1,6 +1,7 @@
 /**
- * Study Planning Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: 24-week milestone schedules, spaced retrieval, adaptive pacing, placement readiness
+ * CHRONOS Planning Intelligence Capability (`chronos-planning`)
+ * Official ASTRION Specialist Identity
+ * Focus: Milestone roadmaps, spaced retrieval schedules, cognitive load balancing, placement timelines
  */
 
 import {
@@ -14,10 +15,13 @@ import { CareerIntelligenceService } from "../career-intelligence";
 
 export class StudyPlanningSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "study_planning";
-  public readonly name = "Study Planning & Roadmap Specialist";
-  public readonly badge = "Using Study Architecture Expertise";
-  public readonly domain = "Spaced Repetition & Placement Milestone Planning";
-  public readonly description = "Structures structured, week-by-week study calendars with spaced retrieval schedules, weak-skill remediation, and deliverables.";
+  public readonly codeName = "CHRONOS";
+  public readonly responsibility = "Planning intelligence";
+  public readonly code = "chronos-planning";
+  public readonly name = "CHRONOS Planning Intelligence";
+  public readonly badge = "CHRONOS Planning Intelligence";
+  public readonly domain = "Milestone Roadmaps & Spaced Retrieval Systems";
+  public readonly description = "Designs structured milestone roadmaps, spaced retrieval schedules, cognitive load balancing, and weekly goal frameworks.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();
@@ -51,12 +55,12 @@ export class StudyPlanningSpecialist implements ISpecialistCapability {
   }
 
   public getSystemPromptEnrichment(input: SpecialistExecutionInput): string {
-    return `### INTERNAL SPECIALIST ACTIVATION: Personalized Study Architecture
-- Build structured, realistic weekly milestones combining:
+    return `### INTERNAL SPECIALIST ACTIVATION: CHRONOS Planning Intelligence
+- Design structured, realistic weekly milestones combining:
   1. 60% Active Problem Solving & Algorithmic Patterns (LeetCode 75 / Blind 75).
   2. 25% Core CS & Distributed Systems (OS, DBMS, Networks, System Design).
   3. 15% Project Engineering & Code Reviews.
-- Incorporate Spaced Repetition (Days 1, 3, 7, 21) for previously missed topics.
+- Incorporate Spaced Retrieval (Days 1, 3, 7, 21) for previously missed topics.
 - Prioritize known weak skills: ${input.studentContext.weakSkills.join(", ") || "Dynamic Programming, Raft Consensus"}.`;
   }
 
@@ -64,7 +68,7 @@ export class StudyPlanningSpecialist implements ISpecialistCapability {
     const targetRole = input.studentContext.targetRole || "Software Development Engineer (SDE-1)";
     const roadmap = CareerIntelligenceService.generateDynamicRoadmap(targetRole);
 
-    let responseText = `### 📅 Personalized 24-Week Study Architecture & Milestone Plan\n\n`;
+    let responseText = `### 📅 CHRONOS 24-Week Engineering Roadmap & Spaced Retrieval Plan\n\n`;
     responseText += `**Student**: ${input.studentContext.displayName} | **Goal**: **${targetRole}**\n\n`;
     responseText += `**Active Skill Remediation**: Focusing on **${input.studentContext.weakSkills.slice(0, 2).join(" & ") || "Dynamic Programming & Distributed Systems"}**\n\n`;
 

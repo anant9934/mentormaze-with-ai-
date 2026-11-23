@@ -1,6 +1,8 @@
 /**
- * System Design Specialist Capability — Dr. Aarav Mehta Internal Module
- * Focus: Distributed systems, high scalability, data partitioning, consensus, cache invalidation
+ * ATLAS Systems Intelligence — ASTRION Specialist Capability
+ * Product: MentorMaze by AI Tathastu (https://mentormaze.aitathastu.com)
+ * Internal ID: atlas-systems
+ * Principle: Teach students to reason about systems, constraints, and trade-offs.
  */
 
 import {
@@ -13,10 +15,12 @@ import { FocusArea, SpecialistCapabilityInfo } from "../types";
 
 export class SystemDesignSpecialist implements ISpecialistCapability {
   public readonly id: FocusArea = "system_design";
-  public readonly name = "System Design & Architecture Specialist";
-  public readonly badge = "Using System Design Expertise";
-  public readonly domain = "Distributed Systems & Scalable Architecture";
-  public readonly description = "Designs resilient, high-throughput architectures, evaluates CAP trade-offs, and analyzes partitioning and caching topologies.";
+  public readonly codeName = "ATLAS";
+  public readonly responsibility = "Systems architecture";
+  public readonly name = "ATLAS Systems Architecture";
+  public readonly badge = "ATLAS Systems Architecture";
+  public readonly domain = "Distributed Systems, Software Architecture & Scalability";
+  public readonly description = "Architects distributed systems, evaluates microservice boundaries, caching topologies, and reasons through scalability constraints.";
 
   public matchesIntent(message: string): boolean {
     const lower = message.toLowerCase();
