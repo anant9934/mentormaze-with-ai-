@@ -42,6 +42,7 @@ import {
   Bot,
   VolumeX,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { MeetingIntelligencePanel } from "@/components/meeting-intelligence/meeting-intelligence-panel";
 import { PostSessionReportModal } from "@/components/meeting-intelligence/post-session-report-modal";
@@ -291,17 +292,9 @@ export default function LiveSessionRoomPage() {
   const [livekitProviderInfo, setLivekitProviderInfo] = useState<string>("");
   const livekitRoomRef = useRef<Room | null>(null);
 
-  // Tab-isolated client identifier
+  // Tab-isolated unique client identifier (memory-scoped to avoid multi-tab sessionStorage cloning)
   const [clientId] = useState(() => {
-    if (typeof window !== "undefined") {
-      let stored = sessionStorage.getItem("mm_tab_client_id");
-      if (!stored) {
-        stored = `cli_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        sessionStorage.setItem("mm_tab_client_id", stored);
-      }
-      return stored;
-    }
-    return `cli_${Math.random().toString(36).substring(2, 8)}`;
+    return `cli_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${Math.random().toString(36).substring(2, 9)}`;
   });
 
   // Role detection: URL query param overrides default user auth for testing 2-way call or AI mentor
@@ -653,6 +646,9 @@ export default function LiveSessionRoomPage() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const iceBufferRef = useRef<RTCIceCandidateInit[]>([]);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [remoteAudioBlocked, setRemoteAudioBlocked] = useState(false);
+  const seenSignalIdsRef = useRef<Set<string>>(new Set());
 
   // In-Meeting Real-Time Chat State (< 5ms Latency)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -738,6 +734,27 @@ export default function LiveSessionRoomPage() {
             });
           } catch (secondErr: any) {
             console.warn("Webcam in use or restricted, activating virtual camera fallback:", secondErr);
+            // Attempt to still capture real microphone audio
+            let fallbackAudioTrack: MediaStreamTrack | null = null;
+            try {
+              const audioOnly = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+              });
+              fallbackAudioTrack = audioOnly.getAudioTracks()[0] || null;
+            } catch {}
+
+            // If mic also failed, synthesize a clean Web Audio silent track so WebRTC negotiation always succeeds
+            if (!fallbackAudioTrack) {
+              try {
+                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioCtx) {
+                  const actx = new AudioCtx();
+                  const dest = actx.createMediaStreamDestination();
+                  fallbackAudioTrack = dest.stream.getAudioTracks()[0] || null;
+                }
+              } catch {}
+            }
+
             const canvas = document.createElement("canvas");
             canvas.width = 640;
             canvas.height = 480;
@@ -769,7 +786,11 @@ export default function LiveSessionRoomPage() {
               requestAnimationFrame(drawAnim);
             };
             drawAnim();
-            stream = (canvas as any).captureStream(30);
+            const canvasStream = (canvas as any).captureStream(30);
+            if (fallbackAudioTrack) {
+              canvasStream.addTrack(fallbackAudioTrack);
+            }
+            stream = canvasStream;
           }
         }
 
@@ -921,6 +942,14 @@ export default function LiveSessionRoomPage() {
           setPeerConnected(true);
         });
 
+        room.on(RoomEvent.ParticipantDisconnected, () => {
+          if (room.remoteParticipants.size === 0) {
+            setPeerConnected(false);
+            setRemoteStream(null);
+            setPeerHasVideo(false);
+          }
+        });
+
         room.on(RoomEvent.DataReceived, (payload: Uint8Array) => {
           try {
             const text = new TextDecoder().decode(payload);
@@ -945,7 +974,9 @@ export default function LiveSessionRoomPage() {
         }
 
         setLivekitConnected(true);
-        setPeerConnected(true);
+        if (room.remoteParticipants.size > 0) {
+          setPeerConnected(true);
+        }
 
         // 4. Publish local camera and mic
         if (localStreamRef.current) {
@@ -983,7 +1014,9 @@ export default function LiveSessionRoomPage() {
   useEffect(() => {
     let isCleanedUp = false;
     const channelName = `mm-session-p2p-${bookingId}`;
+    let lastSignalSeq = 0;
     let lastSignalTimestamp = 0;
+    const isPolite = !isMentor; // Student is polite peer; Mentor is impolite authority
 
     const receiveIncomingChatMessage = (incoming: ChatMessage) => {
       setChatMessages((prev) => {
@@ -994,6 +1027,160 @@ export default function LiveSessionRoomPage() {
       if (activeTabRef.current !== "chat") {
         setUnreadChatCount((count) => count + 1);
       }
+    };
+
+    // Helper: Drain candidate buffer once remote description is set
+    const drainIceBuffer = async (peer: RTCPeerConnection) => {
+      while (iceBufferRef.current.length > 0) {
+        const cand = iceBufferRef.current.shift();
+        if (cand) {
+          try {
+            await peer.addIceCandidate(new RTCIceCandidate(cand));
+          } catch {}
+        }
+      }
+    };
+
+    // Ensure our local media tracks are attached to the RTCPeerConnection
+    const syncLocalTracksToPeer = (peer: RTCPeerConnection) => {
+      if (!localStreamRef.current) return;
+      const senders = peer.getSenders();
+      localStreamRef.current.getTracks().forEach((track) => {
+        const existingSender = senders.find((s) => s.track && s.track.kind === track.kind);
+        if (existingSender) {
+          existingSender.replaceTrack(track).catch(() => {});
+        } else {
+          try {
+            peer.addTrack(track, localStreamRef.current!);
+          } catch {}
+        }
+      });
+    };
+
+    // Helper to send signal both over BroadcastChannel (instant inter-tab < 0.1ms) and HTTP endpoint
+    const postSignal = (type: string, payload: any) => {
+      const signalId = `sig_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const signalData = {
+        id: signalId,
+        senderId: currentUserId,
+        senderClientId: clientId,
+        senderRole: currentRole,
+        type,
+        payload,
+        timestamp: Date.now(),
+      };
+
+      seenSignalIdsRef.current.add(signalId);
+
+      // 1. Inter-Tab BroadcastChannel (0ms local delivery)
+      if (broadcastChannelRef.current) {
+        try {
+          broadcastChannelRef.current.postMessage({
+            type: "WEBRTC_SIGNAL",
+            signal: signalData,
+          });
+        } catch {}
+      }
+
+      // 2. Server HTTP Signaling (Cross-Browser / Remote)
+      fetch(`/api/sessions/${bookingId}/signaling`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signalData),
+      }).catch(() => {});
+    };
+
+    // Central Signal Processor (handles both BroadcastChannel and HTTP signaling)
+    const handleIncomingSignal = async (signal: any) => {
+      if (!pc || isCleanedUp || !signal) return;
+      if (signal.senderClientId === clientId) return;
+
+      if (signal.id) {
+        if (seenSignalIdsRef.current.has(signal.id)) return;
+        seenSignalIdsRef.current.add(signal.id);
+      }
+      if (signal.seq) lastSignalSeq = Math.max(lastSignalSeq, signal.seq);
+      if (signal.timestamp) lastSignalTimestamp = Math.max(lastSignalTimestamp, signal.timestamp);
+
+      try {
+        if (signal.type === "join" || signal.type === "presence") {
+          setPeerConnected(true);
+          const isCaller = isMentor || (!isMentor && signal.senderRole === "student" && clientId > signal.senderClientId);
+          if (isCaller && pc.signalingState === "stable") {
+            initiateSdpOffer();
+          }
+        } else if (signal.type === "offer") {
+          const offerCollision = pc.signalingState !== "stable";
+          if (offerCollision) {
+            if (!isPolite) {
+              return; // Impolite peer ignores colliding offer
+            }
+            await pc.setLocalDescription({ type: "rollback" } as any).catch(() => {});
+          }
+
+          syncLocalTracksToPeer(pc);
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await drainIceBuffer(pc);
+
+          postSignal("answer", answer);
+          setPeerConnected(true);
+        } else if (signal.type === "answer") {
+          if (pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
+            await drainIceBuffer(pc);
+            setPeerConnected(true);
+          }
+        } else if (signal.type === "candidate") {
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
+            } catch {}
+          } else {
+            iceBufferRef.current.push(signal.payload);
+          }
+        }
+      } catch (err) {
+        console.warn("Error processing signal:", err);
+      }
+    };
+
+    // DataChannel handler setup
+    const attachDataChannelHandlers = (channel: RTCDataChannel) => {
+      channel.onopen = () => {
+        setPeerConnected(true);
+        setLiveLatency(0.3);
+      };
+
+      channel.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "CHAT_MESSAGE") {
+            const receiveTime = performance.now();
+            const latency = Math.max(0.1, Number((receiveTime - payload.sentPerfTime).toFixed(2)));
+            setLiveLatency(latency);
+
+            receiveIncomingChatMessage({
+              id: payload.id,
+              senderUserId: payload.senderUserId,
+              senderName: payload.senderName,
+              senderRole: payload.senderRole,
+              content: payload.content,
+              latencyMs: latency,
+              channelType: "webrtc_datachannel",
+              createdAt: payload.createdAt,
+            });
+          } else if (payload.type === "CODE_SYNC") {
+            setCodeContent(payload.code);
+            setSelectedLanguage(payload.language);
+          } else if (payload.type === "MEDIA_STATE") {
+            if (payload.kind === "video") setPeerHasVideo(payload.enabled);
+          }
+        } catch (e) {
+          console.warn("Failed to parse DataChannel payload:", e);
+        }
+      };
     };
 
     // A. Inter-Tab Zero-Latency High-Speed Bus
@@ -1025,6 +1212,12 @@ export default function LiveSessionRoomPage() {
           setSelectedLanguage(payload.language);
         } else if (payload.type === "PEER_PRESENCE") {
           setPeerConnected(true);
+        } else if (payload.type === "WEBRTC_SIGNAL") {
+          if (payload.signal && payload.signal.senderClientId !== clientId) {
+            handleIncomingSignal(payload.signal);
+          }
+        } else if (payload.type === "MEDIA_STATE") {
+          if (payload.kind === "video") setPeerHasVideo(payload.enabled);
         }
       };
 
@@ -1033,41 +1226,6 @@ export default function LiveSessionRoomPage() {
       console.warn("BroadcastChannel not supported:", e);
     }
 
-    // DataChannel handler setup
-    const attachDataChannelHandlers = (channel: RTCDataChannel) => {
-      channel.onopen = () => {
-        setPeerConnected(true);
-        setLiveLatency(0.3);
-      };
-
-      channel.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === "CHAT_MESSAGE") {
-            const receiveTime = performance.now();
-            const latency = Math.max(0.1, Number((receiveTime - payload.sentPerfTime).toFixed(2)));
-            setLiveLatency(latency);
-
-            receiveIncomingChatMessage({
-              id: payload.id,
-              senderUserId: payload.senderUserId,
-              senderName: payload.senderName,
-              senderRole: payload.senderRole,
-              content: payload.content,
-              latencyMs: latency,
-              channelType: "webrtc_datachannel",
-              createdAt: payload.createdAt,
-            });
-          } else if (payload.type === "CODE_SYNC") {
-            setCodeContent(payload.code);
-            setSelectedLanguage(payload.language);
-          }
-        } catch (e) {
-          console.warn("Failed to parse DataChannel payload:", e);
-        }
-      };
-    };
-
     // B. Native WebRTC RTCPeerConnection with Free Google Public STUN
     let pc: RTCPeerConnection | null = null;
     try {
@@ -1075,48 +1233,52 @@ export default function LiveSessionRoomPage() {
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
         ],
       };
 
       pc = new RTCPeerConnection(configuration);
       peerConnectionRef.current = pc;
 
-      // Add local media tracks if available
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          try {
-            pc?.addTrack(track, localStreamRef.current!);
-          } catch {}
-        });
-      }
+      syncLocalTracksToPeer(pc);
 
       // Handle Remote Video/Audio Track
       pc.ontrack = (event) => {
         const incomingTrack = event.track;
         setRemoteStream((prevStream) => {
+          let newStream: MediaStream;
           if (prevStream) {
-            const existing = prevStream.getTracks();
-            if (!existing.some((t) => t.id === incomingTrack.id)) {
-              prevStream.addTrack(incomingTrack);
+            newStream = new MediaStream(prevStream.getTracks());
+            if (!newStream.getTracks().some((t) => t.id === incomingTrack.id)) {
+              newStream.addTrack(incomingTrack);
             }
-            return new MediaStream(prevStream.getTracks());
+          } else if (event.streams && event.streams[0]) {
+            newStream = event.streams[0];
+          } else {
+            newStream = new MediaStream([incomingTrack]);
           }
-          if (event.streams && event.streams[0]) {
-            return event.streams[0];
+
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = newStream;
+            remoteAudioRef.current.play().catch(() => setRemoteAudioBlocked(true));
           }
-          return new MediaStream([incomingTrack]);
+          return newStream;
         });
+
         if (incomingTrack.kind === "video") {
           setPeerHasVideo(true);
+          incomingTrack.onmute = () => setPeerHasVideo(false);
+          incomingTrack.onunmute = () => setPeerHasVideo(true);
+          incomingTrack.onended = () => setPeerHasVideo(false);
         }
         setPeerConnected(true);
       };
 
       // Handle renegotiation needed (tracks added/replaced)
       pc.onnegotiationneeded = async () => {
-        if (isCleanedUp) return;
+        if (isCleanedUp || !pc) return;
         try {
-          if (pc?.signalingState === "stable") {
+          if (pc.signalingState === "stable") {
             await initiateSdpOffer();
           }
         } catch (err) {
@@ -1138,34 +1300,12 @@ export default function LiveSessionRoomPage() {
       // Handle ICE Candidates
       pc.onicecandidate = (event) => {
         if (event.candidate && !isCleanedUp) {
-          fetch(`/api/sessions/${bookingId}/signaling`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              senderId: currentUserId,
-              senderClientId: clientId,
-              senderRole: currentRole,
-              type: "candidate",
-              payload: event.candidate,
-            }),
-          }).catch(() => {});
+          postSignal("candidate", event.candidate);
         }
       };
     } catch (pcErr) {
       console.warn("RTCPeerConnection init error:", pcErr);
     }
-
-    // Helper: Drain candidate buffer once remote description is set
-    const drainIceBuffer = async (peer: RTCPeerConnection) => {
-      while (iceBufferRef.current.length > 0) {
-        const cand = iceBufferRef.current.shift();
-        if (cand) {
-          try {
-            await peer.addIceCandidate(new RTCIceCandidate(cand));
-          } catch {}
-        }
-      }
-    };
 
     // Helper: Send SDP offer (creates DataChannel as caller)
     const initiateSdpOffer = async () => {
@@ -1177,55 +1317,23 @@ export default function LiveSessionRoomPage() {
           attachDataChannelHandlers(dc);
         }
 
-        // Always sync any local tracks into pc before offer
-        if (localStreamRef.current) {
-          const senders = pc.getSenders();
-          localStreamRef.current.getTracks().forEach((track) => {
-            const existing = senders.find((s) => s.track && s.track.kind === track.kind);
-            if (existing) {
-              existing.replaceTrack(track).catch(() => {});
-            } else {
-              try {
-                pc.addTrack(track, localStreamRef.current!);
-              } catch {}
-            }
-          });
-        }
+        syncLocalTracksToPeer(pc);
 
         const offer = await pc.createOffer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: true,
         });
+        if (pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
 
-        await fetch(`/api/sessions/${bookingId}/signaling`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            senderId: currentUserId,
-            senderClientId: clientId,
-            senderRole: currentRole,
-            type: "offer",
-            payload: offer,
-          }),
-        });
+        postSignal("offer", offer);
       } catch (err) {
         console.warn("Offer creation notice:", err);
       }
     };
 
     // Announce presence immediately
-    fetch(`/api/sessions/${bookingId}/signaling`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        senderId: currentUserId,
-        senderClientId: clientId,
-        senderRole: currentRole,
-        type: "join",
-        payload: { name: currentName, role: currentRole },
-      }),
-    }).catch(() => {});
+    postSignal("join", { name: currentName, role: currentRole });
 
     // Role-Agnostic Signaling Loop (Works with Mentor+Student, or Student+Student across tabs)
     let tickCount = 0;
@@ -1235,81 +1343,16 @@ export default function LiveSessionRoomPage() {
         tickCount++;
         if (tickCount % 8 === 0) {
           // Heartbeat ping every ~3.2s
-          fetch(`/api/sessions/${bookingId}/signaling`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              senderId: currentUserId,
-              senderClientId: clientId,
-              senderRole: currentRole,
-              type: "presence",
-              payload: { name: currentName, role: currentRole },
-            }),
-          }).catch(() => {});
+          postSignal("presence", { name: currentName, role: currentRole });
         }
 
         const res = await fetch(
-          `/api/sessions/${bookingId}/signaling?clientId=${clientId}&since=${lastSignalTimestamp}`
+          `/api/sessions/${bookingId}/signaling?clientId=${clientId}&sinceSeq=${lastSignalSeq}&since=${lastSignalTimestamp}`
         );
         const data = await res.json();
         if (data.success && data.signals && data.signals.length > 0) {
           for (const signal of data.signals) {
-            lastSignalTimestamp = Math.max(lastSignalTimestamp, signal.timestamp || 0);
-
-            if (signal.type === "join" || signal.type === "presence") {
-              setPeerConnected(true);
-              const isCaller = isMentor || (!isMentor && signal.senderRole === "student" && clientId > signal.senderClientId);
-              if (isCaller && pc.signalingState === "stable") {
-                initiateSdpOffer();
-              }
-            } else if (signal.type === "offer") {
-              // Attach our tracks before answering so remote peer receives our camera/audio
-              if (localStreamRef.current) {
-                const senders = pc.getSenders();
-                localStreamRef.current.getTracks().forEach((track) => {
-                  const existing = senders.find((s) => s.track && s.track.kind === track.kind);
-                  if (existing) {
-                    existing.replaceTrack(track).catch(() => {});
-                  } else {
-                    try {
-                      pc.addTrack(track, localStreamRef.current!);
-                    } catch {}
-                  }
-                });
-              }
-
-              await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-              await drainIceBuffer(pc);
-
-              await fetch(`/api/sessions/${bookingId}/signaling`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  senderId: currentUserId,
-                  senderClientId: clientId,
-                  senderRole: currentRole,
-                  type: "answer",
-                  payload: answer,
-                }),
-              });
-              setPeerConnected(true);
-            } else if (signal.type === "answer") {
-              if (pc.signalingState === "have-local-offer") {
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.payload));
-                await drainIceBuffer(pc);
-                setPeerConnected(true);
-              }
-            } else if (signal.type === "candidate") {
-              if (pc.remoteDescription && pc.remoteDescription.type) {
-                try {
-                  await pc.addIceCandidate(new RTCIceCandidate(signal.payload));
-                } catch {}
-              } else {
-                iceBufferRef.current.push(signal.payload);
-              }
-            }
+            handleIncomingSignal(signal);
           }
         }
       } catch {}
@@ -1617,6 +1660,13 @@ export default function LiveSessionRoomPage() {
         track.enabled = nextState;
       });
     }
+    const payload = { type: "MEDIA_STATE", kind: "audio", enabled: nextState };
+    if (broadcastChannelRef.current) {
+      try { broadcastChannelRef.current.postMessage(payload); } catch {}
+    }
+    if (dataChannelRef.current?.readyState === "open") {
+      try { dataChannelRef.current.send(JSON.stringify(payload)); } catch {}
+    }
   };
 
   const toggleVideo = () => {
@@ -1627,6 +1677,13 @@ export default function LiveSessionRoomPage() {
       localStreamRef.current.getVideoTracks().forEach((track) => {
         track.enabled = nextState;
       });
+    }
+    const payload = { type: "MEDIA_STATE", kind: "video", enabled: nextState };
+    if (broadcastChannelRef.current) {
+      try { broadcastChannelRef.current.postMessage(payload); } catch {}
+    }
+    if (dataChannelRef.current?.readyState === "open") {
+      try { dataChannelRef.current.send(JSON.stringify(payload)); } catch {}
     }
   };
 
@@ -1641,7 +1698,7 @@ export default function LiveSessionRoomPage() {
         if (peerConnectionRef.current) {
           const vTrack = localStreamRef.current.getVideoTracks()[0];
           const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
-          if (sender && vTrack) sender.replaceTrack(vTrack);
+          if (sender && vTrack) sender.replaceTrack(vTrack).catch(() => {});
         }
       }
       if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
@@ -1663,10 +1720,15 @@ export default function LiveSessionRoomPage() {
 
         const screenTrack = screenStream.getVideoTracks()[0];
 
-        // Replace track on WebRTC P2P peer connection
+        // Replace track on WebRTC P2P peer connection or add track if sender didn't exist
         if (peerConnectionRef.current && screenTrack) {
-          const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
-          if (sender) sender.replaceTrack(screenTrack);
+          const pc = peerConnectionRef.current;
+          const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+          if (sender) {
+            await sender.replaceTrack(screenTrack);
+          } else {
+            pc.addTrack(screenTrack, screenStream);
+          }
         }
 
         // Enable screen share on LiveKit SFU
@@ -1678,19 +1740,19 @@ export default function LiveSessionRoomPage() {
           }
         }
 
-        screenTrack.onended = async () => {
+        screenTrack.onended = () => {
           setIsScreenSharing(false);
           if (localStreamRef.current) {
             setLocalStream(localStreamRef.current);
             if (peerConnectionRef.current) {
               const vTrack = localStreamRef.current.getVideoTracks()[0];
               const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
-              if (sender && vTrack) sender.replaceTrack(vTrack);
+              if (sender && vTrack) sender.replaceTrack(vTrack).catch(() => {});
             }
           }
           if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
             try {
-              await livekitRoomRef.current.localParticipant.setScreenShareEnabled(false);
+              livekitRoomRef.current.localParticipant.setScreenShareEnabled(false);
             } catch {}
           }
         };
@@ -1812,13 +1874,30 @@ export default function LiveSessionRoomPage() {
     }
   };
 
-  const hasRemoteVideo = !!(
-    (peerHasVideo || (remoteStream && remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled))) &&
-    remoteStream
+  const hasRemoteVideo = Boolean(
+    remoteStream &&
+    remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled && !t.muted)
   );
 
   return (
     <div className="h-screen w-screen bg-[#0A1410] text-[#EDF1E8] flex flex-col overflow-hidden font-sans select-none">
+      {/* Hidden audio element for uninterrupted WebRTC audio playback */}
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+
+      {/* Autoplay Unlock Banner if browser blocked audio prior to user gesture */}
+      {remoteAudioBlocked && (
+        <button
+          onClick={() => {
+            if (remoteAudioRef.current) {
+              remoteAudioRef.current.play().then(() => setRemoteAudioBlocked(false)).catch(() => {});
+            }
+          }}
+          className="fixed top-20 right-6 z-50 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-xl font-bold text-xs shadow-2xl flex items-center gap-2 cursor-pointer transition-all animate-bounce"
+        >
+          <Volume2 className="w-4 h-4 text-black" />
+          <span>Click to Enable Room Audio</span>
+        </button>
+      )}
       {/* 1. TOP HEADER BAR */}
       <header className="h-16 bg-[#0E1F18]/90 border-b border-[#1E3A2F] px-4 sm:px-6 flex items-center justify-between z-20 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -2027,10 +2106,30 @@ export default function LiveSessionRoomPage() {
                       </div>
                     </div>
                   ) : hasRemoteVideo && remoteStream ? (
-                    <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                    <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
+                  ) : peerConnected ? (
+                    <div className="flex flex-col items-center justify-center text-center p-6 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410] w-full h-full">
+                      <div className="relative mb-3">
+                        <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/50 shadow-xl ring-4 ring-emerald-500/20">
+                          <Image
+                            src={remoteAvatar}
+                            alt={remoteName}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <span className="absolute -bottom-1 inset-x-0 mx-auto w-max px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-[9px] font-bold text-emerald-300 flex items-center gap-1 shadow">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Audio Live</span>
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-white text-sm">{remoteName}</h4>
+                      <p className="text-[11px] text-emerald-400/90">{remoteHeadline}</p>
+                      <span className="text-[10px] text-[#A3B899] mt-2">Camera Off • Audio Streaming</span>
+                    </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-6">
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/50 shadow-xl mb-3">
+                    <div className="flex flex-col items-center justify-center text-center p-6 w-full h-full">
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-500/30 opacity-70 mb-3">
                         <Image
                           src={remoteAvatar}
                           alt={remoteName}
@@ -2039,7 +2138,18 @@ export default function LiveSessionRoomPage() {
                         />
                       </div>
                       <h4 className="font-bold text-white text-sm">{remoteName}</h4>
-                      <p className="text-[11px] text-emerald-400/90">{remoteHeadline}</p>
+                      <p className="text-[11px] text-[#A3B899] mb-3">Awaiting peer to join room...</p>
+                      <button
+                        onClick={() => {
+                          const origin = typeof window !== "undefined" ? window.location.origin : "";
+                          const targetRole = isMentor ? "student" : "mentor";
+                          window.open(`${origin}/sessions/${bookingId}/live?role=${targetRole}&engine=p2p`, "_blank");
+                        }}
+                        className="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-md transition-all flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>⚡ Open {isMentor ? "Student" : "Mentor"} Tab</span>
+                      </button>
                     </div>
                   )}
                   <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[11px] text-white flex items-center gap-1.5 border border-white/10 z-10">
@@ -2222,12 +2332,39 @@ export default function LiveSessionRoomPage() {
                     </div>
                   </div>
                 ) : hasRemoteVideo && remoteStream ? (
-                  <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                  <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
+                ) : peerConnected ? (
+                  <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
+                    <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+                    <div className="relative mb-4">
+                      <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/40 shadow-2xl ring-8 ring-emerald-500/10">
+                        <Image
+                          src={remoteAvatar}
+                          alt="Remote Feed"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="absolute -bottom-2 inset-x-0 flex justify-center">
+                        <span className="px-3 py-1 rounded-full bg-emerald-950/90 border border-emerald-600 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 shadow-lg">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Audio Connected • Camera Off</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{remoteName}</h3>
+                    <p className="text-xs text-emerald-400/90 font-medium mb-3">{remoteHeadline}</p>
+                    <p className="text-xs text-[#A3B899] max-w-sm leading-relaxed">
+                      Camera feed is paused or unavailable. Microphone audio is connected in real-time.
+                    </p>
+                  </div>
                 ) : (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
                     <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
-                    <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/40 shadow-2xl mb-4 ring-8 ring-emerald-500/10">
+                    <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl mb-4 opacity-75 ring-4 ring-emerald-500/10">
                       <Image
                         src={remoteAvatar}
                         alt="Remote Feed"
@@ -2239,22 +2376,35 @@ export default function LiveSessionRoomPage() {
                     <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{remoteName}</h3>
                     <p className="text-xs text-emerald-400/90 font-medium mb-5">{remoteHeadline}</p>
 
-                    {/* Waiting state card */}
-                    <div className="bg-[#122B20]/90 border border-[#214F3A] rounded-2xl p-5 max-w-sm shadow-xl backdrop-blur-md text-center">
+                    {/* Waiting state card with 1-click test button */}
+                    <div className="bg-[#122B20]/95 border border-[#214F3A] rounded-2xl p-5 max-w-sm shadow-xl backdrop-blur-md text-center">
                       <div className="flex items-center justify-center gap-2 text-xs text-emerald-300 font-semibold mb-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                         <span>Waiting for participant to join...</span>
                       </div>
                       <p className="text-xs text-[#C2D6BA] leading-relaxed mb-4">
-                        Your video and audio are live. When {remoteName} enters the room, their stream will appear here.
+                        Your video and audio are live. Open the {isMentor ? "student" : "mentor"} view in a second tab to test 2-way call instantly:
                       </p>
-                      <button
-                        onClick={() => copyMeetingLink(false)}
-                        className="w-full py-2 px-3 rounded-xl bg-forest-600 hover:bg-forest-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all border border-emerald-400/40"
-                      >
-                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Share2 className="w-3.5 h-3.5" />}
-                        <span>{copiedLink ? "Link Copied!" : "Copy Meeting Invite Link"}</span>
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => {
+                            const origin = typeof window !== "undefined" ? window.location.origin : "";
+                            const targetRole = isMentor ? "student" : "mentor";
+                            window.open(`${origin}/sessions/${bookingId}/live?role=${targetRole}&engine=p2p`, "_blank");
+                          }}
+                          className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all border border-emerald-400/50"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>⚡ 1-Click: Open {isMentor ? "Student (Anant)" : "Mentor (Priya)"} in New Tab</span>
+                        </button>
+                        <button
+                          onClick={() => copyMeetingLink(true)}
+                          className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all border border-white/10"
+                        >
+                          {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Share2 className="w-3.5 h-3.5" />}
+                          <span>{copiedLink ? "Link Copied!" : `Copy ${isMentor ? "Student" : "Mentor"} Link`}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2376,15 +2526,15 @@ export default function LiveSessionRoomPage() {
         {/* ======================================================== */}
         <div className="lg:col-span-4 bg-[#0D1C15] border-l border-[#1E3F31] flex flex-col justify-between overflow-hidden shadow-2xl">
           {/* Tabs Navigation Header */}
-          <div className="bg-[#0E2018] border-b border-[#1E3F31] px-4 pt-3 pb-0 flex items-center justify-between">
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+          <div className="bg-[#0E2018] border-b border-[#1E3F31] p-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none w-full">
               {/* Tab 1: Live Chat */}
               <button
                 onClick={() => setActiveTab("chat")}
-                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                   activeTab === "chat"
-                    ? "text-emerald-400 border-emerald-400"
-                    : "text-[#A3B899] border-transparent hover:text-white"
+                    ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-[#9BB391] hover:text-white hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -2399,10 +2549,10 @@ export default function LiveSessionRoomPage() {
               {/* Tab 2: Live Code */}
               <button
                 onClick={() => setActiveTab("code")}
-                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                   activeTab === "code"
-                    ? "text-emerald-400 border-emerald-400"
-                    : "text-[#A3B899] border-transparent hover:text-white"
+                    ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-[#9BB391] hover:text-white hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <Code2 className="w-3.5 h-3.5" />
@@ -2412,24 +2562,24 @@ export default function LiveSessionRoomPage() {
               {/* Tab 3: Agenda */}
               <button
                 onClick={() => setActiveTab("plan")}
-                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                   activeTab === "plan"
-                    ? "text-emerald-400 border-emerald-400"
-                    : "text-[#A3B899] border-transparent hover:text-white"
+                    ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-[#9BB391] hover:text-white hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Agenda</span>
-                <span className="text-[10px] text-[#A3B899]/70 font-mono">({completedChecklistCount}/4)</span>
+                <span className="text-[10px] text-emerald-400/80 font-mono">({completedChecklistCount}/4)</span>
               </button>
 
               {/* Tab 4: Shared Notes */}
               <button
                 onClick={() => setActiveTab("notes")}
-                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                   activeTab === "notes"
-                    ? "text-emerald-400 border-emerald-400"
-                    : "text-[#A3B899] border-transparent hover:text-white"
+                    ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-[#9BB391] hover:text-white hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -2440,10 +2590,10 @@ export default function LiveSessionRoomPage() {
               {isMentor && (
                 <button
                   onClick={() => setActiveTab("private")}
-                  className={`flex items-center gap-1 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                     activeTab === "private"
-                      ? "text-amber-400 border-amber-400"
-                      : "text-amber-400/60 border-transparent hover:text-amber-300"
+                      ? "bg-amber-950/80 text-amber-300 border border-amber-600/50 shadow-sm"
+                      : "text-amber-400/70 hover:text-amber-300 hover:bg-amber-950/30 border border-transparent"
                   }`}
                 >
                   <Lock className="w-3 h-3" />
@@ -2455,10 +2605,10 @@ export default function LiveSessionRoomPage() {
               {isMentor && (
                 <button
                   onClick={() => setActiveTab("briefing")}
-                  className={`flex items-center gap-1 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                     activeTab === "briefing"
-                      ? "text-emerald-400 border-emerald-400"
-                      : "text-emerald-400/60 border-transparent hover:text-emerald-300"
+                      ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                      : "text-emerald-400/70 hover:text-emerald-300 hover:bg-white/5 border border-transparent"
                   }`}
                 >
                   <Sparkles className="w-3 h-3 text-emerald-400" />
@@ -2469,10 +2619,10 @@ export default function LiveSessionRoomPage() {
               {/* Tab 7: AI Copilot */}
               <button
                 onClick={() => setActiveTab("intelligence")}
-                className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all ${
                   activeTab === "intelligence"
-                    ? "text-emerald-400 border-emerald-400"
-                    : "text-emerald-400/70 border-transparent hover:text-emerald-300"
+                    ? "bg-[#183D2F] text-emerald-300 border border-emerald-500/40 shadow-sm"
+                    : "text-emerald-400/80 hover:text-emerald-300 hover:bg-white/5 border border-transparent"
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
