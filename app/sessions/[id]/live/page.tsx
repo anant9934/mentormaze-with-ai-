@@ -222,7 +222,15 @@ function VideoPlayer({
 
     const safePlay = () => {
       if (video && video.srcObject && video.paused) {
-        video.play().catch(() => {});
+        const p = video.play();
+        if (p !== undefined) {
+          p.catch(() => {
+            if (!video.muted) {
+              video.muted = true;
+              video.play().catch(() => {});
+            }
+          });
+        }
       }
     };
 
@@ -702,6 +710,8 @@ export default function LiveSessionRoomPage() {
   useEffect(() => {
     let isCancelled = false;
 
+    let canvasAnimTimer: any = null;
+
     async function setupLocalMedia() {
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -782,10 +792,10 @@ export default function LiveSessionRoomPage() {
 
               ctx.fillStyle = "#34d399";
               ctx.font = "13px monospace";
-              ctx.fillText("● Live Virtual Video Stream", 320, 340);
-              requestAnimationFrame(drawAnim);
+              ctx.fillText(`● Live Stream (Frame ${frame})`, 320, 340);
             };
             drawAnim();
+            canvasAnimTimer = setInterval(drawAnim, 33);
             const canvasStream = (canvas as any).captureStream(30);
             if (fallbackAudioTrack) {
               canvasStream.addTrack(fallbackAudioTrack);
@@ -877,6 +887,7 @@ export default function LiveSessionRoomPage() {
 
     return () => {
       isCancelled = true;
+      if (canvasAnimTimer) clearInterval(canvasAnimTimer);
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -1267,8 +1278,6 @@ export default function LiveSessionRoomPage() {
 
         if (incomingTrack.kind === "video") {
           setPeerHasVideo(true);
-          incomingTrack.onmute = () => setPeerHasVideo(false);
-          incomingTrack.onunmute = () => setPeerHasVideo(true);
           incomingTrack.onended = () => setPeerHasVideo(false);
         }
         setPeerConnected(true);
@@ -1876,7 +1885,7 @@ export default function LiveSessionRoomPage() {
 
   const hasRemoteVideo = Boolean(
     remoteStream &&
-    remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled && !t.muted)
+    remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled)
   );
 
   return (
@@ -2106,7 +2115,7 @@ export default function LiveSessionRoomPage() {
                       </div>
                     </div>
                   ) : hasRemoteVideo && remoteStream ? (
-                    <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
+                    <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                   ) : peerConnected ? (
                     <div className="flex flex-col items-center justify-center text-center p-6 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410] w-full h-full">
                       <div className="relative mb-3">
@@ -2332,7 +2341,7 @@ export default function LiveSessionRoomPage() {
                     </div>
                   </div>
                 ) : hasRemoteVideo && remoteStream ? (
-                  <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
+                  <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
                 ) : peerConnected ? (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
                     <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />

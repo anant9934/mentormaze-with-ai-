@@ -46,8 +46,31 @@ export async function GET(
   const clientId = searchParams.get("clientId") || searchParams.get("participantId") || "";
   const since = parseInt(searchParams.get("since") || "0", 10);
   const sinceSeq = parseInt(searchParams.get("sinceSeq") || "0", 10);
+  const isReset = searchParams.get("reset") === "true";
 
-  const roomMessages = rooms.get(bookingId) || [];
+  if (isReset) {
+    rooms.delete(bookingId);
+    return NextResponse.json({ success: true, message: "Room signaling reset" });
+  }
+
+  const now = Date.now();
+  // Automatically purge signals older than 25 seconds
+  let roomMessages = rooms.get(bookingId) || [];
+  roomMessages = roomMessages.filter((m) => now - m.timestamp < 25000);
+  rooms.set(bookingId, roomMessages);
+
+  const lastSeq = roomMessages.length > 0 ? roomMessages[roomMessages.length - 1].seq : (global.__mmSignalingSeq || 0);
+
+  // If a brand new client connects without since/sinceSeq, do NOT replay stale history
+  // Return current baseline so subsequent polls only receive live signals!
+  if (sinceSeq === 0 && since === 0) {
+    return NextResponse.json({
+      success: true,
+      signals: [],
+      serverTime: now,
+      lastSeq,
+    });
+  }
 
   // Filter messages: newer than sinceSeq / since, not sent by this client instance, matching target if targeted
   const pending = roomMessages.filter((m) => {
@@ -61,12 +84,10 @@ export async function GET(
     return true;
   });
 
-  const lastSeq = roomMessages.length > 0 ? roomMessages[roomMessages.length - 1].seq : 0;
-
   return NextResponse.json({
     success: true,
     signals: pending,
-    serverTime: Date.now(),
+    serverTime: now,
     lastSeq,
   });
 }
@@ -91,11 +112,16 @@ export async function POST(
       rooms.set(bookingId, []);
     }
 
-    const roomMessages = rooms.get(bookingId)!;
+    const now = Date.now();
+    let roomMessages = rooms.get(bookingId)!;
+
+    // Prune expired messages older than 25s
+    roomMessages = roomMessages.filter((m) => now - m.timestamp < 25000);
+
     global.__mmSignalingSeq = (global.__mmSignalingSeq || 0) + 1;
 
     const signal: SignalMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+      id: `${now}-${Math.random().toString(36).substring(2, 8)}`,
       seq: global.__mmSignalingSeq,
       senderId,
       senderClientId: senderClientId || senderId,
@@ -104,15 +130,16 @@ export async function POST(
       targetClientId,
       type,
       payload,
-      timestamp: Date.now(),
+      timestamp: now,
     };
 
     roomMessages.push(signal);
 
-    // Keep only the most recent 200 signaling events to prevent memory leaks
-    if (roomMessages.length > 200) {
-      roomMessages.splice(0, roomMessages.length - 200);
+    // Keep only most recent 100 messages
+    if (roomMessages.length > 100) {
+      roomMessages.splice(0, roomMessages.length - 100);
     }
+    rooms.set(bookingId, roomMessages);
 
     return NextResponse.json({
       success: true,
