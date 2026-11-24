@@ -36,12 +36,20 @@ export function getDb() {
     process.env.REQUIRE_REAL_DB === "true" ||
     process.env.STAGING_VERIFY_DB === "true";
 
-  // Use Neon / Remote PostgreSQL if connection string is configured and valid
+  // On Vercel, Render, or production, ALWAYS connect to Neon when DATABASE_URL is configured
+  const isServerlessCloud = Boolean(
+    process.env.VERCEL ||
+    process.env.RENDER ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.NODE_ENV === "production"
+  );
   const isRemotePostgres =
-    (requireRealDb || process.env.USE_LOCAL_DB !== "true") &&
-    connectionString &&
-    !connectionString.includes("localhost:5432") &&
-    (connectionString.includes("neon.tech") || connectionString.startsWith("postgresql://"));
+    Boolean(
+      connectionString &&
+      !connectionString.includes("localhost:5432") &&
+      (connectionString.includes("neon.tech") || connectionString.startsWith("postgresql://")) &&
+      (isServerlessCloud || requireRealDb || process.env.USE_LOCAL_DB !== "true")
+    );
 
   if (requireRealDb && !isRemotePostgres) {
     throw new Error(

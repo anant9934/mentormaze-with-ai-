@@ -61,7 +61,9 @@ function MyMentorshipContent() {
     setIsLoading(true);
     try {
       // 1. Fetch dashboard data (sessions & goals)
-      const res = await fetch("/api/student/dashboard");
+      const res = await fetch("/api/student/dashboard", {
+        credentials: "same-origin",
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success) {

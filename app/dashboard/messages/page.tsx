@@ -53,7 +53,9 @@ function MessagesDashboardContent() {
 
         // If mentorIdParam is provided, initialize or load that conversation
         if (mentorIdParam) {
-          const res = await fetch(`/api/messages?mentorId=${encodeURIComponent(mentorIdParam)}`);
+          const res = await fetch(`/api/messages?mentorId=${encodeURIComponent(mentorIdParam)}`, {
+            credentials: "same-origin",
+          });
           if (res.ok) {
             const data = await res.json();
             if (isMounted && data.success && data.conversationId) {
@@ -64,7 +66,9 @@ function MessagesDashboardContent() {
         }
 
         // Load all conversations for this user
-        const listRes = await fetch("/api/messages");
+        const listRes = await fetch("/api/messages", {
+          credentials: "same-origin",
+        });
         if (!listRes.ok) {
           throw new Error(`Failed to load conversations (HTTP ${listRes.status})`);
         }
@@ -105,7 +109,9 @@ function MessagesDashboardContent() {
 
       try {
         setIsLoadingMessages(true);
-        const res = await fetch(`/api/messages?conversationId=${encodeURIComponent(activeConversationId)}`);
+        const res = await fetch(`/api/messages?conversationId=${encodeURIComponent(activeConversationId)}`, {
+          credentials: "same-origin",
+        });
         if (res.ok) {
           const data = await res.json();
           if (isMounted && data.success) {
@@ -141,6 +147,7 @@ function MessagesDashboardContent() {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           conversationId: activeConversationId,
           content: outgoingText,
@@ -181,6 +188,7 @@ function MessagesDashboardContent() {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({
           conversationId: activeConversationId,
           content: "Attached document for your review:",

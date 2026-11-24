@@ -45,7 +45,9 @@ export default function StudentDashboardPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const res = await fetch("/api/student/dashboard");
+        const res = await fetch("/api/student/dashboard", {
+          credentials: "same-origin",
+        });
         if (!res.ok) {
           if (res.status === 401) {
             throw new Error("Please log in to view your student dashboard.");
