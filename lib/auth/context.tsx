@@ -12,7 +12,7 @@ interface AuthContextType {
     password?: string,
     role?: "student" | "mentor" | "admin",
     turnstileToken?: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; user?: SessionUser }>;
   logout: () => Promise<void>;
   isLoading: boolean;
   refreshSession: () => Promise<void>;
@@ -125,11 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password?: string,
     preferredRole: "student" | "mentor" | "admin" = "student",
     turnstileToken?: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; user?: SessionUser }> => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
@@ -156,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("mm_active_role", authUser.role);
           }
           setIsLoading(false);
-          return { success: true };
+          return { success: true, user: authUser };
         }
       } else {
         const errData = await res.json().catch(() => ({}));

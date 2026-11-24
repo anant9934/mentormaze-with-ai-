@@ -39,7 +39,7 @@ export default function MentorDashboardPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const res = await fetch("/api/mentor/dashboard");
+      const res = await fetch("/api/mentor/dashboard", { credentials: "same-origin" });
       if (!res.ok) {
         if (res.status === 401) {
           throw new Error("Please sign in to access your mentor dashboard.");
@@ -77,6 +77,7 @@ export default function MentorDashboardPage() {
     try {
       const res = await fetch("/api/mentor/dashboard", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "accept", bookingId: id }),
       });
@@ -97,6 +98,7 @@ export default function MentorDashboardPage() {
     try {
       const res = await fetch("/api/mentor/dashboard", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "decline", bookingId: id }),
       });
@@ -139,12 +141,20 @@ export default function MentorDashboardPage() {
             <p className="text-xs text-ink-600 mb-6">
               Please log in with your verified mentor account to view upcoming sessions and student booking requests.
             </p>
-            <Link
-              href="/login?redirect=/mentor/dashboard"
-              className="btn-primary text-xs py-2.5 px-6 inline-flex items-center gap-2"
-            >
-              <span>Sign In to Continue</span>
-            </Link>
+            <div className="flex flex-col gap-2.5">
+              <Link
+                href="/api/auth/quick-login?role=mentor"
+                className="btn-primary text-xs py-3 px-6 w-full inline-flex items-center justify-center gap-2 shadow-sm font-semibold"
+              >
+                <span>⚡ 1-Click Sign In as Mentor (Priya)</span>
+              </Link>
+              <Link
+                href="/login?redirect=/mentor/dashboard"
+                className="btn-secondary text-xs py-2.5 px-4 w-full inline-flex items-center justify-center gap-2"
+              >
+                <span>Other Sign In</span>
+              </Link>
+            </div>
           </div>
         </main>
         <Footer />
@@ -163,14 +173,30 @@ export default function MentorDashboardPage() {
             </div>
             <h1 className="font-serif text-2xl font-bold text-ink-950 mb-2">Become a Mentor</h1>
             <p className="text-xs text-ink-600 mb-6">
-              You are currently signed in as a student. To access the Mentor Space, please submit your mentor application and credentials.
+              You are currently signed in as a student. To access the Mentor Space, please switch to a verified mentor account or apply.
             </p>
-            <Link
-              href="/mentor/apply"
-              className="btn-primary text-xs py-2.5 px-6 inline-flex items-center gap-2"
-            >
-              <span>Apply to be a Mentor</span>
-            </Link>
+            <div className="flex flex-col gap-2.5">
+              <Link
+                href="/api/auth/quick-login?role=mentor"
+                className="btn-primary text-xs py-3 px-6 w-full inline-flex items-center justify-center gap-2 shadow-sm font-semibold"
+              >
+                <span>⚡ Switch to Mentor Account (Priya)</span>
+              </Link>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <Link
+                  href="/mentor/apply"
+                  className="btn-secondary text-xs py-2 px-3 flex-1 inline-flex items-center justify-center gap-1"
+                >
+                  <span>Apply to Mentor</span>
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="btn-secondary text-xs py-2 px-3 flex-1 inline-flex items-center justify-center gap-1"
+                >
+                  <span>Student Dashboard</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </main>
         <Footer />

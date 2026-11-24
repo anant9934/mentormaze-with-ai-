@@ -57,15 +57,31 @@ export default function LoginPage() {
     }
   };
 
-  const handleOtherLogin = async (role: "student" | "mentor" | "admin" = "student") => {
+  const handleOtherLogin = async (roleOverride?: "student" | "mentor" | "admin") => {
     setLoginError(null);
-    const email = emailInput.trim() || (role === "student" ? "anant@example.com" : role === "mentor" ? "priya.sharma@microsoft.com" : "admin@mentormaze.com");
+    let targetEmail = emailInput.trim();
+    if (!targetEmail) {
+      if (roleOverride === "mentor") targetEmail = "priya.sharma@microsoft.com";
+      else if (roleOverride === "admin") targetEmail = "admin@mentormaze.com";
+      else targetEmail = "anant@example.com";
+    }
+
     const password = passwordInput || "password123";
-    const result = await login(email, password, role, turnstileToken || undefined);
+
+    // Auto-detect role from override or email address
+    let desiredRole: "student" | "mentor" | "admin" = roleOverride || "student";
+    if (!roleOverride) {
+      const lower = targetEmail.toLowerCase();
+      if (lower.includes("mentor") || lower.includes("priya")) desiredRole = "mentor";
+      else if (lower.includes("admin")) desiredRole = "admin";
+    }
+
+    const result = await login(targetEmail, password, desiredRole, turnstileToken || undefined);
     if (result.success) {
-      switchRole(role);
-      if (role === "admin") router.push("/admin");
-      else if (role === "mentor") router.push("/mentor/dashboard");
+      const activeRole = (result.user?.role as "student" | "mentor" | "admin") || desiredRole;
+      switchRole(activeRole);
+      if (activeRole === "admin") router.push("/admin");
+      else if (activeRole === "mentor") router.push("/mentor/dashboard");
       else router.push("/dashboard");
     } else {
       setLoginError(result.error || "Sign in failed. Please verify credentials or security challenge.");
@@ -351,7 +367,7 @@ export default function LoginPage() {
                 </div>
 
                 <button
-                  onClick={() => handleOtherLogin("student")}
+                  onClick={() => handleOtherLogin()}
                   className="btn-primary w-full py-3 text-sm font-semibold"
                 >
                   Continue with Email
@@ -410,23 +426,46 @@ export default function LoginPage() {
               </span>
               <div className="flex items-center justify-center gap-2">
                 <button
-                  onClick={() => handleOtherLogin("student")}
+                  onClick={() => {
+                    setEmailInput("anant@example.com");
+                    setPasswordInput("password123");
+                    handleOtherLogin("student");
+                  }}
                   className="px-2.5 py-1 rounded bg-cream-100 hover:bg-cream-200 text-ink-950 text-[11px] font-semibold border border-border"
                 >
                   Student (Anant)
                 </button>
                 <button
-                  onClick={() => handleOtherLogin("mentor")}
-                  className="px-2.5 py-1 rounded bg-cream-100 hover:bg-cream-200 text-ink-950 text-[11px] font-semibold border border-border"
+                  onClick={() => {
+                    setEmailInput("priya.sharma@microsoft.com");
+                    setPasswordInput("password123");
+                    handleOtherLogin("mentor");
+                  }}
+                  className="px-2.5 py-1 rounded bg-forest-50 hover:bg-forest-100 text-forest-950 text-[11px] font-bold border border-forest-300"
                 >
                   Mentor (Priya)
                 </button>
                 <button
-                  onClick={() => handleOtherLogin("admin")}
+                  onClick={() => {
+                    setEmailInput("admin@mentormaze.com");
+                    setPasswordInput("password123");
+                    handleOtherLogin("admin");
+                  }}
                   className="px-2.5 py-1 rounded bg-cream-100 hover:bg-cream-200 text-ink-950 text-[11px] font-semibold border border-border"
                 >
                   Admin
                 </button>
+              </div>
+
+              {/* Direct Instant Access Link */}
+              <div className="mt-3">
+                <a
+                  href="/api/auth/quick-login?role=mentor"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-forest-800 hover:text-forest-950 hover:underline"
+                >
+                  <span>⚡ Instant Direct Link: Open Mentor Dashboard as Priya</span>
+                  <span>→</span>
+                </a>
               </div>
             </div>
 
