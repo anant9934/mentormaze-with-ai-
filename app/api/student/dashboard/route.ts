@@ -170,21 +170,30 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: session.id,
-        email: session.email,
-        displayName: session.displayName,
-        role: session.role,
-        avatarUrl: session.avatarUrl,
-        timezone: session.timezone,
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: session.id,
+          email: session.email,
+          displayName: session.displayName,
+          role: session.role,
+          avatarUrl: session.avatarUrl,
+          timezone: session.timezone,
+        },
+        profile,
+        goals,
+        upcomingBooking,
+        topMatches,
       },
-      profile,
-      goals,
-      upcomingBooking,
-      topMatches,
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error: any) {
     console.error("[API /api/student/dashboard GET] Error:", error);
     return NextResponse.json(
