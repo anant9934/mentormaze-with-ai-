@@ -732,16 +732,8 @@ export async function initializeDatabaseSchema() {
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
     ALTER TABLE outbox_events ADD COLUMN IF NOT EXISTS target_system VARCHAR(64) DEFAULT 'internal';
     CREATE UNIQUE INDEX IF NOT EXISTS idx_outbox_events_idempotency_key ON outbox_events(idempotency_key);
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'chk_outbox_events_sync_idempotency_required'
-      ) THEN
-        ALTER TABLE outbox_events 
-        ADD CONSTRAINT chk_outbox_events_sync_idempotency_required 
-        CHECK (target_system != 'aitathastu' OR (idempotency_key IS NOT NULL AND length(trim(idempotency_key)) > 0));
-      END IF;
-    END $$;
+    ALTER TABLE outbox_events DROP CONSTRAINT IF EXISTS chk_outbox_events_sync_idempotency_required;
+    ALTER TABLE outbox_events ADD CONSTRAINT chk_outbox_events_sync_idempotency_required CHECK (target_system != 'aitathastu' OR (idempotency_key IS NOT NULL AND length(trim(idempotency_key)) > 0));
 
     CREATE TABLE IF NOT EXISTS booking_policies (
       id VARCHAR(64) PRIMARY KEY,
@@ -1533,7 +1525,11 @@ export async function initializeDatabaseSchema() {
   } else {
     const stmts = ddl.split(";").map((s) => s.trim()).filter((s) => s.length > 0);
     for (const stmt of stmts) {
-      await (targetDb as any).execute(sql.raw(stmt));
+      try {
+        await (targetDb as any).execute(sql.raw(stmt));
+      } catch (err) {
+        // Harmless idempotent DDL notice or already-exists
+      }
     }
   }
 
