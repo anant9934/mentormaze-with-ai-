@@ -17,3 +17,4 @@ export * from "./mentorship-bridge-adapter";
 export * from "./feature-gate";
 export * from "./auth-guard";
 export * from "./livekit-audio-pipeline";
+export * from "./uuid-helper";

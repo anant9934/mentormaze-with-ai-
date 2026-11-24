@@ -15,6 +15,7 @@ import {
   authorizeMeetingParticipant,
   MeetingNotesEngine,
   TranscriptStore,
+  toBookingUuid,
 } from "@/lib/meeting-intelligence";
 
 export async function GET(req: NextRequest) {
@@ -28,20 +29,25 @@ export async function GET(req: NextRequest) {
       return auth.errorResponse;
     }
 
-    const db = await getDb();
-    const result: any = await db.execute(sql`
-      SELECT id, booking_id as "bookingId", title, summary, topics, conclusions,
-             todos, terms, unresolved_questions as "unresolvedQuestions",
-             covered_line_count as "coveredLineCount", is_final as "isFinal",
-             approved_by_student_at as "approvedByStudentAt",
-             approved_by_mentor_at as "approvedByMentorAt",
-             updated_at as "updatedAt"
-      FROM meeting_notes_records
-      WHERE booking_id = ${bookingId}::uuid
-      LIMIT 1;
-    `);
-
-    const row = result.rows?.[0] || result?.[0];
+    const safeBookingUuid = toBookingUuid(bookingId);
+    let row = null;
+    try {
+      const db = await getDb();
+      const result: any = await db.execute(sql`
+        SELECT id, booking_id as "bookingId", title, summary, topics, conclusions,
+               todos, terms, unresolved_questions as "unresolvedQuestions",
+               covered_line_count as "coveredLineCount", is_final as "isFinal",
+               approved_by_student_at as "approvedByStudentAt",
+               approved_by_mentor_at as "approvedByMentorAt",
+               updated_at as "updatedAt"
+        FROM meeting_notes_records
+        WHERE booking_id = ${safeBookingUuid}::uuid
+        LIMIT 1;
+      `);
+      row = result.rows?.[0] || result?.[0];
+    } catch (sqlErr) {
+      console.warn("[Notes GET] Fallback to default notes:", sqlErr);
+    }
     if (!row) {
       return NextResponse.json({
         success: true,

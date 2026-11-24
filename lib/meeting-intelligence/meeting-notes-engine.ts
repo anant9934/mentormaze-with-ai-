@@ -14,6 +14,7 @@
 import { MeetingNotes, NoteTopic, NoteItem, NoteTerm, TranscriptSegment, FishboneDiagram } from "./types";
 import { getDb } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { toBookingUuid } from "./uuid-helper";
 
 export class MeetingNotesEngine {
   private static readonly LIVE_MAX_TOPICS = 12;
@@ -169,6 +170,7 @@ Output MUST be valid JSON adhering to this structure:
    */
   public async persistNotes(bookingId: string, notes: MeetingNotes): Promise<void> {
     try {
+      const safeBookingUuid = toBookingUuid(bookingId);
       const db = await getDb();
       await db.execute(sql`
         INSERT INTO meeting_notes_records (
@@ -176,7 +178,7 @@ Output MUST be valid JSON adhering to this structure:
           unresolved_questions, covered_line_count, is_final, updated_at
         ) VALUES (
           gen_random_uuid(),
-          ${bookingId}::uuid,
+          ${safeBookingUuid}::uuid,
           ${notes.title || "Mentorship Session Notes"},
           ${notes.summary},
           ${JSON.stringify(notes.topics)}::jsonb,

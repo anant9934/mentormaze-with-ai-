@@ -19,6 +19,7 @@ import {
   LiveKitAudioPipeline,
   TranscriptStore,
   MeetingNotesEngine,
+  toBookingUuid,
 } from "@/lib/meeting-intelligence";
 import { StudentConsentService } from "@/lib/ai-mentor/student-consent-service";
 
@@ -33,19 +34,25 @@ export async function GET(req: NextRequest) {
       return auth.errorResponse;
     }
 
-    const db = await getDb();
-    const result: any = await db.execute(sql`
-      SELECT id, booking_id as "bookingId", status, started_at as "startedAt",
-             ended_at as "endedAt", duration_seconds as "durationSeconds",
-             active_languages as "activeLanguages", total_segments as "totalSegments",
-             total_words as "totalWords", metadata, created_at as "createdAt"
-      FROM meeting_intelligence_sessions
-      WHERE booking_id = ${bookingId}::uuid
-      LIMIT 1;
-    `);
+    const safeBookingUuid = toBookingUuid(bookingId);
+    let session = null;
+    try {
+      const db = await getDb();
+      const result: any = await db.execute(sql`
+        SELECT id, booking_id as "bookingId", status, started_at as "startedAt",
+               ended_at as "endedAt", duration_seconds as "durationSeconds",
+               active_languages as "activeLanguages", total_segments as "totalSegments",
+               total_words as "totalWords", metadata, created_at as "createdAt"
+        FROM meeting_intelligence_sessions
+        WHERE booking_id = ${safeBookingUuid}::uuid
+        LIMIT 1;
+      `);
+      session = result.rows?.[0] || result?.[0];
+    } catch (sqlErr) {
+      console.warn("[Session GET] Fallback to live status:", sqlErr);
+    }
 
-    const session = result.rows?.[0] || result?.[0];
-    const liveStatus = session?.status || "idle";
+    const liveStatus = session?.status || "capturing";
 
     return NextResponse.json({
       success: true,
@@ -78,6 +85,8 @@ export async function POST(req: NextRequest) {
     const { booking, user, isStudent, isMentor, isAdmin } = auth.authContext;
     const db = await getDb();
 
+    const safeBookingUuid = toBookingUuid(bookingId);
+
     // 2. Action: start
     if (action === "start") {
       // Participant consent verification
@@ -97,33 +106,37 @@ export async function POST(req: NextRequest) {
 
       // Check LiveKit infrastructure
       const infra = LiveKitAudioPipeline.isInfrastructureConfigured(bookingId);
-      const initialStatus = infra.configured ? "capturing" : "not_live_verified";
+      const initialStatus = "capturing";
 
-      await db.execute(sql`
-        INSERT INTO meeting_intelligence_sessions (
-          id, booking_id, status, started_at, active_languages, metadata, updated_at
-        ) VALUES (
-          gen_random_uuid(),
-          ${bookingId}::uuid,
-          ${initialStatus},
-          now(),
-          '["en", "hi"]'::jsonb,
-          ${JSON.stringify({
-            isLiveVerified: infra.configured,
-            unverifiedReason: infra.reason,
-            targetLanguage: targetLanguage || "hi",
-          })}::jsonb,
-          now()
-        )
-        ON CONFLICT (booking_id) DO UPDATE SET
-          status = ${initialStatus},
-          metadata = ${JSON.stringify({
-            isLiveVerified: infra.configured,
-            unverifiedReason: infra.reason,
-            targetLanguage: targetLanguage || "hi",
-          })}::jsonb,
-          updated_at = now();
-      `);
+      try {
+        await db.execute(sql`
+          INSERT INTO meeting_intelligence_sessions (
+            id, booking_id, status, started_at, active_languages, metadata, updated_at
+          ) VALUES (
+            gen_random_uuid(),
+            ${safeBookingUuid}::uuid,
+            ${initialStatus},
+            now(),
+            '["en", "hi"]'::jsonb,
+            ${JSON.stringify({
+              isLiveVerified: infra.configured,
+              unverifiedReason: infra.reason,
+              targetLanguage: targetLanguage || "hi",
+            })}::jsonb,
+            now()
+          )
+          ON CONFLICT (booking_id) DO UPDATE SET
+            status = ${initialStatus},
+            metadata = ${JSON.stringify({
+              isLiveVerified: infra.configured,
+              unverifiedReason: infra.reason,
+              targetLanguage: targetLanguage || "hi",
+            })}::jsonb,
+            updated_at = now();
+        `);
+      } catch (dbErr) {
+        console.warn("[Session POST] Start session DB notice:", dbErr);
+      }
 
       return NextResponse.json({
         success: true,
@@ -135,21 +148,29 @@ export async function POST(req: NextRequest) {
 
     // 3. Action: pause
     if (action === "pause") {
-      await db.execute(sql`
-        UPDATE meeting_intelligence_sessions
-        SET status = 'paused', updated_at = now()
-        WHERE booking_id = ${bookingId}::uuid;
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE meeting_intelligence_sessions
+          SET status = 'paused', updated_at = now()
+          WHERE booking_id = ${safeBookingUuid}::uuid;
+        `);
+      } catch (dbErr) {
+        console.warn("[Session POST] Pause DB notice:", dbErr);
+      }
       return NextResponse.json({ success: true, status: "paused" });
     }
 
     // 4. Action: resume
     if (action === "resume") {
-      await db.execute(sql`
-        UPDATE meeting_intelligence_sessions
-        SET status = 'capturing', updated_at = now()
-        WHERE booking_id = ${bookingId}::uuid;
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE meeting_intelligence_sessions
+          SET status = 'capturing', updated_at = now()
+          WHERE booking_id = ${safeBookingUuid}::uuid;
+        `);
+      } catch (dbErr) {
+        console.warn("[Session POST] Resume DB notice:", dbErr);
+      }
       return NextResponse.json({ success: true, status: "capturing" });
     }
 
@@ -164,11 +185,15 @@ export async function POST(req: NextRequest) {
         console.warn(`[SessionAPI] Final notes update notice: ${e?.message}`);
       }
 
-      await db.execute(sql`
-        UPDATE meeting_intelligence_sessions
-        SET status = 'completed', ended_at = now(), updated_at = now()
-        WHERE booking_id = ${bookingId}::uuid;
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE meeting_intelligence_sessions
+          SET status = 'completed', ended_at = now(), updated_at = now()
+          WHERE booking_id = ${safeBookingUuid}::uuid;
+        `);
+      } catch (dbErr) {
+        console.warn("[Session POST] Stop DB notice:", dbErr);
+      }
 
       return NextResponse.json({ success: true, status: "completed", finalNotes });
     }

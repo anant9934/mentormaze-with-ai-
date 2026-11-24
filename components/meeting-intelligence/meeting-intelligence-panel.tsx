@@ -72,6 +72,10 @@ export function MeetingIntelligencePanel({
           return;
         }
 
+        if ((transRes.ok || sessRes.ok) && isMounted) {
+          setIsFeatureDisabled(false);
+        }
+
         if (transRes.ok && isMounted) {
           const tData = await transRes.json();
           if (tData.segments) {

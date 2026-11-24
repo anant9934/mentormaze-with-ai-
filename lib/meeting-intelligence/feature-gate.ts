@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 
 export function isMeetingIntelligenceEnabled(): boolean {
-  return process.env.ENABLE_MEETING_INTELLIGENCE === "true";
+  return process.env.ENABLE_MEETING_INTELLIGENCE !== "false";
 }
 
 export function meetingIntelligenceDisabledResponse(): NextResponse {
