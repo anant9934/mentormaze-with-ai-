@@ -882,7 +882,8 @@ export default function LiveSessionRoomPage() {
         const res = await fetch(
           `/api/livekit/token?bookingId=${bookingId}&role=${currentRole}&userId=${currentUserId}&userName=${encodeURIComponent(
             currentName
-          )}`
+          )}`,
+          { credentials: "same-origin" }
         );
         const data = await res.json();
         if (!data.success || !data.token || !data.wsUrl) {
@@ -1375,10 +1376,12 @@ export default function LiveSessionRoomPage() {
     }
 
     loadChatHistory();
+    const chatPollInterval = setInterval(loadChatHistory, 1500);
 
     return () => {
       isCleanedUp = true;
       clearInterval(signalingInterval);
+      clearInterval(chatPollInterval);
       if (eventSource) {
         eventSource.close();
       }
@@ -1634,6 +1637,16 @@ export default function LiveSessionRoomPage() {
       }
       if (localStreamRef.current) {
         setLocalStream(localStreamRef.current);
+        if (peerConnectionRef.current) {
+          const vTrack = localStreamRef.current.getVideoTracks()[0];
+          const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
+          if (sender && vTrack) sender.replaceTrack(vTrack);
+        }
+      }
+      if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
+        try {
+          await livekitRoomRef.current.localParticipant.setScreenShareEnabled(false);
+        } catch {}
       }
       setIsScreenSharing(false);
     } else {
@@ -1642,15 +1655,42 @@ export default function LiveSessionRoomPage() {
           alert("Screen sharing is not supported by this browser.");
           return;
         }
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
         screenStreamRef.current = screenStream;
         setLocalStream(screenStream);
         setIsScreenSharing(true);
 
-        screenStream.getVideoTracks()[0].onended = () => {
+        const screenTrack = screenStream.getVideoTracks()[0];
+
+        // Replace track on WebRTC P2P peer connection
+        if (peerConnectionRef.current && screenTrack) {
+          const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
+          if (sender) sender.replaceTrack(screenTrack);
+        }
+
+        // Enable screen share on LiveKit SFU
+        if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
+          try {
+            await livekitRoomRef.current.localParticipant.setScreenShareEnabled(true);
+          } catch (lkScreenErr) {
+            console.warn("LiveKit screen share publish:", lkScreenErr);
+          }
+        }
+
+        screenTrack.onended = async () => {
           setIsScreenSharing(false);
           if (localStreamRef.current) {
             setLocalStream(localStreamRef.current);
+            if (peerConnectionRef.current) {
+              const vTrack = localStreamRef.current.getVideoTracks()[0];
+              const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === "video");
+              if (sender && vTrack) sender.replaceTrack(vTrack);
+            }
+          }
+          if (livekitRoomRef.current && livekitRoomRef.current.state === "connected") {
+            try {
+              await livekitRoomRef.current.localParticipant.setScreenShareEnabled(false);
+            } catch {}
           }
         };
       } catch (err) {
@@ -2258,17 +2298,39 @@ export default function LiveSessionRoomPage() {
                       <p className="text-[11px] text-[#C2D6BA] leading-relaxed mb-3">
                         Your camera and microphone are live. To test 2-way video and instant chat, copy the link below and open it in an Incognito tab:
                       </p>
-                      <button
-                        onClick={() => copyMeetingLink(true)}
-                        className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg transition-all"
-                      >
-                        {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>
-                          {copiedLink
-                            ? `Copied ${copiedType.toUpperCase()} Link to Clipboard!`
-                            : `Copy ${isMentor ? "Student" : "Mentor"} Link to Test in Tab 2 (Incognito)`}
-                        </span>
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => {
+                            const origin = typeof window !== "undefined" ? window.location.origin : "";
+                            const peerRole = isMentor ? "student" : "mentor";
+                            window.open(`${origin}/sessions/${bookingId}/live?role=${peerRole}&engine=${engineMode}`, "_blank");
+                          }}
+                          className="w-full py-2.5 px-3 rounded-xl bg-forest-600 hover:bg-forest-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition-all border border-emerald-400/40"
+                        >
+                          <span>⚡ 1-Click: Open {isMentor ? "Student (Anant)" : "Mentor (Priya)"} in New Tab</span>
+                          <span>↗</span>
+                        </button>
+
+                        <button
+                          onClick={() => setActiveRoleOverride("ai_mentor")}
+                          className="w-full py-2 px-3 rounded-xl bg-[#0B2117] hover:bg-[#123625] text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 border border-emerald-700/50 transition-all"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Switch to 24/7 AI Mentor (ASTRION)</span>
+                        </button>
+
+                        <button
+                          onClick={() => copyMeetingLink(true)}
+                          className="w-full py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 text-[11px] font-medium flex items-center justify-center gap-2 border border-white/10 transition-all"
+                        >
+                          {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>
+                            {copiedLink
+                              ? `Copied ${copiedType.toUpperCase()} Link!`
+                              : `Copy ${isMentor ? "Student" : "Mentor"} Link to Clipboard`}
+                          </span>
+                        </button>
+                      </div>
 
                       {/* Smart Role-Switcher helper for 2-tab local testing */}
                       <div className="mt-3 p-2.5 rounded-xl bg-[#091510]/80 border border-emerald-900/40 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">

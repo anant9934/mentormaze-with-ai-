@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const roleParam = searchParams.get("role");
 
   // Validate server session if available
-  const session = await getServerSession();
+  const session = await getServerSession(req);
   if (session?.id) {
     userId = session.id;
     userName = session.displayName;
