@@ -34,6 +34,7 @@ export default function LoginPage() {
     learning: true,
   });
   const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
 
   const toggleScope = (scope: string) => {
     setSelectedScopes((prev) => ({ ...prev, [scope]: !prev[scope] }));
@@ -47,25 +48,27 @@ export default function LoginPage() {
 
   const handleAITathastuLogin = async () => {
     setLoginError(null);
-    const success = await login("anant@example.com", "password123", "student", turnstileToken || undefined);
-    if (success) {
+    const result = await login("anant@example.com", "password123", "student", turnstileToken || undefined);
+    if (result.success) {
       switchRole("student");
       router.push("/dashboard");
     } else {
-      setLoginError("Sign in failed. Please verify credentials or security challenge.");
+      setLoginError(result.error || "Sign in failed. Please verify credentials or security challenge.");
     }
   };
 
   const handleOtherLogin = async (role: "student" | "mentor" | "admin" = "student") => {
     setLoginError(null);
-    const success = await login(emailInput || "user@example.com", "password123", role, turnstileToken || undefined);
-    if (success) {
+    const email = emailInput.trim() || (role === "student" ? "anant@example.com" : role === "mentor" ? "priya.sharma@microsoft.com" : "admin@mentormaze.com");
+    const password = passwordInput || "password123";
+    const result = await login(email, password, role, turnstileToken || undefined);
+    if (result.success) {
       switchRole(role);
       if (role === "admin") router.push("/admin");
       else if (role === "mentor") router.push("/mentor/dashboard");
       else router.push("/dashboard");
     } else {
-      setLoginError("Sign in failed. Please verify credentials or security challenge.");
+      setLoginError(result.error || "Sign in failed. Please verify credentials or security challenge.");
     }
   };
 
@@ -315,8 +318,23 @@ export default function LoginPage() {
                       type="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder="anant@example.com"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-ink-700 mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="•••••••• (default: password123)"
+                      className="w-full px-4 py-2.5 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
                     />
                   </div>
                 </div>

@@ -1,5 +1,7 @@
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
 import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 import path from "path";
@@ -49,12 +51,17 @@ export function getDb() {
 
   if (isRemotePostgres) {
     try {
-      const client = postgres(connectionString!, {
-        prepare: false,
-        max: 5,
-        connect_timeout: 10,
-      });
-      dbInstance = drizzlePg(client, { schema });
+      if (connectionString!.includes("neon.tech")) {
+        const client = neon(connectionString!);
+        dbInstance = drizzleNeon(client, { schema });
+      } else {
+        const client = postgres(connectionString!, {
+          prepare: false,
+          max: 5,
+          connect_timeout: 10,
+        });
+        dbInstance = drizzlePg(client, { schema });
+      }
       try {
         const u = new URL(connectionString!);
         activeTargetInfo = {

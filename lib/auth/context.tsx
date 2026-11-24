@@ -12,7 +12,7 @@ interface AuthContextType {
     password?: string,
     role?: "student" | "mentor" | "admin",
     turnstileToken?: string
-  ) => Promise<boolean>;
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
   refreshSession: () => Promise<void>;
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password?: string,
     preferredRole: "student" | "mentor" | "admin" = "student",
     turnstileToken?: string
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
@@ -156,11 +156,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem("mm_active_role", authUser.role);
           }
           setIsLoading(false);
-          return true;
+          return { success: true };
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.error || res.statusText || "Sign in failed";
+        console.error("[Auth] Login request failed:", errMsg);
+        setIsLoading(false);
+        return { success: false, error: errMsg };
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Auth] Login request failed:", err);
+      setIsLoading(false);
+      return { success: false, error: err?.message || "Network error. Please try again." };
     }
 
     // Dev fallback if backend unreachable
@@ -172,11 +180,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("mm_active_role", preferredRole);
       }
       setIsLoading(false);
-      return true;
+      return { success: true };
     }
 
     setIsLoading(false);
-    return false;
+    return { success: false, error: "Authentication failed. Please verify credentials." };
   };
 
   /**

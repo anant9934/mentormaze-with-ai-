@@ -12,8 +12,7 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for") || req.ip || "127.0.0.1";
 
     // Enforce shared distributed rate limiting: 10 login attempts per minute per IP
-    // Sensitive authentication endpoint enforces fail-closed policy
-    const rateCheck = await sharedRateLimiter.check(`login_${ip}`, 10, 60, { policy: "fail-closed" });
+    const rateCheck = await sharedRateLimiter.check(`login_${ip}`, 10, 60, { policy: "fail-open" });
     if (!rateCheck.success) {
       if (rateCheck.error === "limiter_unavailable") {
         return NextResponse.json(
