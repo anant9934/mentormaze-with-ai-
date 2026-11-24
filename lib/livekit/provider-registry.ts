@@ -40,7 +40,7 @@ class LiveKitProviderRegistry {
     const discoveredProviders: LiveKitProvider[] = [];
 
     // 1. Primary Provider Configuration (Default: 80% weight)
-    const primaryId = process.env.LIVEKIT_PRIMARY_PROVIDER_ID || "meet-2uq83g48";
+    const primaryId = process.env.LIVEKIT_PRIMARY_PROVIDER_ID || "meet-q81ufsro";
     const primaryUrl = process.env.LIVEKIT_PRIMARY_URL || process.env.LIVEKIT_URL;
     const primaryKey = process.env.LIVEKIT_PRIMARY_API_KEY || process.env.LIVEKIT_API_KEY;
     const primarySecret = process.env.LIVEKIT_PRIMARY_API_SECRET || process.env.LIVEKIT_API_SECRET;

@@ -6,25 +6,32 @@ import { LiveKitTokenService } from "../lib/livekit/token-service";
 import { store } from "../lib/data/store";
 
 describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
+  let primaryId: string;
+  let secondaryId: string;
+
   beforeEach(() => {
     // Reset registry to clean state before each test
     livekitRegistry.initializeFromEnv();
+    const providers = livekitRegistry.getAllProviders();
+    primaryId = providers[0]?.providerId || "meet-q81ufsro";
+    secondaryId = providers[1]?.providerId || "meet-dkw974m2";
+
     // Ensure primary and secondary weights are explicitly 80 and 20
-    livekitRegistry.updateProviderWeight("meet-2uq83g48", 80);
-    livekitRegistry.updateProviderWeight("meet-q81ufsro", 20);
+    livekitRegistry.updateProviderWeight(primaryId, 80);
+    livekitRegistry.updateProviderWeight(secondaryId, 20);
     // Ensure both are closed and healthy
-    livekitRegistry.resetCircuitBreaker("meet-2uq83g48");
-    livekitRegistry.resetCircuitBreaker("meet-q81ufsro");
-    livekitRegistry.toggleProvider("meet-2uq83g48", true);
-    livekitRegistry.toggleProvider("meet-q81ufsro", true);
+    livekitRegistry.resetCircuitBreaker(primaryId);
+    livekitRegistry.resetCircuitBreaker(secondaryId);
+    livekitRegistry.toggleProvider(primaryId, true);
+    livekitRegistry.toggleProvider(secondaryId, true);
   });
 
   // 1. 80/20 Weighted Allocation Over Large Simulated Sample
   it("approaches the 80/20 ratio over 1,000 simulated new sessions", () => {
     const totalSimulations = 1000;
     const counts: { [id: string]: number } = {
-      "meet-2uq83g48": 0,
-      "meet-q81ufsro": 0,
+      [primaryId]: 0,
+      [secondaryId]: 0,
     };
 
     for (let i = 0; i < totalSimulations; i++) {
@@ -34,27 +41,27 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
       }
     }
 
-    const primaryPercent = (counts["meet-2uq83g48"] / totalSimulations) * 100;
-    const secondaryPercent = (counts["meet-q81ufsro"] / totalSimulations) * 100;
+    const primaryPercent = (counts[primaryId] / totalSimulations) * 100;
+    const secondaryPercent = (counts[secondaryId] / totalSimulations) * 100;
 
     // Over 1000 samples, the 80/20 distribution should fall comfortably within 74% - 86%
     expect(primaryPercent).toBeGreaterThanOrEqual(74);
     expect(primaryPercent).toBeLessThanOrEqual(86);
     expect(secondaryPercent).toBeGreaterThanOrEqual(14);
     expect(secondaryPercent).toBeLessThanOrEqual(26);
-    expect(counts["meet-2uq83g48"] + counts["meet-q81ufsro"]).toBe(totalSimulations);
+    expect(counts[primaryId] + counts[secondaryId]).toBe(totalSimulations);
     expect(primaryPercent + secondaryPercent).toBeCloseTo(100);
   });
 
   // 2. Primary Failure: Automatic Traffic Redistribution
   it("diverts 100% of new traffic to secondary when primary provider fails and trips circuit breaker", () => {
-    const primary = livekitRegistry.getProvider("meet-2uq83g48")!;
+    const primary = livekitRegistry.getProvider(primaryId)!;
     expect(primary).toBeDefined();
 
     // Simulate 3 consecutive failures to trip circuit breaker
-    livekitRegistry.recordError("meet-2uq83g48", "Connection timeout");
-    livekitRegistry.recordError("meet-2uq83g48", "502 Bad Gateway");
-    livekitRegistry.recordError("meet-2uq83g48", "Socket hang up");
+    livekitRegistry.recordError(primaryId, "Connection timeout");
+    livekitRegistry.recordError(primaryId, "502 Bad Gateway");
+    livekitRegistry.recordError(primaryId, "Socket hang up");
 
     expect(primary.circuitBreaker.state).toBe("open");
     expect(primary.healthStatus).toBe("unhealthy");
@@ -62,23 +69,24 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
     // All subsequent new session selections must route to the secondary cluster
     for (let i = 0; i < 50; i++) {
       const selected = LiveKitRouter.selectProviderForNewSession();
-      expect(selected.providerId).toBe("meet-q81ufsro");
+      expect(selected.providerId).toBe(secondaryId);
     }
   });
 
   // 3. Secondary Failure: Shift Traffic to Primary
   it("diverts 100% of new traffic to primary when secondary provider fails", () => {
     // Trip secondary
-    livekitRegistry.recordError("meet-q81ufsro", "Down for maintenance");
-    livekitRegistry.recordError("meet-q81ufsro", "503 Service Unavailable");
-    livekitRegistry.recordError("meet-q81ufsro", "503 Service Unavailable");
+    livekitRegistry.recordError(secondaryId, "Down for maintenance");
+    livekitRegistry.recordError(secondaryId, "503 Service Unavailable");
+    livekitRegistry.recordError(secondaryId, "503 Service Unavailable");
 
-    const secondary = livekitRegistry.getProvider("meet-q81ufsro")!;
+    const secondary = livekitRegistry.getProvider(secondaryId)!;
+    expect(secondary).toBeDefined();
     expect(secondary.circuitBreaker.state).toBe("open");
 
     for (let i = 0; i < 50; i++) {
       const selected = LiveKitRouter.selectProviderForNewSession();
-      expect(selected.providerId).toBe("meet-2uq83g48");
+      expect(selected.providerId).toBe(primaryId);
     }
   });
 
@@ -98,15 +106,15 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
   // 5. Provider Recovery: Half-Open Trial and Circuit Breaker Reset
   it("successfully detects recovery and restores traffic distribution when circuit breaker closes", async () => {
     // Trip primary
-    livekitRegistry.recordError("meet-2uq83g48", "Error 1");
-    livekitRegistry.recordError("meet-2uq83g48", "Error 2");
-    livekitRegistry.recordError("meet-2uq83g48", "Error 3");
+    livekitRegistry.recordError(primaryId, "Error 1");
+    livekitRegistry.recordError(primaryId, "Error 2");
+    livekitRegistry.recordError(primaryId, "Error 3");
 
-    const primary = livekitRegistry.getProvider("meet-2uq83g48")!;
+    const primary = livekitRegistry.getProvider(primaryId)!;
     expect(primary.circuitBreaker.state).toBe("open");
 
     // Simulate recovery check
-    livekitRegistry.recordSuccess("meet-2uq83g48", 18);
+    livekitRegistry.recordSuccess(primaryId, 18);
     expect(primary.circuitBreaker.state).toBe("closed");
     expect(primary.healthStatus).toBe("healthy");
 
@@ -193,7 +201,7 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
 
   // 9. Quota Threshold Transitions: 100% Stops New Allocations
   it("stops allocating new sessions to a provider when its quota reaches 100%", () => {
-    const primary = livekitRegistry.getProvider("meet-2uq83g48")!;
+    const primary = livekitRegistry.getProvider(primaryId)!;
     // Set remaining quota to 0
     primary.usageMetrics.remainingQuotaMinutes = 0;
 
@@ -203,7 +211,7 @@ describe("MentorMaze Multi-Provider LiveKit Routing System", () => {
     // All new traffic goes to secondary
     for (let i = 0; i < 20; i++) {
       const selected = LiveKitRouter.selectProviderForNewSession();
-      expect(selected.providerId).not.toBe("meet-2uq83g48");
+      expect(selected.providerId).not.toBe(primaryId);
     }
   });
 
