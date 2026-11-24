@@ -8,15 +8,17 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20.17.0"
       - key: ENABLE_MEETING_INTELLIGENCE
-        value: "false"
+        value: "true"
       - key: SERVICE_ROLE
         value: backend
       - key: NEXT_PUBLIC_APP_NAME
