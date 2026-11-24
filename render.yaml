@@ -48,11 +48,11 @@ services:
       - key: VERCEL_TOKEN
         sync: false
       - key: LIVEKIT_PRIMARY_PROVIDER_ID
-        value: meet-2uq83g48
+        value: meet-q81ufsro
       - key: LIVEKIT_PRIMARY_URL
-        value: wss://meet-2uq83g48.livekit.cloud
+        value: wss://meet-q81ufsro.livekit.cloud
       - key: LIVEKIT_PRIMARY_API_KEY
-        value: APIjJRP4kUctuJB
+        value: APIUDsvVePTLiJi
       - key: LIVEKIT_PRIMARY_API_SECRET
         sync: false
       - key: CLOUDFLARE_TURNSTILE_SITE_KEY
