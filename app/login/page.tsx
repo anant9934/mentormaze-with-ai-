@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { Logo } from "@/components/shared/logo";
+import { TurnstileWidget } from "@/components/security/turnstile-widget";
 import {
   GraduationCap,
   Code2,
@@ -23,6 +24,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, switchRole } = useAuth();
   const [authMode, setAuthMode] = useState<"aitathastu" | "other">("aitathastu");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [selectedScopes, setSelectedScopes] = useState<Record<string, boolean>>({
     academic: true,
     skills: true,
@@ -36,19 +39,34 @@ export default function LoginPage() {
     setSelectedScopes((prev) => ({ ...prev, [scope]: !prev[scope] }));
   };
 
+  const handleTabSwitch = (mode: "aitathastu" | "other") => {
+    setAuthMode(mode);
+    setTurnstileToken(null);
+    setLoginError(null);
+  };
+
   const handleAITathastuLogin = async () => {
-    // Authenticate with AI Tathastu context
-    await login("anant@example.com", "password123", "student");
-    switchRole("student");
-    router.push("/dashboard");
+    setLoginError(null);
+    const success = await login("anant@example.com", "password123", "student", turnstileToken || undefined);
+    if (success) {
+      switchRole("student");
+      router.push("/dashboard");
+    } else {
+      setLoginError("Sign in failed. Please verify credentials or security challenge.");
+    }
   };
 
   const handleOtherLogin = async (role: "student" | "mentor" | "admin" = "student") => {
-    await login(emailInput || "user@example.com", "password123", role);
-    switchRole(role);
-    if (role === "admin") router.push("/admin");
-    else if (role === "mentor") router.push("/mentor/dashboard");
-    else router.push("/dashboard");
+    setLoginError(null);
+    const success = await login(emailInput || "user@example.com", "password123", role, turnstileToken || undefined);
+    if (success) {
+      switchRole(role);
+      if (role === "admin") router.push("/admin");
+      else if (role === "mentor") router.push("/mentor/dashboard");
+      else router.push("/dashboard");
+    } else {
+      setLoginError("Sign in failed. Please verify credentials or security challenge.");
+    }
   };
 
   return (
@@ -178,9 +196,9 @@ export default function LoginPage() {
             </div>
 
             {/* Login Mode Tabs */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-cream-100 rounded-xl mb-6">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-cream-100 rounded-xl mb-4">
               <button
-                onClick={() => setAuthMode("aitathastu")}
+                onClick={() => handleTabSwitch("aitathastu")}
                 className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
                   authMode === "aitathastu"
                     ? "bg-white text-forest-900 shadow-sm"
@@ -192,7 +210,7 @@ export default function LoginPage() {
                 <span className="text-[9px] bg-sage-200 text-forest-900 px-1.5 py-0.2 rounded-full">Rec</span>
               </button>
               <button
-                onClick={() => setAuthMode("other")}
+                onClick={() => handleTabSwitch("other")}
                 className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
                   authMode === "other"
                     ? "bg-white text-forest-900 shadow-sm"
@@ -203,9 +221,16 @@ export default function LoginPage() {
               </button>
             </div>
 
+            {/* Error Banner */}
+            {loginError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 text-center font-medium">
+                {loginError}
+              </div>
+            )}
+
             {/* TAB 1: AI TATHASTU CONTEXT LOGIN */}
             {authMode === "aitathastu" ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="p-4 rounded-2xl bg-sage-50 border border-sage-200">
                   <div className="flex items-center gap-2 font-bold text-xs text-forest-900 mb-1">
                     <ShieldCheck className="w-4 h-4 text-forest-700" />
@@ -258,6 +283,17 @@ export default function LoginPage() {
                   </div>
                 </div>
 
+                {/* Cloudflare Turnstile Challenge Widget */}
+                <div className="flex flex-col items-center justify-center my-2 w-full">
+                  <TurnstileWidget
+                    key="turnstile-aitathastu"
+                    theme="light"
+                    size="normal"
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
+                  />
+                </div>
+
                 <button
                   onClick={handleAITathastuLogin}
                   className="btn-primary w-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:bg-forest-800"
@@ -283,6 +319,17 @@ export default function LoginPage() {
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border text-sm text-ink-950 focus:outline-none focus:ring-2 focus:ring-forest-700"
                     />
                   </div>
+                </div>
+
+                {/* Cloudflare Turnstile Challenge Widget */}
+                <div className="flex flex-col items-center justify-center my-2 w-full">
+                  <TurnstileWidget
+                    key="turnstile-other"
+                    theme="light"
+                    size="normal"
+                    onVerify={(token) => setTurnstileToken(token)}
+                    onExpire={() => setTurnstileToken(null)}
+                  />
                 </div>
 
                 <button

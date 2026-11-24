@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { rateLimiter } from "@/lib/security/rate-limiter";
 import { sharedRateLimiter } from "@/lib/security/shared-rate-limiter";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { verifyTurnstileToken } from "@/lib/security/turnstile-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +28,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { email, password, role } = body;
+    const { email, password, role, turnstileToken } = body;
+
+    // Validate Cloudflare Turnstile challenge token if provided
+    if (turnstileToken) {
+      const turnstileCheck = await verifyTurnstileToken(turnstileToken, ip);
+      if (!turnstileCheck.success) {
+        return NextResponse.json(
+          { error: "Security check failed. Please complete the verification challenge." },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });

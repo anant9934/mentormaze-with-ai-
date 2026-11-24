@@ -7,7 +7,12 @@ interface AuthContextType {
   user: SessionUser | null;
   role: "student" | "mentor" | "admin";
   switchRole: (role: "student" | "mentor" | "admin") => void;
-  login: (email: string, password?: string, role?: "student" | "mentor" | "admin") => Promise<boolean>;
+  login: (
+    email: string,
+    password?: string,
+    role?: "student" | "mentor" | "admin",
+    turnstileToken?: string
+  ) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
   refreshSession: () => Promise<void>;
@@ -118,14 +123,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (
     email: string,
     password?: string,
-    preferredRole: "student" | "mentor" | "admin" = "student"
+    preferredRole: "student" | "mentor" | "admin" = "student",
+    turnstileToken?: string
   ): Promise<boolean> => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: password || "password123", role: preferredRole }),
+        body: JSON.stringify({
+          email,
+          password: password || "password123",
+          role: preferredRole,
+          turnstileToken: turnstileToken || undefined,
+        }),
       });
 
       if (res.ok) {
