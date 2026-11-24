@@ -338,7 +338,7 @@ export class ModelProviderRouter {
       },
       gemini: {
         provider: "gemini",
-        modelName: "gemini-2.5-flash",
+        modelName: "gemini-3.5-flash",
         isAvailable: !!geminiKey,
         isConfigured: !!geminiKey,
         maskedKeyPreview: this.maskKey(geminiKey),
@@ -737,8 +737,8 @@ export class ModelProviderRouter {
     ].filter(Boolean) as string[];
 
     const candidateModels = payload.taskCategory === "coding"
-      ? ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash", "gemini-2.5-pro"]
-      : ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"];
+      ? ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash", "gemini-2.5-pro"]
+      : ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"];
 
     let lastError: Error | null = null;
     for (const apiKey of geminiKeys) {
