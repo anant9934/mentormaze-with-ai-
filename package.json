@@ -23,7 +23,12 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.16",
     "@neondatabase/serverless": "^0.10.4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.17.6",
     "@types/nodemailer": "^8.0.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.36.4",
@@ -33,25 +38,20 @@
     "lucide-react": "^0.460.0",
     "next": "^14.2.18",
     "nodemailer": "^10.5.0",
+    "postcss": "^8.4.49",
     "postgres": "^3.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.5",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20.17.6",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.28.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
-    "postcss": "^8.4.49",
     "puppeteer-core": "^25.18.1",
-    "tailwindcss": "^3.4.15",
-    "typescript": "^5.6.3",
     "vitest": "^2.1.5"
   }
 }
