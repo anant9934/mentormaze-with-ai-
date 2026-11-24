@@ -57,16 +57,20 @@ export default function LoginPage() {
     }
   };
 
-  const handleOtherLogin = async (roleOverride?: "student" | "mentor" | "admin") => {
+  const handleOtherLogin = async (
+    roleOverride?: "student" | "mentor" | "admin",
+    emailOverride?: string,
+    passOverride?: string
+  ) => {
     setLoginError(null);
-    let targetEmail = emailInput.trim();
+    let targetEmail = (emailOverride || emailInput).trim();
     if (!targetEmail) {
       if (roleOverride === "mentor") targetEmail = "priya.sharma@microsoft.com";
       else if (roleOverride === "admin") targetEmail = "admin@mentormaze.com";
       else targetEmail = "anant@example.com";
     }
 
-    const password = passwordInput || "password123";
+    const password = passOverride || passwordInput || "password123";
 
     // Auto-detect role from override or email address
     let desiredRole: "student" | "mentor" | "admin" = roleOverride || "student";
@@ -429,7 +433,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setEmailInput("anant@example.com");
                     setPasswordInput("password123");
-                    handleOtherLogin("student");
+                    handleOtherLogin("student", "anant@example.com", "password123");
                   }}
                   className="px-2.5 py-1 rounded bg-cream-100 hover:bg-cream-200 text-ink-950 text-[11px] font-semibold border border-border"
                 >
@@ -439,7 +443,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setEmailInput("priya.sharma@microsoft.com");
                     setPasswordInput("password123");
-                    handleOtherLogin("mentor");
+                    handleOtherLogin("mentor", "priya.sharma@microsoft.com", "password123");
                   }}
                   className="px-2.5 py-1 rounded bg-forest-50 hover:bg-forest-100 text-forest-950 text-[11px] font-bold border border-forest-300"
                 >
@@ -449,7 +453,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setEmailInput("admin@mentormaze.com");
                     setPasswordInput("password123");
-                    handleOtherLogin("admin");
+                    handleOtherLogin("admin", "admin@mentormaze.com", "password123");
                   }}
                   className="px-2.5 py-1 rounded bg-cream-100 hover:bg-cream-200 text-ink-950 text-[11px] font-semibold border border-border"
                 >

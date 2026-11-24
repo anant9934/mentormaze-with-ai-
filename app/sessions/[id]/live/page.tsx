@@ -1808,119 +1808,17 @@ export default function LiveSessionRoomPage() {
           </div>
         </div>
 
-        {/* Center: Engine Switcher & Role Switcher */}
-        <div className="flex items-center gap-2.5">
-          {/* Dual Engine Switcher: LiveKit Cloud vs Free P2P */}
-          <div className="flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
-            <button
-              onClick={() => setEngineMode("p2p")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                engineMode === "p2p"
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "text-[#A3B899] hover:text-white"
-              }`}
-              title="Run on 100% Free Peer-to-Peer Native WebRTC (< 0.5ms DataChannel)"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Free P2P</span>
-            </button>
-            <button
-              onClick={() => setEngineMode("livekit")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                engineMode === "livekit"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-[#A3B899] hover:text-white"
-              }`}
-              title="Run on LiveKit Cloud Enterprise SFU Cluster"
-            >
-              <Globe className="w-3.5 h-3.5 text-blue-200" />
-              <span>LiveKit Cloud</span>
-            </button>
-          </div>
-
-          {/* One-Click Role Switcher */}
-          <div className="flex items-center bg-[#122B21] border border-[#1E4334] p-1 rounded-xl shadow-inner">
-            <button
-              onClick={() => setActiveRoleOverride("student")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                !isMentor && !isAI
-                  ? "bg-emerald-700/80 text-white shadow-sm"
-                  : "text-[#A3B899] hover:text-white"
-              }`}
-              title="Switch this tab to Student View (Anant Kumar)"
-            >
-              <span>🎓</span>
-              <span className="hidden md:inline">Student</span>
-            </button>
-            <button
-              onClick={() => setActiveRoleOverride("mentor")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isMentor
-                  ? "bg-emerald-700/80 text-white shadow-sm"
-                  : "text-[#A3B899] hover:text-white"
-              }`}
-              title="Switch this tab to Mentor View (Priya Sharma)"
-            >
-              <span>💼</span>
-              <span className="hidden md:inline">Mentor</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveRoleOverride("ai_mentor");
-                if (chatMessages.length === 0 || !chatMessages.some((m) => m.senderUserId === "ai-mentor")) {
-                  initAIMentor();
-                }
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isAIMentor
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-700/30"
-                  : "text-[#A3B899] hover:text-white hover:bg-emerald-950/40"
-              }`}
-              title="Switch to 24/7 AI Career & Architecture Mentor"
-            >
-              <span>🧠</span>
-              <span className="font-bold">AI Mentor</span>
-            </button>
-          </div>
-
-          {/* Session Timer & Progress */}
-          <div className="hidden xl:flex items-center gap-2 bg-[#122B21] border border-[#1E4334] px-3.5 py-1.5 rounded-full shadow-inner">
-            <Clock className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-xs font-mono font-bold text-white tracking-wider">
-              {formatTimer(secondsElapsed)}
-            </span>
-            <span className="text-[11px] text-[#A3B899]">/ 30:00</span>
-          </div>
+        {/* Center: Session Timer */}
+        <div className="flex items-center gap-2 bg-[#122B21] border border-[#1E4334] px-4 py-1.5 rounded-full shadow-inner">
+          <Clock className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-xs font-mono font-bold text-white tracking-wider">
+            {formatTimer(secondsElapsed)}
+          </span>
+          <span className="text-[11px] text-[#A3B899]">/ 30:00</span>
         </div>
 
-        {/* Right Tools: Latency Badge & Actions */}
+        {/* Right Tools: Actions */}
         <div className="flex items-center gap-2.5">
-          {/* Engine Status / Latency Chip */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono shadow-sm border ${
-              engineMode === "livekit"
-                ? "bg-blue-950/70 border-blue-700/60 text-blue-300"
-                : "bg-emerald-950/70 border-emerald-700/60 text-emerald-300"
-            }`}
-            title={
-              engineMode === "livekit"
-                ? `LiveKit Cloud Active: ${livekitProviderInfo || "Cluster Alpha"}`
-                : "Real-time measured WebRTC P2P DataChannel latency (< 0.5ms)"
-            }
-          >
-            {engineMode === "livekit" ? (
-              <>
-                <Radio className="w-3.5 h-3.5 text-blue-400 animate-pulse flex-shrink-0" />
-                <span className="font-bold text-white">LiveKit SFU</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse flex-shrink-0" />
-                <strong className="font-bold text-white">{liveLatency}ms</strong>
-                <span className="text-[10px] text-emerald-400/80 hidden sm:inline">P2P Free</span>
-              </>
-            )}
-          </div>
 
           {/* Copy Complementary Invite Link */}
           <button
@@ -1985,12 +1883,10 @@ export default function LiveSessionRoomPage() {
               />
               <span className="text-[#A3B899] text-[11px]">
                 {peerConnected
-                  ? engineMode === "livekit"
-                    ? "LiveKit SFU Stream Active"
-                    : "Peer Connected (P2P Active)"
+                  ? "Connected"
                   : livekitConnecting
-                  ? "Connecting LiveKit Cloud..."
-                  : "Room Open · Awaiting Peer"}
+                  ? "Connecting..."
+                  : "Awaiting Peer"}
               </span>
             </div>
           </div>
@@ -2280,72 +2176,22 @@ export default function LiveSessionRoomPage() {
                     <h3 className="text-xl font-bold text-white mb-1 tracking-tight">{remoteName}</h3>
                     <p className="text-xs text-emerald-400/90 font-medium mb-5">{remoteHeadline}</p>
 
-                    {/* Waiting helper card with Dual Engine Info */}
-                    <div className="bg-[#122B20]/90 border border-[#214F3A] rounded-2xl p-4 max-w-md shadow-xl backdrop-blur-md">
-                      <div className="flex items-center gap-2.5 text-xs text-emerald-300 font-semibold mb-2 justify-center">
-                        {engineMode === "livekit" ? (
-                          <>
-                            <Globe className="w-4 h-4 text-blue-400 animate-pulse" />
-                            <span>LiveKit Cloud SFU Ready</span>
-                          </>
-                        ) : (
-                          <>
-                            <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
-                            <span>Peer-to-Peer WebRTC Ready</span>
-                          </>
-                        )}
+                    {/* Waiting state card */}
+                    <div className="bg-[#122B20]/90 border border-[#214F3A] rounded-2xl p-5 max-w-sm shadow-xl backdrop-blur-md text-center">
+                      <div className="flex items-center justify-center gap-2 text-xs text-emerald-300 font-semibold mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>Waiting for participant to join...</span>
                       </div>
-                      <p className="text-[11px] text-[#C2D6BA] leading-relaxed mb-3">
-                        Your camera and microphone are live. To test 2-way video and instant chat, copy the link below and open it in an Incognito tab:
+                      <p className="text-xs text-[#C2D6BA] leading-relaxed mb-4">
+                        Your video and audio are live. When {remoteName} enters the room, their stream will appear here.
                       </p>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => {
-                            const origin = typeof window !== "undefined" ? window.location.origin : "";
-                            const peerRole = isMentor ? "student" : "mentor";
-                            window.open(`${origin}/sessions/${bookingId}/live?role=${peerRole}&engine=${engineMode}`, "_blank");
-                          }}
-                          className="w-full py-2.5 px-3 rounded-xl bg-forest-600 hover:bg-forest-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition-all border border-emerald-400/40"
-                        >
-                          <span>⚡ 1-Click: Open {isMentor ? "Student (Anant)" : "Mentor (Priya)"} in New Tab</span>
-                          <span>↗</span>
-                        </button>
-
-                        <button
-                          onClick={() => setActiveRoleOverride("ai_mentor")}
-                          className="w-full py-2 px-3 rounded-xl bg-[#0B2117] hover:bg-[#123625] text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 border border-emerald-700/50 transition-all"
-                        >
-                          <Bot className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Switch to 24/7 AI Mentor (ASTRION)</span>
-                        </button>
-
-                        <button
-                          onClick={() => copyMeetingLink(true)}
-                          className="w-full py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 text-[11px] font-medium flex items-center justify-center gap-2 border border-white/10 transition-all"
-                        >
-                          {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                          <span>
-                            {copiedLink
-                              ? `Copied ${copiedType.toUpperCase()} Link!`
-                              : `Copy ${isMentor ? "Student" : "Mentor"} Link to Clipboard`}
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* Smart Role-Switcher helper for 2-tab local testing */}
-                      <div className="mt-3 p-2.5 rounded-xl bg-[#091510]/80 border border-emerald-900/40 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">
-                        <span className="text-[#A3B899] text-left">
-                          {isMentor
-                            ? "Joined as Mentor (Priya Sharma). Waiting for Student."
-                            : "Testing in 2 tabs? One tab should be Student, one Mentor."}
-                        </span>
-                        <button
-                          onClick={() => setActiveRoleOverride(isMentor ? "student" : "mentor")}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-white font-semibold text-[10px] whitespace-nowrap transition-all shadow"
-                        >
-                          {isMentor ? "Switch to Student" : "Switch to Mentor"}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => copyMeetingLink(false)}
+                        className="w-full py-2 px-3 rounded-xl bg-forest-600 hover:bg-forest-500 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all border border-emerald-400/40"
+                      >
+                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Share2 className="w-3.5 h-3.5" />}
+                        <span>{copiedLink ? "Link Copied!" : "Copy Meeting Invite Link"}</span>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2557,7 +2403,7 @@ export default function LiveSessionRoomPage() {
                 </button>
               )}
 
-              {/* Tab 7: Meeting Intelligence (Cicada Powered) */}
+              {/* Tab 7: AI Copilot */}
               <button
                 onClick={() => setActiveTab("intelligence")}
                 className={`flex items-center gap-1.5 pb-3 px-2 text-xs font-semibold border-b-2 transition-all ${
@@ -2566,11 +2412,8 @@ export default function LiveSessionRoomPage() {
                     : "text-emerald-400/70 border-transparent hover:text-emerald-300"
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                <span>AI Intelligence</span>
-                <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                  Cicada
-                </span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>AI Copilot</span>
               </button>
             </div>
           </div>
@@ -2578,31 +2421,10 @@ export default function LiveSessionRoomPage() {
           {/* TAB CONTENT CONTAINER */}
           <div className="flex-1 overflow-hidden p-4 flex flex-col min-h-0 bg-[#0B1711]">
             {/* -------------------------------------------------------- */}
-            {/* TAB 1: REAL-TIME CHAT SYSTEM (< 5ms LATENCY)             */}
+            {/* TAB 1: REAL-TIME CHAT SYSTEM                             */}
             {/* -------------------------------------------------------- */}
             {activeTab === "chat" && (
               <div className="flex-1 flex flex-col min-h-0">
-                {/* Latency & Channel Status Banner */}
-                <div className="bg-[#12281E] border border-[#1E4334] rounded-xl px-3 py-2 mb-3 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full animate-pulse ${
-                        engineMode === "livekit" ? "bg-blue-400" : "bg-emerald-400"
-                      }`}
-                    />
-                    <span className="text-[#A3B899] text-[11px]">
-                      {engineMode === "livekit"
-                        ? "LiveKit SFU Data Channel"
-                        : dataChannelRef.current?.readyState === "open"
-                        ? "P2P WebRTC DataChannel (Direct)"
-                        : "High-Speed Realtime Loopback Bus"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 font-mono text-emerald-300 text-xs font-bold">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{liveLatency} ms</span>
-                  </div>
-                </div>
 
                 {/* Messages Feed */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[180px] scrollbar-thin scrollbar-thumb-emerald-800">
@@ -3077,21 +2899,6 @@ export default function LiveSessionRoomPage() {
                 />
               </div>
             )}
-          </div>
-
-          {/* Sidebar Footer */}
-          <div className="bg-[#0E2018] px-4 py-2.5 border-t border-[#1E3F31] flex items-center justify-between text-[11px] text-[#A3B899]">
-            <span className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  engineMode === "livekit" ? "bg-blue-400" : "bg-emerald-400"
-                }`}
-              />
-              <span>
-                {engineMode === "livekit" ? "LiveKit SFU Engine" : "MentorMaze P2P Engine"}
-              </span>
-            </span>
-            <span className="font-mono text-emerald-400 font-bold">⚡ &lt; 5ms Active</span>
           </div>
         </div>
       </div>
