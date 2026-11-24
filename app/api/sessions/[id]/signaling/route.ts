@@ -54,30 +54,22 @@ export async function GET(
   }
 
   const now = Date.now();
-  // Automatically purge signals older than 25 seconds
+  // Automatically purge signals older than 30 seconds
   let roomMessages = rooms.get(bookingId) || [];
-  roomMessages = roomMessages.filter((m) => now - m.timestamp < 25000);
+  roomMessages = roomMessages.filter((m) => now - m.timestamp < 30000);
   rooms.set(bookingId, roomMessages);
 
   const lastSeq = roomMessages.length > 0 ? roomMessages[roomMessages.length - 1].seq : (global.__mmSignalingSeq || 0);
 
-  // If a brand new client connects without since/sinceSeq, do NOT replay stale history
-  // Return current baseline so subsequent polls only receive live signals!
-  if (sinceSeq === 0 && since === 0) {
-    return NextResponse.json({
-      success: true,
-      signals: [],
-      serverTime: now,
-      lastSeq,
-    });
-  }
-
-  // Filter messages: newer than sinceSeq / since, not sent by this client instance, matching target if targeted
+  // Filter messages: newer than sinceSeq / since (or recent within 15s if joining fresh)
   const pending = roomMessages.filter((m) => {
     if (sinceSeq > 0) {
       if (m.seq <= sinceSeq) return false;
     } else if (since > 0) {
       if (m.timestamp <= since) return false;
+    } else {
+      // First poll (sinceSeq=0 & since=0): only return signals from the last 15 seconds
+      if (now - m.timestamp > 15000) return false;
     }
     if (clientId && (m.senderClientId ? m.senderClientId === clientId : m.senderId === clientId)) return false;
     if (m.targetClientId && clientId && m.targetClientId !== clientId) return false;

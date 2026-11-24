@@ -202,6 +202,7 @@ function VideoPlayer({
   className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hasFrames, setHasFrames] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -213,6 +214,7 @@ function VideoPlayer({
 
     if (!stream) {
       video.srcObject = null;
+      setHasFrames(false);
       return;
     }
 
@@ -220,16 +222,25 @@ function VideoPlayer({
       video.srcObject = stream;
     }
 
+    const checkFrames = () => {
+      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+        setHasFrames(true);
+      }
+    };
+
     const safePlay = () => {
-      if (video && video.srcObject && video.paused) {
-        const p = video.play();
-        if (p !== undefined) {
-          p.catch(() => {
-            if (!video.muted) {
-              video.muted = true;
-              video.play().catch(() => {});
-            }
-          });
+      if (video && video.srcObject) {
+        checkFrames();
+        if (video.paused) {
+          const p = video.play();
+          if (p !== undefined) {
+            p.then(checkFrames).catch(() => {
+              if (!video.muted) {
+                video.muted = true;
+                video.play().then(checkFrames).catch(() => {});
+              }
+            });
+          }
         }
       }
     };
@@ -247,13 +258,16 @@ function VideoPlayer({
     video.addEventListener("canplay", safePlay);
     video.addEventListener("loadeddata", safePlay);
     video.addEventListener("playing", safePlay);
+    video.addEventListener("timeupdate", checkFrames);
+    video.addEventListener("resize", checkFrames);
 
     // Watchdog to guarantee video never freezes or turns black on view switches
     const watchdog = setInterval(() => {
-      if (video && video.srcObject && video.paused) {
-        safePlay();
+      if (video && video.srcObject) {
+        checkFrames();
+        if (video.paused) safePlay();
       }
-    }, 800);
+    }, 600);
 
     return () => {
       clearInterval(watchdog);
@@ -265,23 +279,34 @@ function VideoPlayer({
       video.removeEventListener("canplay", safePlay);
       video.removeEventListener("loadeddata", safePlay);
       video.removeEventListener("playing", safePlay);
+      video.removeEventListener("timeupdate", checkFrames);
+      video.removeEventListener("resize", checkFrames);
     };
   }, [stream, muted]);
 
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      muted={muted}
-      onCanPlay={(e) => {
-        const v = e.currentTarget;
-        if (v.paused) v.play().catch(() => {});
-      }}
-      className={`w-full h-full object-cover select-none pointer-events-none ${
-        mirrored ? "scale-x-[-1]" : ""
-      } ${className}`}
-    />
+    <div className={`relative w-full h-full overflow-hidden flex items-center justify-center bg-[#07130E] ${className}`}>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={muted}
+        onCanPlay={(e) => {
+          const v = e.currentTarget;
+          if (v.videoWidth > 0) setHasFrames(true);
+          if (v.paused) v.play().catch(() => {});
+        }}
+        className={`w-full h-full object-cover select-none pointer-events-none transition-opacity duration-300 ${
+          hasFrames ? "opacity-100" : "opacity-0"
+        } ${mirrored ? "scale-x-[-1]" : ""}`}
+      />
+      {!hasFrames && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0A1410] text-[#A3B899] z-0">
+          <div className="w-10 h-10 rounded-full border-2 border-emerald-500/30 border-t-emerald-400 animate-spin mb-3" />
+          <span className="text-xs font-medium text-emerald-300">Connecting live stream...</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -657,6 +682,7 @@ export default function LiveSessionRoomPage() {
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const [remoteAudioBlocked, setRemoteAudioBlocked] = useState(false);
   const seenSignalIdsRef = useRef<Set<string>>(new Set());
+  const initiateOfferRef = useRef<(() => Promise<void>) | null>(null);
 
   // In-Meeting Real-Time Chat State (< 5ms Latency)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -826,6 +852,9 @@ export default function LiveSessionRoomPage() {
               } catch {}
             }
           });
+          if (initiateOfferRef.current && pc.signalingState === "stable") {
+            initiateOfferRef.current().catch(() => {});
+          }
         }
 
         // If LiveKit room is already connected, publish tracks
@@ -1245,6 +1274,7 @@ export default function LiveSessionRoomPage() {
           { urls: "stun:stun.l.google.com:19302" },
           { urls: "stun:stun1.l.google.com:19302" },
           { urls: "stun:stun2.l.google.com:19302" },
+          { urls: "stun:stun.cloudflare.com:3478" },
         ],
       };
 
@@ -1271,7 +1301,12 @@ export default function LiveSessionRoomPage() {
 
           if (remoteAudioRef.current) {
             remoteAudioRef.current.srcObject = newStream;
-            remoteAudioRef.current.play().catch(() => setRemoteAudioBlocked(true));
+            const playPromise = remoteAudioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => setRemoteAudioBlocked(false))
+                .catch(() => setRemoteAudioBlocked(true));
+            }
           }
           return newStream;
         });
@@ -1328,11 +1363,12 @@ export default function LiveSessionRoomPage() {
 
         syncLocalTracksToPeer(pc);
 
+        if (pc.signalingState !== "stable") return;
+
         const offer = await pc.createOffer({
           offerToReceiveAudio: true,
           offerToReceiveVideo: true,
         });
-        if (pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
 
         postSignal("offer", offer);
@@ -1340,6 +1376,8 @@ export default function LiveSessionRoomPage() {
         console.warn("Offer creation notice:", err);
       }
     };
+
+    initiateOfferRef.current = initiateSdpOffer;
 
     // Announce presence immediately
     postSignal("join", { name: currentName, role: currentRole });
@@ -1350,8 +1388,8 @@ export default function LiveSessionRoomPage() {
       if (!pc || isCleanedUp) return;
       try {
         tickCount++;
-        if (tickCount % 8 === 0) {
-          // Heartbeat ping every ~3.2s
+        if (tickCount % 12 === 0) {
+          // Heartbeat ping every ~3s
           postSignal("presence", { name: currentName, role: currentRole });
         }
 
@@ -1359,13 +1397,21 @@ export default function LiveSessionRoomPage() {
           `/api/sessions/${bookingId}/signaling?clientId=${clientId}&sinceSeq=${lastSignalSeq}&since=${lastSignalTimestamp}`
         );
         const data = await res.json();
-        if (data.success && data.signals && data.signals.length > 0) {
-          for (const signal of data.signals) {
-            handleIncomingSignal(signal);
+        if (data.success) {
+          if (typeof data.lastSeq === "number" && data.lastSeq > lastSignalSeq) {
+            lastSignalSeq = data.lastSeq;
+          }
+          if (typeof data.serverTime === "number" && data.serverTime > lastSignalTimestamp) {
+            lastSignalTimestamp = data.serverTime;
+          }
+          if (data.signals && data.signals.length > 0) {
+            for (const signal of data.signals) {
+              handleIncomingSignal(signal);
+            }
           }
         }
       } catch {}
-    }, 400);
+    }, 250);
 
     // C. Server-Sent Events (SSE) Instant Stream (< 1ms In-Memory Loopback Hub)
     let eventSource: EventSource | null = null;
@@ -1737,6 +1783,9 @@ export default function LiveSessionRoomPage() {
             await sender.replaceTrack(screenTrack);
           } else {
             pc.addTrack(screenTrack, screenStream);
+            if (initiateOfferRef.current && pc.signalingState === "stable") {
+              initiateOfferRef.current().catch(() => {});
+            }
           }
         }
 
@@ -1885,13 +1934,18 @@ export default function LiveSessionRoomPage() {
 
   const hasRemoteVideo = Boolean(
     remoteStream &&
-    remoteStream.getVideoTracks().some((t) => t.readyState === "live" && t.enabled)
+    remoteStream.getVideoTracks().length > 0
   );
 
   return (
     <div className="h-screen w-screen bg-[#0A1410] text-[#EDF1E8] flex flex-col overflow-hidden font-sans select-none">
-      {/* Hidden audio element for uninterrupted WebRTC audio playback */}
-      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+      {/* Offscreen audio element for uninterrupted WebRTC audio playback */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        style={{ position: "fixed", top: -9999, left: -9999, opacity: 0, pointerEvents: "none", width: 1, height: 1 }}
+      />
 
       {/* Autoplay Unlock Banner if browser blocked audio prior to user gesture */}
       {remoteAudioBlocked && (
@@ -2115,7 +2169,7 @@ export default function LiveSessionRoomPage() {
                       </div>
                     </div>
                   ) : hasRemoteVideo && remoteStream ? (
-                    <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                    <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
                   ) : peerConnected ? (
                     <div className="flex flex-col items-center justify-center text-center p-6 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410] w-full h-full">
                       <div className="relative mb-3">
@@ -2341,7 +2395,7 @@ export default function LiveSessionRoomPage() {
                     </div>
                   </div>
                 ) : hasRemoteVideo && remoteStream ? (
-                  <VideoPlayer stream={remoteStream} muted={false} className="w-full h-full" />
+                  <VideoPlayer stream={remoteStream} muted={true} className="w-full h-full" />
                 ) : peerConnected ? (
                   <div className="relative w-full h-full flex flex-col items-center justify-center text-center p-8 bg-radial from-[#132E22] via-[#0E2018] to-[#0A1410]">
                     <div className="absolute w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
