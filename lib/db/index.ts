@@ -7,6 +7,22 @@ import fs from "fs";
 import * as schema from "./schema";
 import { sql } from "drizzle-orm";
 
+export interface DatabaseTargetInfo {
+  type: "neon_postgres" | "pglite_persistent" | "pglite_memory";
+  isRealDatabase: boolean;
+  sanitizedHost?: string;
+  databaseName?: string;
+}
+
+let activeTargetInfo: DatabaseTargetInfo = {
+  type: "pglite_memory",
+  isRealDatabase: false,
+};
+
+export function getDatabaseTarget(): DatabaseTargetInfo {
+  return activeTargetInfo;
+}
+
 let dbInstance: any = null;
 let pgliteInstance: PGlite | null = null;
 
@@ -14,24 +30,52 @@ export function getDb() {
   if (dbInstance) return dbInstance;
 
   const connectionString = process.env.DATABASE_URL;
+  const requireRealDb =
+    process.env.REQUIRE_REAL_DB === "true" ||
+    process.env.STAGING_VERIFY_DB === "true";
 
   // Use Neon / Remote PostgreSQL if connection string is configured and valid
   const isRemotePostgres =
-    process.env.USE_LOCAL_DB !== "true" &&
+    (requireRealDb || process.env.USE_LOCAL_DB !== "true") &&
     connectionString &&
     !connectionString.includes("localhost:5432") &&
     (connectionString.includes("neon.tech") || connectionString.startsWith("postgresql://"));
+
+  if (requireRealDb && !isRemotePostgres) {
+    throw new Error(
+      "Real staging PostgreSQL database is required (REQUIRE_REAL_DB=true) but valid remote DATABASE_URL is missing or USE_LOCAL_DB is forced."
+    );
+  }
 
   if (isRemotePostgres) {
     try {
       const client = postgres(connectionString!, {
         prepare: false,
         max: 5,
-        connect_timeout: 5,
+        connect_timeout: 10,
       });
       dbInstance = drizzlePg(client, { schema });
+      try {
+        const u = new URL(connectionString!);
+        activeTargetInfo = {
+          type: "neon_postgres",
+          isRealDatabase: true,
+          sanitizedHost: u.host,
+          databaseName: u.pathname.slice(1),
+        };
+      } catch {
+        activeTargetInfo = {
+          type: "neon_postgres",
+          isRealDatabase: true,
+        };
+      }
       return dbInstance;
-    } catch (err) {
+    } catch (err: any) {
+      if (requireRealDb) {
+        throw new Error(
+          `Real staging PostgreSQL connection failed (fail-closed, no PGlite fallback): ${err.message}`
+        );
+      }
       console.warn("Failed to connect to remote Postgres, falling back to local PGlite engine:", err);
     }
   }
@@ -51,6 +95,10 @@ export function getDb() {
       pgliteInstance = new PGlite();
     }
     dbInstance = drizzlePglite(pgliteInstance, { schema });
+    activeTargetInfo = {
+      type: "pglite_memory",
+      isRealDatabase: false,
+    };
     return dbInstance;
   }
 
@@ -65,12 +113,20 @@ export function getDb() {
       pgliteInstance = new PGlite(dataDir);
     }
     dbInstance = drizzlePglite(pgliteInstance, { schema });
+    activeTargetInfo = {
+      type: "pglite_persistent",
+      isRealDatabase: false,
+    };
     return dbInstance;
   } catch (err) {
     console.warn("PGlite disk lock collision, falling back to in-memory PGlite:", err);
     try {
       pgliteInstance = new PGlite();
       dbInstance = drizzlePglite(pgliteInstance, { schema });
+      activeTargetInfo = {
+        type: "pglite_memory",
+        isRealDatabase: false,
+      };
       return dbInstance;
     } catch (innerErr) {
       console.error("Critical: In-memory PGlite failed:", innerErr);

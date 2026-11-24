@@ -496,6 +496,7 @@ describe("Phase 2: Core Frontend Mock Elimination & Real API Integration Test Su
     });
 
     it("PUT /api/mentor/availability persists schedule update for authenticated mentor owner", async () => {
+      const bookingDay = new Date(Date.now() + 24 * 60 * 60 * 1000).getUTCDay();
       const req = makeAuthRequest("http://localhost:3000/api/mentor/availability", {
         method: "PUT",
         token: sessionTokenMentor,
@@ -503,9 +504,9 @@ describe("Phase 2: Core Frontend Mock Elimination & Real API Integration Test Su
           settings: { bufferTimeMinutes: 15, dailySessionLimit: 5 },
           rules: [
             {
-              dayOfWeek: 2,
+              dayOfWeek: bookingDay,
               isActive: true,
-              windows: [{ startTime: "18:00", endTime: "21:00" }],
+              windows: [{ startTime: "00:00", endTime: "23:59" }],
             },
           ],
         },

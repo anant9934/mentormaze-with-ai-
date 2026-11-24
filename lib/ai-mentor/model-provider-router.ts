@@ -466,7 +466,27 @@ export class ModelProviderRouter {
       }
     }
 
-    // 0b. Explicit preferred provider routing for Groq or OpenRouter (Requires external LLM consent)
+    // 0b. Explicit preferred provider routing for Gemini, Groq, or OpenRouter (Requires external LLM consent)
+    if (hasExternalLlmConsent && payload.preferredProvider === "gemini" && process.env.GEMINI_API_KEY) {
+      try {
+        const result = await this.callGemini(payload, requestId);
+        this.logTelemetry({
+          requestId,
+          timestamp: new Date().toISOString(),
+          provider: "gemini",
+          model: result.model,
+          inferenceMode: "generative",
+          latencyMs: result.latencyMs,
+          tokenUsage: result.tokenUsage,
+          estimatedCostUsd: result.estimatedCostUsd,
+          isSuccess: true,
+        });
+        return result;
+      } catch (err: any) {
+        console.warn("[ModelRouter] Preferred Gemini invocation failed:", err.message);
+      }
+    }
+
     if (hasExternalLlmConsent && payload.preferredProvider === "groq" && process.env.GROQ_API_KEY) {
       try {
         const result = await this.callGroq(payload, requestId);
@@ -716,98 +736,92 @@ export class ModelProviderRouter {
       process.env.GEMINI_API_KEY_4,
     ].filter(Boolean) as string[];
 
-    const apiKey = geminiKeys[Math.floor(Math.random() * geminiKeys.length)] || process.env.GEMINI_API_KEY!;
     const candidateModels = payload.taskCategory === "coding"
-      ? ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest"]
-      : ["gemini-2.5-flash", "gemini-flash-latest"];
+      ? ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash", "gemini-2.5-pro"]
+      : ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.8-flash"];
 
     let lastError: Error | null = null;
-    for (const model of candidateModels) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    for (const apiKey of geminiKeys) {
+      for (const model of candidateModels) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-      const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(),
-        payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
-      );
+        const controller = new AbortController();
+        const timeout = setTimeout(
+          () => controller.abort(),
+          payload.timeoutMs || this.DEFAULT_TIMEOUT_MS
+        );
 
-      // If caller provided an abort signal, chain it
-      if (payload.signal) {
-        payload.signal.addEventListener("abort", () => controller.abort());
-      }
+        // If caller provided an abort signal, chain it
+        if (payload.signal) {
+          payload.signal.addEventListener("abort", () => controller.abort());
+        }
 
-      try {
-        const contents = payload.messages.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        }));
+        try {
+          const contents = payload.messages.map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          }));
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: payload.systemPrompt }] },
-            contents,
-            generationConfig: {
-              temperature: payload.temperature ?? 0.3,
-              maxOutputTokens: payload.maxTokens ?? 2048,
-            },
-          }),
-        });
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: payload.systemPrompt }] },
+              contents,
+              generationConfig: {
+                temperature: payload.temperature ?? 0.3,
+                maxOutputTokens: payload.maxTokens ?? 2048,
+              },
+            }),
+          });
 
-        clearTimeout(timeout);
+          clearTimeout(timeout);
 
-        if (!response.ok) {
-          const errText = await response.text();
-          let errorType: ProviderErrorType = "UNKNOWN";
-          if (response.status === 401 || response.status === 403) errorType = "AUTH_ERROR";
-          else if (response.status === 429) errorType = "RATE_LIMIT";
-          else if (response.status >= 500) errorType = "MODEL_UNAVAILABLE";
+          if (!response.ok) {
+            const errText = await response.text();
+            let errorType: ProviderErrorType = "UNKNOWN";
+            if (response.status === 401 || response.status === 403) errorType = "AUTH_ERROR";
+            else if (response.status === 429) errorType = "RATE_LIMIT";
+            else if (response.status >= 500) errorType = "MODEL_UNAVAILABLE";
 
-          // If 404, try next candidate model
-          if (response.status === 404) {
             lastError = new Error(`Gemini API Error [${response.status} ${errorType}]: ${errText}`);
             continue;
           }
 
-          throw new Error(`Gemini API Error [${response.status} ${errorType}]: ${errText}`);
-        }
+          const data = await response.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const elapsed = Number((performance.now() - t0).toFixed(2));
+          
+          const promptTokens = data?.usageMetadata?.promptTokenCount || Math.round(payload.systemPrompt.length / 4);
+          const completionTokens = data?.usageMetadata?.candidatesTokenCount || Math.round(text.length / 4);
+          const totalTokens = data?.usageMetadata?.totalTokenCount || (promptTokens + completionTokens);
 
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const elapsed = Number((performance.now() - t0).toFixed(2));
-        
-        const promptTokens = data?.usageMetadata?.promptTokenCount || Math.round(payload.systemPrompt.length / 4);
-        const completionTokens = data?.usageMetadata?.candidatesTokenCount || Math.round(text.length / 4);
-        const totalTokens = data?.usageMetadata?.totalTokenCount || (promptTokens + completionTokens);
+          const tokenUsage: TokenUsage = { promptTokens, completionTokens, totalTokens };
+          const cost = this.calculateCost("gemini", promptTokens, completionTokens);
 
-        const tokenUsage: TokenUsage = { promptTokens, completionTokens, totalTokens };
-        const cost = this.calculateCost("gemini", promptTokens, completionTokens);
-
-        return {
-          requestId,
-          content: text,
-          provider: "gemini",
-          model,
-          inferenceMode: "generative",
-          latencyMs: elapsed,
-          tokenUsage,
-          tokensEstimate: totalTokens,
-          estimatedCostUsd: cost,
-          isFallback: false,
-          rawResponse: data,
-        };
-      } catch (err: any) {
-        clearTimeout(timeout);
-        lastError = err;
-        if (!err.message?.includes("404")) {
-          throw err;
+          return {
+            requestId,
+            content: text,
+            provider: "gemini",
+            model,
+            inferenceMode: "generative",
+            latencyMs: elapsed,
+            tokenUsage,
+            tokensEstimate: totalTokens,
+            estimatedCostUsd: cost,
+            isFallback: false,
+            rawResponse: data,
+          };
+        } catch (err: any) {
+          clearTimeout(timeout);
+          lastError = err;
+          continue;
         }
       }
     }
 
-    throw lastError || new Error("Gemini invocation failed across all candidate models.");
+    throw lastError || new Error("Gemini invocation failed across all candidate keys and models.");
   }
 
   /**
