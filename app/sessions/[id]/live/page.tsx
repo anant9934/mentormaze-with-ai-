@@ -385,6 +385,7 @@ export default function LiveSessionRoomPage() {
   const [copiedType, setCopiedType] = useState<string>("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showConcludeModal, setShowConcludeModal] = useState(false);
+  const [isConcluding, setIsConcluding] = useState(false);
 
   // Fullscreen & Synthesized Audio State
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1755,18 +1756,60 @@ export default function LiveSessionRoomPage() {
   };
 
   const handleConcludeConfirmed = async () => {
-    await saveNotesToServer();
+    setIsConcluding(true);
+
+    // 1. Teardown all local audio/video hardware streams immediately
     try {
-      await fetch(`/api/sessions/${bookingId}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actorId: currentUserId,
-          actorRole: currentRole,
-        }),
-      });
+      localStream?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
     } catch {}
-    router.push(`/sessions/${bookingId}/summary`);
+    try {
+      screenStreamRef.current?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+    } catch {}
+    try {
+      livekitRoomRef.current?.disconnect();
+    } catch {}
+    try {
+      peerConnectionRef.current?.close();
+    } catch {}
+
+    // 2. Best-effort async save notes and complete session with a 1.2s timeout
+    try {
+      const savePromise = Promise.allSettled([
+        fetch(`/api/sessions/${bookingId}/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: currentUserId,
+            userRole: currentRole,
+            studentVisibleSummary: sessionNotes,
+            mentorPrivateNotes: isMentor ? privateNotes : undefined,
+            sharedActionItems: checklist,
+          }),
+        }),
+        fetch(`/api/sessions/${bookingId}/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            actorId: currentUserId,
+            actorRole: currentRole,
+          }),
+        }),
+      ]);
+
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1200));
+      await Promise.race([savePromise, timeoutPromise]);
+    } catch (err) {
+      console.warn("Error during session conclusion save:", err);
+    }
+
+    // 3. Direct navigation to summary page
+    setShowConcludeModal(false);
+    const targetUrl = `/sessions/${bookingId}/summary`;
+    if (typeof window !== "undefined") {
+      window.location.href = targetUrl;
+    } else {
+      router.push(targetUrl);
+    }
   };
 
   const hasRemoteVideo = !!(
@@ -1779,13 +1822,33 @@ export default function LiveSessionRoomPage() {
       {/* 1. TOP HEADER BAR */}
       <header className="h-16 bg-[#0E1F18]/90 border-b border-[#1E3A2F] px-4 sm:px-6 flex items-center justify-between z-20 backdrop-blur-md">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <Link
-            href="/dashboard/sessions"
+          <button
+            onClick={() => {
+              try {
+                localStream?.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+              } catch {}
+              try {
+                screenStreamRef.current?.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+              } catch {}
+              try {
+                livekitRoomRef.current?.disconnect();
+              } catch {}
+              try {
+                peerConnectionRef.current?.close();
+              } catch {}
+              const dest = isMentor ? "/mentor/dashboard" : "/dashboard";
+              if (typeof window !== "undefined") {
+                window.location.href = dest;
+              } else {
+                router.push(dest);
+              }
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#DDE6D7] hover:text-white text-xs font-medium transition-all"
+            title="Exit Room"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Exit Room</span>
-          </Link>
+          </button>
 
           <div className="h-4 w-[1px] bg-[#1E3A2F]" />
 
@@ -2983,7 +3046,14 @@ export default function LiveSessionRoomPage() {
       {/* 4. MODAL: CONCLUDE SESSION CONFIRMATION                       */}
       {/* ------------------------------------------------------------- */}
       {showConcludeModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isConcluding) {
+              setShowConcludeModal(false);
+            }
+          }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <div className="bg-[#0E2219] border border-[#234C3C] rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
             <div className="w-12 h-12 rounded-full bg-red-950/80 border-red-800 border flex items-center justify-center mx-auto mb-3">
               <PhoneOff className="w-6 h-6 text-red-400" />
@@ -2997,15 +3067,24 @@ export default function LiveSessionRoomPage() {
             <div className="flex gap-2.5 justify-center">
               <button
                 onClick={() => setShowConcludeModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#18362B] hover:bg-[#20493A] text-[#DDE6D7] text-xs font-semibold border border-[#234F3F]"
+                disabled={isConcluding}
+                className="px-4 py-2 rounded-xl bg-[#18362B] hover:bg-[#20493A] text-[#DDE6D7] text-xs font-semibold border border-[#234F3F] transition-all disabled:opacity-50"
               >
                 Stay in Room
               </button>
               <button
                 onClick={handleConcludeConfirmed}
-                className="px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-lg bg-red-600 hover:bg-red-500 shadow-red-600/30"
+                disabled={isConcluding}
+                className="px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-lg bg-red-600 hover:bg-red-500 shadow-red-600/30 transition-all flex items-center justify-center gap-1.5 min-w-[170px] disabled:opacity-75"
               >
-                Conclude & View Summary
+                {isConcluding ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Concluding...</span>
+                  </>
+                ) : (
+                  <span>Conclude & View Summary</span>
+                )}
               </button>
             </div>
           </div>
